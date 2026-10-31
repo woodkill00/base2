@@ -3,7 +3,29 @@
   "checks": [
     {
       "id": "feature-124-workspace-live-journeys",
-      "command": ["{operations-shell}", "{e2e-runner}"],
+      "command": [
+        "python3",
+        "scripts/python/run_workspace_profile_acceptance.py",
+        "--profile",
+        "base2-obsidian",
+        "--shell",
+        "{operations-shell}"
+      ],
+      "required": true,
+      "timeoutSeconds": 1800,
+      "dependsOn": ["env-tools", "workspace-postgres-contract"],
+      "requiredTools": ["{operations-shell}", "python3", "docker", "node", "npm", "curl", "git"]
+    },
+    {
+      "id": "feature-124-workspace-representative-journeys",
+      "command": [
+        "python3",
+        "scripts/python/run_workspace_profile_acceptance.py",
+        "--profile",
+        "journey-reference",
+        "--shell",
+        "{operations-shell}"
+      ],
       "required": true,
       "timeoutSeconds": 1800,
       "dependsOn": ["env-tools", "workspace-postgres-contract"],

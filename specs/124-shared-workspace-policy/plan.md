@@ -432,3 +432,22 @@ additive 0042 validator-state migration. Full-clean regressions reproduce preset
 and field acceptance before correction. Existing rows are not rewritten; a later
 validated edit to a malformed stored identifier fails closed. Operations patterns
 and SQL/readiness capabilities remain unchanged.
+
+## Supported-pack projection and generated-profile acceptance
+
+Introduce a closed mapping for the three existing public pack types to the actual
+frontend route prefixes. Test the mapping against module/PublicRoutes contracts.
+Existing source timestamps alone do not schedule changed projection URLs: add a
+bounded idempotent projection repair for exact legacy generated paths at the current
+source version, preserving stale-write protection, tenant joins, document IDs and
+all content/approval state. Prove already indexed and operator-custom-path cases;
+no wildcard route or unreviewed generic renderer is introduced.
+
+Parameterize the existing isolated runner with an allowlisted `E2E_SITE_PROFILE`,
+validated before any Compose action and propagated consistently. Keep base2's two
+shell runs; add journey-reference Bash with distinct artifacts. Reuse normal
+login/settings/API paths to publish one record for each exact family type, follow
+its real returned search link, then restrict access and prove public search/direct
+page denial while authorized workspace access remains. Preserve actual disabled
+module/profile guard contracts separately. Source contract collection is not live
+profile proof; retain successful screenshots and response/status evidence for review.

@@ -289,6 +289,24 @@ def test_workspace_runner_collects_public_pack_key_regressions():
     source = inspect.getsource(runner.main)
     policy_check = source.split('policy_check = media_check[:-1] + [', 1)[1].split('run(policy_check)', 1)[0]
     assert '"api/tests/test_workspace_type_keys_postgres.py"' in policy_check
+    assert '"api/tests/test_public_pack_search_postgres.py"' in policy_check
     assert '"api/tests/test_workspace_policy_postgres.py"' in policy_check
     assert '"WORKSPACE_POLICY_DISPOSABLE=1"' in policy_check
     assert 'test_workspace_policy_restore_postgres.py' not in policy_check
+
+
+def test_restore_diagnostic_is_independent_but_never_masks_core_failure():
+    import yaml
+
+    workflow = yaml.safe_load((fixture.ROOT / '.github/workflows/ci-backend.yml').read_text())
+    steps = next(job['steps'] for job in workflow['jobs'].values()
+                 if any(step.get('name') == 'Run API integration tests' for step in job.get('steps', [])))
+    core = next(step for step in steps if step.get('name') == 'Run API integration tests')
+    restore = next(step for step in steps if step.get('name') == 'Restore Feature124 into separate owned database')
+    receipt = next(step for step in steps if step.get('name') == 'Retain successful isolated restoration evidence')
+    assert core['id'] == 'integration_core'
+    assert not core.get('continue-on-error', False)
+    assert restore['id'] == 'workspace_restore'
+    assert restore['if'] == "${{ !cancelled() && (steps.integration_core.outcome == 'success' || steps.integration_core.outcome == 'failure') }}"
+    assert not restore.get('continue-on-error', False)
+    assert receipt['if'] == "${{ !cancelled() && steps.workspace_restore.outcome == 'success' }}"

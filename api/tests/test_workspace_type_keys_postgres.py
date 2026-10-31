@@ -19,16 +19,33 @@ from fastapi import HTTPException, Request
 
 from api.db import workspace_db_conn
 from api.routes import content_workspace as routes
+from api.security.content_workspace import CursorCodec, CursorError
 from api.security.request_auth import PublicPrincipal
+from api.settings import settings
 
 pytestmark = pytest.mark.integration
 
 
+@pytest.fixture
+def public_family_workspace_fixture(monkeypatch, request):
+    # Test-only key, scoped and restored by monkeypatch. Production defaults and
+    # CursorCodec's minimum strength remain unchanged. Check before any DB setup.
+    monkeypatch.setattr(settings, 'TOKEN_PEPPER', 'synthetic-public-family-cursor-key-124')
+    codec = CursorCodec(settings.TOKEN_PEPPER)
+    scope = {'site': 'synthetic-family-site', 'type': 'blog-post'}
+    position = {'id': 'synthetic-prerequisite'}
+    token = codec.encode(scope=scope, position=position, now=100)
+    assert codec.decode(token, expected_scope=scope, now=101) == position
+    with pytest.raises(CursorError):
+        codec.decode(token, expected_scope={**scope, 'site': 'other-site'}, now=101)
+    return request.getfixturevalue('workspace_policy_fixture')
+
+
 @pytest.mark.parametrize('type_key', ['blog-post', 'doc-page', 'portfolio-item'])
 def test_public_family_key_validated_routes_persist_exact_scoped_identity(
-    workspace_policy_fixture, monkeypatch, type_key
+    public_family_workspace_fixture, monkeypatch, type_key
 ):
-    fixture = workspace_policy_fixture
+    fixture = public_family_workspace_fixture
     site_id = fixture['site_id']
     manifest = json.loads(
         (Path(__file__).resolve().parents[1] / 'site_profiles/journey-reference.json').read_text()

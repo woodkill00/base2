@@ -86,13 +86,21 @@ class CompleteGateTests(unittest.TestCase):
 
     def test_workspace_live_journeys_are_required_through_isolated_runner(self):
         manifest = json.loads((MODULE_PATH.parents[1] / "config/complete-gate-v1.json").read_text())
-        item = next(row for row in manifest["checks"] if row["id"] == "feature-124-workspace-live-journeys")
-        self.assertTrue(item["required"])
-        self.assertEqual(item["command"], ["{operations-shell}", "{e2e-runner}"])
-        self.assertEqual(item.get("maxAttempts", 1), 1)
-        self.assertFalse(item.get("retryOn"))
-        self.assertIn("docker", item["requiredTools"])
-        self.assertIn("workspace-postgres-contract", item["dependsOn"])
+        profiles = {
+            "feature-124-workspace-live-journeys": "base2-obsidian",
+            "feature-124-workspace-representative-journeys": "journey-reference",
+        }
+        for check_id, profile in profiles.items():
+            item = next(row for row in manifest["checks"] if row["id"] == check_id)
+            self.assertTrue(item["required"])
+            self.assertEqual(item["command"], [
+                "python3", "scripts/python/run_workspace_profile_acceptance.py",
+                "--profile", profile, "--shell", "{operations-shell}",
+            ])
+            self.assertEqual(item.get("maxAttempts", 1), 1)
+            self.assertFalse(item.get("retryOn"))
+            self.assertIn("docker", item["requiredTools"])
+            self.assertIn("workspace-postgres-contract", item["dependsOn"])
 
     def test_auth_journeys_remain_required_without_retries(self):
         manifest = json.loads((MODULE_PATH.parents[1] / "config/complete-gate-v1.json").read_text())

@@ -122,3 +122,22 @@ does not enable a disabled pack or alter roles, review, visibility or immutable 
 Native field and preset validation must reject trailing newlines, matching the
 already-strict API contract. This closes an anchor inconsistency without permitting
 hyphens in those identifiers or rewriting previously stored rows.
+
+## Supported-pack search navigation and representative profiles
+
+Published `blog-post`, `doc-page`, and `portfolio-item` search results must lead to
+the existing `/blog/{slug}`, `/docs/{slug}` and `/portfolio/{slug}` pages. Correct
+existing automatically generated legacy paths without changing search-document
+identity, source timestamps, content revisions or approvals. Preserve deliberate
+custom paths outside the exact old generated-path pattern; never weaken current
+tenant, state, visibility, tombstone or stale-write checks to repair a URL.
+
+Representative live acceptance uses only `base2-obsidian` and `journey-reference`
+through an explicit runner-side allowlist, with consistent selected profile in
+frontend, migrations, API, fixture and workers. Runtime fixtures remain disposable,
+owner-guarded and profile-bound; browsers cannot choose arbitrary tenants. The
+existing base2 Bash/PowerShell matrix remains, with one journey-reference Bash
+entry. Prove actual supported pack creation/review/publication, search-link navigation
+and visibility revocation in that profile. Do not claim generic page rendering,
+all-family maturity, disabled-profile runtime proof or representative PowerShell
+coverage that has not actually run.

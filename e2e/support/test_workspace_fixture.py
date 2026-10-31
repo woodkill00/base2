@@ -119,3 +119,41 @@ def test_suspend_command_cannot_run_with_worker_credentials(monkeypatch):
     environment(monkeypatch)
     with pytest.raises(RuntimeError, match="disposable"):
         fixture.suspend_viewer()
+
+
+@pytest.mark.parametrize('profile', ['base2-obsidian', 'journey-reference'])
+def test_closed_generated_profile_binding(monkeypatch, profile):
+    monkeypatch.setenv('E2E_SITE_PROFILE', profile)
+    monkeypatch.setenv('SITE_PROFILE', profile)
+    assert fixture.selected_profile() == profile
+    monkeypatch.setenv('SITE_PROFILE', 'foreign')
+    with pytest.raises(RuntimeError, match='profile'):
+        fixture.selected_profile()
+
+
+@pytest.mark.parametrize('profile', ['ember-studio', 'northstar-library', '../journey-reference', '', 'production'])
+def test_other_profiles_are_not_disposable_workspace_inputs(monkeypatch, profile):
+    monkeypatch.setenv('E2E_SITE_PROFILE', profile)
+    monkeypatch.setenv('SITE_PROFILE', profile)
+    with pytest.raises(RuntimeError, match='profile'):
+        fixture.selected_profile()
+
+
+def test_allowed_profiles_have_distinct_fixed_fixture_identity_bindings():
+    import json
+    import os
+    import subprocess
+    import sys
+
+    identities = []
+    for profile in ('base2-obsidian', 'journey-reference'):
+        code = "import runpy,json; f=runpy.run_path('e2e/support/workspace_fixture.py'); print(json.dumps(f['identities']()))"
+        result = subprocess.run([sys.executable, '-c', code], cwd=path.parents[2],
+                                env={**os.environ, 'E2E_SITE_PROFILE': profile, 'SITE_PROFILE': profile},
+                                capture_output=True, text=True, check=True)
+        item = json.loads(result.stdout)
+        assert item['site'] == profile
+        identities.append(item)
+    assert identities[0]['assetId'] != identities[1]['assetId']
+    assert {actor['id'] for actor in identities[0]['actors'].values()}.isdisjoint(
+        {actor['id'] for actor in identities[1]['actors'].values()})

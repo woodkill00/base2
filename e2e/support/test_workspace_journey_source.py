@@ -220,3 +220,142 @@ assert.equal(readyMigrationObservation({...overview,services:[service,service]},
 """
     result = subprocess.run(['node', '-e', script], capture_output=True, text=True, timeout=10)
     assert result.returncode == 0, result.stderr
+
+
+def test_profiles_explicitly_collect_auth_and_exact_journey_without_skips():
+    import os
+    import subprocess
+
+    config = SOURCE.parents[1] / 'playwright.config.js'
+    for profile, journey in [
+        ('base2-obsidian', 'workspace-policy.spec.js'),
+        ('journey-reference', 'workspace-representative.spec.js'),
+    ]:
+        script = "const assert=require('node:assert/strict'); const path=require('node:path'); const c=require(process.argv[1]); assert.deepEqual(c.testMatch,['auth.spec.js',process.argv[2]]); assert.equal(c.outputDir,path.join(path.dirname(process.argv[1]),'test-results',process.env.E2E_SITE_PROFILE)); assert.equal(process.env.PLAYWRIGHT_HTML_OUTPUT_DIR,path.join(path.dirname(process.argv[1]),'playwright-report',process.env.E2E_SITE_PROFILE));"
+        result = subprocess.run(['node', '-e', script, str(config), journey],
+                                env={**os.environ, 'E2E_SITE_PROFILE': profile}, capture_output=True, text=True)
+        assert result.returncode == 0, result.stderr
+    for profile in ['', '../journey-reference', 'ember-studio', 'northstar-library']:
+        result = subprocess.run(['node', '-e', 'require(process.argv[1])', str(config)],
+                                env={**os.environ, 'E2E_SITE_PROFILE': profile}, capture_output=True, text=True)
+        assert result.returncode != 0 and 'Invalid E2E_SITE_PROFILE' in result.stderr
+
+
+def test_representative_journey_uses_exact_supported_families_and_real_route_boundaries():
+    import json
+
+    root = SOURCE.parents[2]
+    source = SOURCE.with_name('workspace-representative.spec.js').read_text()
+    for module, type_key, prefix in [('blog', 'blog-post', '/blog'),
+                                     ('documentation', 'doc-page', '/docs'),
+                                     ('portfolio', 'portfolio-item', '/portfolio')]:
+        manifest = json.loads((root / 'modules' / module / 'module.json').read_text())
+        assert f'/api/content/{type_key}/{{slug}}' in manifest['apiRoutes']
+        assert f'{prefix}/{{slug}}' in manifest['uiRoutes']
+        assert f"type: '{type_key}', prefix: '{prefix}'" in source
+    for prohibited in ['page.route(', '.fulfill(', 'test.skip(', 'test.fixme(', 'addCookies(', 'storageState:']:
+        assert prohibited not in source
+    assert "await link.click()" in source
+    assert "toContainText(record.summary)" in source
+    assert "const after = await search()" in source
+    assert "expect(after.items).toEqual([])" in source
+    assert "'members_only'" in source
+    assert "await api(editor, 'GET', `${record.route}/${record.id}`)" in source
+
+
+def test_disabled_generated_profiles_keep_shared_controls_unavailable_source_only():
+    import json
+
+    from api.settings_registry import discovery
+
+    for profile in ('ember-studio', 'northstar-library'):
+        manifest = json.loads((SOURCE.parents[2] / 'api/site_profiles' / f'{profile}.json').read_text())
+        enabled = {module['id'] for module in manifest['modules'] if module['enabled']}
+        assert 'content-workspace' not in enabled
+        body = discovery(manifest=manifest, role='owner', accounts_enabled='accounts' in enabled)
+        assert not any(control['id'].startswith('workspace-policy.') for control in body['controls'])
+        workspace = next(module for module in body['modules'] if module['id'] == 'content-workspace')
+        assert workspace['state'] == 'disabled' and workspace['action'] is None
+
+
+def test_representative_initializes_conservative_defaults_only_through_settings_ui():
+    import json
+    import subprocess
+
+    from api.repositories.workspace_policy import read_policy
+
+    class EmptyPolicyCursor:
+        def execute(self, *_args):
+            pass
+
+        def fetchone(self):
+            return None
+
+    initial = read_policy(EmptyPolicyCursor(), site_id='journey-reference')
+    source = SOURCE.with_name('workspace-representative.spec.js').read_text()
+    function = source.split('async function initializePolicyThroughUI(', 1)[1].split('test.describe(', 1)[0]
+    script = """const assert=require('node:assert/strict');
+const initial=JSON.parse(process.argv[1]);
+let current={...initial}; const writes=[]; const owner={page:{}};
+function expect(actual) { return {toMatchObject(expected) { for(const key of Object.keys(expected)) assert.deepEqual(actual[key],expected[key]); }}; }
+async function api(actor,method,route) {
+ assert.equal(actor,owner); assert.equal(method,'GET'); assert.equal(route,'/settings/workspace-policy'); return {...current};
+}
+async function savePolicy(page,category,id,value) {
+ assert.equal(page,owner.page); writes.push([category,id,value]);
+ current={...current,version:current.version+1};
+ if(id==='workspace-publishing-review') current.require_review=value==='required';
+ else { assert.equal(id,'workspace-content-visibility'); current.public_access=value; }
+ return {...current};
+}
+async function initializePolicyThroughUI(""" + function + """
+const evidence={policies:[]};
+initializePolicyThroughUI(owner,evidence).then(()=>{
+ assert.deepEqual(writes,[['organization','workspace-publishing-review','optional'],['organization','workspace-publishing-review','required'],['site-capabilities','workspace-content-visibility','public_allowed']]);
+ assert.deepEqual(evidence.policies.map(p=>[p.require_review,p.public_access]),[[true,'members_only'],[false,'members_only'],[true,'members_only'],[true,'public_allowed']]);
+ assert.deepEqual(evidence.policies.map(p=>p.version),[initial.version,initial.version+1,initial.version+2,initial.version+3]);
+}).catch(error=>{console.error(error);process.exitCode=1;});
+"""
+    result = subprocess.run(['node', '-e', script, json.dumps(initial)], capture_output=True, text=True, timeout=10)
+    assert result.returncode == 0, result.stderr
+    assert source.index('await initializePolicyThroughUI(owner, evidence)') < source.index('const records = []')
+    assert 'evidence.policies.at(-1).version + 1' in source
+    assert 'evidence.policies[0].version + 1' not in source
+
+
+def test_profile_gate_wrapper_uses_fixed_native_argv_and_overrides_only_profile(monkeypatch):
+    import importlib.util
+    import os
+    from types import SimpleNamespace
+
+    path = SOURCE.parents[2] / 'scripts/python/run_workspace_profile_acceptance.py'
+    spec = importlib.util.spec_from_file_location('profile_acceptance', path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    monkeypatch.setenv('E2E_SITE_PROFILE', 'ambient-untrusted')
+    original = dict(os.environ)
+    calls = []
+
+    def run(argv, **kwargs):
+        calls.append((argv, kwargs))
+        return SimpleNamespace(returncode=7)
+
+    monkeypatch.setattr(module.subprocess, 'run', run)
+    for profile in module.PROFILES:
+        for shell in ('bash', 'pwsh'):
+            assert module.main(['--profile', profile, '--shell', shell]) == 7
+            argv, options = calls[-1]
+            expected = ['bash', str(module.ROOT / 'scripts/bash/e2e-isolated.sh')] if shell == 'bash' else [
+                'pwsh', '-NoProfile', '-File', str(module.ROOT / 'scripts/powershell/e2e-isolated.ps1')]
+            assert argv == expected
+            assert options == {'cwd': module.ROOT, 'env': {**original, 'E2E_SITE_PROFILE': profile}, 'check': False}
+    assert dict(os.environ) == original
+    import pytest
+
+    for args in [[], ['--profile', 'foreign', '--shell', 'bash'],
+                 ['--profile', 'base2-obsidian', '--shell', 'bash;echo'],
+                 ['--profile', 'journey-reference', '--shell', 'bash', '--command', 'anything']]:
+        count = len(calls)
+        with pytest.raises(SystemExit) as error:
+            module.main(args)
+        assert error.value.code == 2 and len(calls) == count

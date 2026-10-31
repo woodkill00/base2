@@ -207,3 +207,10 @@ def test_backend_lint_covers_both_fixed_service_matrix_entries():
     lint = next(step for step in job['steps'] if step.get('name') == 'Ruff (lint)')
     assert 'if' not in lint
     assert lint['run'] == 'python -m ruff check "${{ matrix.service }}"'
+
+
+def test_django_lint_tool_is_declared_in_its_own_dev_environment():
+    api_pin = next(line for line in (ROOT / 'api/requirements.txt').read_text().splitlines()
+                   if line.startswith('ruff=='))
+    django_dev = (ROOT / 'requirements-dev-django.txt').read_text().splitlines()
+    assert api_pin in django_dev

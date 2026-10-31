@@ -11,6 +11,13 @@ python3 "$repo_root/scripts/python/secure_file_lock.py" \
   --lock "$lock_file" --root "$repo_root" --verify-fd "$lock_fd"
 unset BASE2_SECURE_LOCK_FD
 
+E2E_SITE_PROFILE="${E2E_SITE_PROFILE-base2-obsidian}"
+case "$E2E_SITE_PROFILE" in
+  base2-obsidian|journey-reference) ;;
+  *) printf 'ERROR: invalid E2E_SITE_PROFILE\n' >&2; exit 2 ;;
+esac
+export E2E_SITE_PROFILE
+
 E2E_API_PORT="${E2E_API_PORT:-15001}"
 E2E_TEST_SUPPORT_PORT="${E2E_TEST_SUPPORT_PORT:-15002}"
 E2E_WEB_PORT="${E2E_WEB_PORT:-18080}"
@@ -36,16 +43,26 @@ export E2E_WEB_ORIGIN="http://127.0.0.1:$E2E_WEB_PORT"
 
 # Local service proof only: loopback HTTP/non-Secure cookies, not edge TLS acceptance.
 # A ready asset fixture is not scanner acceptance; controlled-clock calls are not beat proof.
-artifacts="$repo_root/e2e/artifacts"
-[[ ! -L "$artifacts" ]] || { printf 'ERROR: unsafe E2E artifact directory\n' >&2; exit 2; }
-mkdir -p "$artifacts"
-chmod 700 "$artifacts"
-for name in source-commit.txt playwright.json compose-ps.txt compose.log cleanup.log exit-code.txt; do
+# Every profile owns separate JSON, traces, screenshots and reports. Check both
+# parent and leaf before Playwright may clean its selected output directory.
+for directory in artifacts test-results playwright-report; do
+  parent="$repo_root/e2e/$directory"
+  leaf="$parent/$E2E_SITE_PROFILE"
+  for target in "$parent" "$leaf"; do
+    [[ ! -L "$target" && ( ! -e "$target" || -d "$target" ) ]] || { printf 'ERROR: unsafe E2E artifact directory\n' >&2; exit 2; }
+    mkdir -p "$target"
+    chmod 700 "$target"
+  done
+done
+artifacts="$repo_root/e2e/artifacts/$E2E_SITE_PROFILE"
+export PLAYWRIGHT_HTML_OUTPUT_DIR="$repo_root/e2e/playwright-report/$E2E_SITE_PROFILE"
+for name in profile.txt source-commit.txt playwright.json compose-ps.txt compose.log cleanup.log exit-code.txt; do
   member="$artifacts/$name"
   [[ ! -L "$member" && ( ! -e "$member" || -f "$member" ) ]] || { printf 'ERROR: unsafe E2E artifact member\n' >&2; exit 2; }
   rm -f -- "$member"
 done
 git -C "$repo_root" rev-parse HEAD > "$artifacts/source-commit.txt"
+printf '%s\n' "$E2E_SITE_PROFILE" > "$artifacts/profile.txt"
 export PLAYWRIGHT_JSON_OUTPUT_NAME="$artifacts/playwright.json"
 
 compose=(docker compose -p "$project" -f "$compose_file")

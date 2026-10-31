@@ -7,6 +7,8 @@ if ($env:BASE2_SECURE_LOCK_FD -notmatch '^\d+$') { throw 'Secure E2E lock capabi
 & python3 (Join-Path $repoRoot 'scripts/python/secure_file_lock.py') --lock $lockFile --root $repoRoot --verify-fd $env:BASE2_SECURE_LOCK_FD
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 Remove-Item Env:BASE2_SECURE_LOCK_FD
+if ($null -eq $env:E2E_SITE_PROFILE) { $env:E2E_SITE_PROFILE = 'base2-obsidian' }
+if ($env:E2E_SITE_PROFILE -cnotin @('base2-obsidian', 'journey-reference')) { throw 'Invalid E2E_SITE_PROFILE' }
 $defaults = @{ E2E_API_PORT = '15001'; E2E_TEST_SUPPORT_PORT = '15002'; E2E_WEB_PORT = '18080' }
 $ports = @()
 foreach ($name in $defaults.Keys) {
@@ -22,12 +24,20 @@ $env:E2E_BASE_URL = $env:E2E_WEB_ORIGIN
 $env:E2E_API_URL = "http://127.0.0.1:$env:E2E_API_PORT"
 $env:E2E_TEST_SUPPORT_URL = "http://127.0.0.1:$env:E2E_TEST_SUPPORT_PORT"
 $env:E2E_TEST_KEY = 'local-e2e-key'
-$artifacts = Join-Path $repoRoot 'e2e/artifacts'
-if ((Test-Path $artifacts) -and (Get-Item $artifacts -Force).LinkType) { throw 'Unsafe E2E artifact directory' }
-New-Item -ItemType Directory -Force -Path $artifacts | Out-Null
-& chmod 700 $artifacts
-if ($LASTEXITCODE -ne 0) { throw 'Cannot protect E2E evidence' }
-foreach ($name in @('source-commit.txt', 'playwright.json', 'compose-ps.txt', 'compose.log', 'cleanup.log', 'exit-code.txt')) {
+foreach ($directory in @('artifacts', 'test-results', 'playwright-report')) {
+    $parent = Join-Path $repoRoot "e2e/$directory"
+    $leaf = Join-Path $parent $env:E2E_SITE_PROFILE
+    foreach ($target in @($parent, $leaf)) {
+        $item = Get-Item -LiteralPath $target -Force -ErrorAction SilentlyContinue
+        if ($item -and ($item.LinkType -or -not $item.PSIsContainer)) { throw 'Unsafe E2E artifact directory' }
+        New-Item -ItemType Directory -Force -Path $target | Out-Null
+        & chmod 700 $target
+        if ($LASTEXITCODE -ne 0) { throw 'Cannot protect E2E evidence' }
+    }
+}
+$artifacts = Join-Path $repoRoot "e2e/artifacts/$env:E2E_SITE_PROFILE"
+$env:PLAYWRIGHT_HTML_OUTPUT_DIR = Join-Path $repoRoot "e2e/playwright-report/$env:E2E_SITE_PROFILE"
+foreach ($name in @('profile.txt', 'source-commit.txt', 'playwright.json', 'compose-ps.txt', 'compose.log', 'cleanup.log', 'exit-code.txt')) {
     $member = Join-Path $artifacts $name
     if (Test-Path $member) {
         $item = Get-Item $member -Force
@@ -37,6 +47,7 @@ foreach ($name in @('source-commit.txt', 'playwright.json', 'compose-ps.txt', 'c
 }
 & git -C $repoRoot rev-parse HEAD | Set-Content (Join-Path $artifacts 'source-commit.txt')
 if ($LASTEXITCODE -ne 0) { throw 'Cannot bind source commit' }
+[IO.File]::WriteAllText((Join-Path $artifacts 'profile.txt'), "$env:E2E_SITE_PROFILE`n")
 $env:PLAYWRIGHT_JSON_OUTPUT_NAME = Join-Path $artifacts 'playwright.json'
 $composeArgs = @('compose', '-p', 'base2-e2e-isolated', '-f', (Join-Path $repoRoot 'e2e/docker-compose.e2e.yml'))
 $code = 1

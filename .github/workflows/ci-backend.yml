@@ -217,6 +217,7 @@ jobs:
           nohup python -m celery -A api.tasks.app worker --loglevel=info &
           sleep 5
       - name: Run API integration tests
+        id: integration_core
         env:
           DB_HOST: localhost
           DB_PORT: 5432
@@ -251,6 +252,8 @@ jobs:
             pytest -q -m integration tests/test_preview_media_fixture_integration.py -c pytest.ini
 
       - name: Restore Feature124 into separate owned database
+        id: workspace_restore
+        if: ${{ !cancelled() && (steps.integration_core.outcome == 'success' || steps.integration_core.outcome == 'failure') }}
         timeout-minutes: 6
         env:
           DB_HOST: localhost
@@ -284,6 +287,7 @@ jobs:
           python -m scripts.python.workspace_policy_restore_fixture --verify-report "$WORKSPACE_RESTORE_REPORT"
 
       - name: Retain successful isolated restoration evidence
+        if: ${{ !cancelled() && steps.workspace_restore.outcome == 'success' }}
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:
           name: workspace-policy-restoration

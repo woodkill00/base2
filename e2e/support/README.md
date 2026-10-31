@@ -6,9 +6,21 @@ uses the same isolated runner. Do not run this against a deployed environment.
 The fixed project owns its disposable database, Redis and encrypted local artifact
 volume and removes them on exit. No live email adapter is configured or invoked.
 
+The only deployment selector is runner environment `E2E_SITE_PROFILE`, defaulting
+to `base2-obsidian`. The exact allowlist is `base2-obsidian` and
+`journey-reference`; empty, unknown and path-like values fail before Compose.
+For example, `E2E_SITE_PROFILE=journey-reference bash scripts/bash/e2e-isolated.sh`
+selects the representative run; PowerShell uses `$env:E2E_SITE_PROFILE =
+'journey-reference'` before its existing runner. This is not browser tenant input.
+The selected generated manifest binds frontend/API/migrations/workers and fixture
+site; synthetic UUIDs are disjoint across profiles. `artifacts/<profile>/profile.txt` records selection.
+Playwright explicitly collects the four auth cases plus exactly one matching
+journey, not skipped tests. CI covers base2 in both shells and journey-reference
+in Bash; representative PowerShell runtime coverage is not claimed.
+
 `workspace_fixture.py seed` is a one-shot Compose setup dependency, not an API.
-It requires the exact test environment, fixed generated `base2-obsidian` profile,
-local `postgres/e2e` database and owner setup role, and refuses any pre-existing
+It requires the exact test environment and one of two fixed generated profiles,
+the local `postgres/e2e` database and owner setup role, and refuses any pre-existing
 auth users or organizations. It creates six synthetic login-capable actors and a
 pre-ready PNG variant. The PNG uses the real encrypted local artifact store; its
 readiness is **seeded, not proof of media inspection/scanning**. Real sessions and
@@ -26,7 +38,7 @@ The direct clock is limited to five minutes in the past/two days in the future.
 It is not a production clock or authentication bypass. Synthetic passwords and
 fixture UUIDs are intentionally public test data, never real credentials.
 
-The Playwright journey has no API mocks or route interception. It covers:
+Neither Playwright journey has API mocks or route interception. The base2 journey covers:
 
 - Real browser login/cookie refresh and CSRF denial; two rendered settings tabs
   conflict and reconcile without overwriting the first committed preferences.
@@ -54,12 +66,30 @@ state. Start a new disposable run after a failure. Authentication alone honors o
 server-provided bounded `429 Retry-After`, because actors share one loopback IP;
 incorrect passwords and other auth failures are never retried or bypassed.
 
-Evidence is retained on success and failure under `e2e/artifacts/` and normal
-Playwright result attachments. `real-beat-after-worker-restart` and
+Evidence is retained on success and failure under `e2e/artifacts/<profile>/`,
+`e2e/test-results/<profile>/` and `e2e/playwright-report/<profile>/`. Both parent
+and selected leaf must be real directories, not symlinks; running the second
+profile does not erase the first profile's evidence. `real-beat-after-worker-restart` and
 `controlled-clock-local-sink-not-beat` are distinct JSON attachments. Compose logs
 provide actual scheduler/task execution evidence; receipts alone do not prove TLS
 or a live notification provider. Runner exit/cleanup status and source commit are
 recorded; local collection/static passes are not runtime acceptance.
+
+The representative journey uses the normal APIs to define, review and publish
+`blog-post`, `doc-page` and `portfolio-item`. It saves policy through the real
+settings UI, follows returned search links through the public search UI and checks
+rendered title/content. After UI restriction, immediate public search/detail reads
+and rendered pages must deny access while member workspace reads remain allowed.
+Screenshots and JSON response/status evidence are retained, without new visual
+baselines. There is no generic custom-type public renderer claim. Disabled-profile
+checks remain source/contract evidence, not runtime disabled-profile acceptance.
+
+The full gate may invoke the fixed host wrapper:
+`python3 scripts/python/run_workspace_profile_acceptance.py --profile journey-reference --shell bash`.
+Both arguments are closed choices (the two profiles above; `bash` or `pwsh`).
+The wrapper explicitly binds its child profile rather than accepting an ambient
+selection, uses the existing native runner without shell command interpolation,
+and preserves failure status. It does not generate or assert success receipts.
 
 ## Explicit remaining boundaries
 

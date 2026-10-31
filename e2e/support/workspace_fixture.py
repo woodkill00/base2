@@ -12,19 +12,44 @@ import base64
 import json
 import os
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from uuid import NAMESPACE_URL, uuid5
 
-SITE = "base2-obsidian"
+
+def selected_profile() -> str:
+    profile = os.environ.get("E2E_SITE_PROFILE", "base2-obsidian")
+    if (
+        profile not in {"base2-obsidian", "journey-reference"}
+        or os.getenv("SITE_PROFILE", profile) != profile
+    ):
+        raise RuntimeError("workspace_disposable_profile_required")
+    import api
+
+    manifest_path = Path(api.__file__).parent / "site_profiles" / f"{profile}.json"
+    manifest = json.loads(manifest_path.read_text())
+    enabled = {module["id"] for module in manifest["modules"] if module["enabled"]}
+    required = {"accounts", "content-workspace"}
+    if profile == "journey-reference":
+        required |= {"blog", "documentation", "portfolio"}
+    if manifest["siteId"] != profile or not required <= enabled:
+        raise RuntimeError("workspace_disposable_profile_manifest_invalid")
+    return profile
+
+
+SITE = selected_profile()
+IDENTITY_NAMESPACE = "base2-e2e-124" if SITE == "base2-obsidian" else f"base2-e2e-124/{SITE}"
 PASSWORD = "SyntheticE2e124!Password"
 ACTORS = {
-    name: str(uuid5(NAMESPACE_URL, f"base2-e2e-124/{name}"))
+    name: str(uuid5(NAMESPACE_URL, f"{IDENTITY_NAMESPACE}/{name}"))
     for name in ("owner", "editor", "reviewer", "viewer", "suspended", "outsider")
 }
-ASSET = str(uuid5(NAMESPACE_URL, "base2-e2e-124/asset"))
-ORG = str(uuid5(NAMESPACE_URL, "base2-e2e-124/organization"))
+ASSET = str(uuid5(NAMESPACE_URL, f"{IDENTITY_NAMESPACE}/asset"))
+ORG = str(uuid5(NAMESPACE_URL, f"{IDENTITY_NAMESPACE}/organization"))
 
 
 def guard(*, seed: bool) -> None:
+    if selected_profile() != SITE:
+        raise RuntimeError("workspace_disposable_profile_changed")
     expected = {
         "ENV": "test",
         "E2E_WORKSPACE_DISPOSABLE": "1",
@@ -141,7 +166,7 @@ def seed() -> dict:
              source_sha256,processor_ref,inline_safe,created_at)
             VALUES (%s,%s,'safe',%s,'image/png',%s,%s,'e2e-fixture',1,%s,'synthetic-fixture',true,NOW())""",
             (
-                str(uuid5(NAMESPACE_URL, "base2-e2e-124/variant")),
+                str(uuid5(NAMESPACE_URL, f"{IDENTITY_NAMESPACE}/variant")),
                 ASSET,
                 artifact.object_key,
                 artifact.byte_size,

@@ -15,7 +15,15 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        runner-shell: [bash, pwsh]
+        include:
+          - runner-shell: bash
+            site-profile: base2-obsidian
+          - runner-shell: pwsh
+            site-profile: base2-obsidian
+          - runner-shell: bash
+            site-profile: journey-reference
+    env:
+      E2E_SITE_PROFILE: ${{ matrix.site-profile }}
 
     steps:
       - name: Checkout
@@ -50,7 +58,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:
-          name: e2e-real-service-evidence-${{ matrix.runner-shell }}
+          name: e2e-real-service-evidence-${{ matrix.site-profile }}-${{ matrix.runner-shell }}
           path: |
             e2e/artifacts
             e2e/test-results

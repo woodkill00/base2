@@ -1,6 +1,7 @@
 """Static boundary contracts; not Docker/browser acceptance."""
 from pathlib import Path
 
+import pytest
 import yaml
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -13,8 +14,8 @@ def stack():
 def test_profile_is_fixed_and_shared_with_real_content_topology():
     services = stack()['services']
     for name in ('api', 'workspace-fixture', 'celery-worker', 'celery-data-rights-worker', 'celery-content-worker', 'celery-beat'):
-        assert services[name]['environment']['SITE_PROFILE'] == 'base2-obsidian'
-    assert services['react-app']['build']['args']['SITE_PROFILE'] == 'base2-obsidian'
+        assert services[name]['environment']['SITE_PROFILE'] == '${E2E_SITE_PROFILE:-base2-obsidian}'
+    assert services['react-app']['build']['args']['SITE_PROFILE'] == '${E2E_SITE_PROFILE:-base2-obsidian}'
     worker = services['celery-content-worker']
     assert worker['environment']['BASE2_PROCESS_ROLE'] == 'content-worker'
     assert worker['environment']['DB_USER'] == 'base2_workspace_worker_e2e'
@@ -62,7 +63,8 @@ def test_supported_runners_and_ci_keep_evidence_on_success_and_failure():
     assert 'bash' not in wrapper.lower()
 
 
-def test_runner_preserves_failed_test_status_and_captures_cleanup(tmp_path, monkeypatch):
+@pytest.mark.parametrize("profile", ["base2-obsidian", "journey-reference"])
+def test_runner_preserves_failed_test_status_and_captures_cleanup(tmp_path, monkeypatch, profile):
     """Fake executables only: never invoke a Docker daemon, npm, or browser."""
     import os
     import shutil
@@ -74,6 +76,11 @@ def test_runner_preserves_failed_test_status_and_captures_cleanup(tmp_path, monk
         dest.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(ROOT / relative, dest)
     (root / 'e2e').mkdir()
+    other_profile = 'journey-reference' if profile == 'base2-obsidian' else 'base2-obsidian'
+    for directory in ('artifacts', 'test-results', 'playwright-report'):
+        prior = root / 'e2e' / directory / other_profile
+        prior.mkdir(parents=True)
+        (prior / 'retained.txt').write_text('prior-success')
     binaries = tmp_path / 'bin'
     binaries.mkdir()
     scripts = {
@@ -86,14 +93,18 @@ def test_runner_preserves_failed_test_status_and_captures_cleanup(tmp_path, monk
         executable = binaries / name
         executable.write_text(script)
         executable.chmod(0o700)
+    monkeypatch.setenv('E2E_SITE_PROFILE', profile)
     monkeypatch.setenv('PATH', str(binaries) + os.pathsep + os.environ['PATH'])
     result = subprocess.run(['bash', str(root / 'scripts/bash/e2e-isolated.sh')], capture_output=True, text=True, timeout=10)
     assert result.returncode == 7, result.stderr
-    evidence = root / 'e2e/artifacts'
+    evidence = root / 'e2e/artifacts' / profile
     assert (evidence / 'exit-code.txt').read_text().strip() == '7'
+    assert (evidence / 'profile.txt').read_text().strip() == profile
     assert 'down -v --remove-orphans' in (evidence / 'cleanup.log').read_text()
     assert 'logs --no-color' in (evidence / 'compose.log').read_text()
     assert (evidence / 'playwright.json').is_file()
+    for directory in ('artifacts', 'test-results', 'playwright-report'):
+        assert (root / 'e2e' / directory / other_profile / 'retained.txt').read_text() == 'prior-success'
 
 
 def test_ci_exercises_both_shells_in_separate_jobs_without_failure_cancellation():
@@ -101,7 +112,12 @@ def test_ci_exercises_both_shells_in_separate_jobs_without_failure_cancellation(
     job = workflow['jobs']['e2e']
     assert job['runs-on'] == 'ubuntu-latest'
     assert job['strategy']['fail-fast'] is False
-    assert job['strategy']['matrix']['runner-shell'] == ['bash', 'pwsh']
+    assert job['strategy']['matrix']['include'] == [
+        {'runner-shell': 'bash', 'site-profile': 'base2-obsidian'},
+        {'runner-shell': 'pwsh', 'site-profile': 'base2-obsidian'},
+        {'runner-shell': 'bash', 'site-profile': 'journey-reference'},
+    ]
+    assert job['env']['E2E_SITE_PROFILE'] == '${{ matrix.site-profile }}'
     steps = job['steps']
     for shell, command in (
         ('bash', 'bash scripts/bash/e2e-isolated.sh'),
@@ -111,7 +127,7 @@ def test_ci_exercises_both_shells_in_separate_jobs_without_failure_cancellation(
         assert step['if'] == f"matrix.runner-shell == '{shell}'"
     artifact = next(step for step in steps if step.get('uses', '').startswith('actions/upload-artifact@'))
     assert artifact['if'] == 'always()'
-    assert artifact['with']['name'] == 'e2e-real-service-evidence-${{ matrix.runner-shell }}'
+    assert artifact['with']['name'] == 'e2e-real-service-evidence-${{ matrix.site-profile }}-${{ matrix.runner-shell }}'
 
 
 def test_fixture_and_journey_contracts_are_collected_in_api_ci_and_complete_gate():
@@ -191,3 +207,76 @@ def test_runtime_operations_health_uses_existing_frontend_on_default_network():
     assert str(services['api']['environment']['PORT']) == '5001'
     assert all('OPERATIONS_INTERNAL_BASE_URL' not in service.get('environment', {})
                for name, service in services.items() if name != 'celery-worker')
+
+
+def test_profile_validation_precedes_all_compose_and_preserves_closed_fixture_binding():
+    bash = (ROOT / 'scripts/bash/e2e-isolated-body.sh').read_text()
+    ps = (ROOT / 'scripts/powershell/e2e-isolated-body.ps1').read_text()
+    assert 'base2-obsidian|journey-reference)' in bash
+    assert bash.index('case "$E2E_SITE_PROFILE"') < bash.index('compose=(docker')
+    assert "-cnotin @('base2-obsidian', 'journey-reference')" in ps
+    assert ps.index('-cnotin') < ps.index('& docker @composeArgs')
+    for name, service in stack()['services'].items():
+        env = service.get('environment', {})
+        if 'SITE_PROFILE' in env:
+            assert env['SITE_PROFILE'] == '${E2E_SITE_PROFILE:-base2-obsidian}', name
+        if env.get('E2E_WORKSPACE_DISPOSABLE') == '1':
+            assert env['E2E_SITE_PROFILE'] == env['SITE_PROFILE']
+
+
+@pytest.mark.parametrize('profile', ['', 'ember-studio', 'northstar-library', '../journey-reference'])
+def test_invalid_runner_profile_exits_before_any_compose(tmp_path, monkeypatch, profile):
+    import os
+    import shutil
+    import subprocess
+
+    root = tmp_path / 'repo'
+    for relative in ('scripts/bash/e2e-isolated.sh', 'scripts/bash/e2e-isolated-body.sh', 'scripts/python/secure_file_lock.py'):
+        dest = root / relative
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(ROOT / relative, dest)
+    binaries = tmp_path / 'bin'
+    binaries.mkdir()
+    marker = tmp_path / 'docker-called'
+    docker = binaries / 'docker'
+    docker.write_text(f'#!/bin/sh\ntouch "{marker}"\nexit 99\n')
+    docker.chmod(0o700)
+    monkeypatch.setenv('PATH', str(binaries) + os.pathsep + os.environ['PATH'])
+    monkeypatch.setenv('E2E_SITE_PROFILE', profile)
+    result = subprocess.run(['bash', str(root / 'scripts/bash/e2e-isolated.sh')], capture_output=True, text=True, timeout=10)
+    assert result.returncode == 2
+    assert 'invalid E2E_SITE_PROFILE' in result.stderr
+    assert not marker.exists()
+
+
+@pytest.mark.parametrize('directory', ['artifacts', 'test-results', 'playwright-report'])
+@pytest.mark.parametrize('position', ['parent', 'leaf'])
+def test_artifact_parent_and_profile_leaf_symlinks_fail_before_compose(tmp_path, monkeypatch, directory, position):
+    import os
+    import shutil
+    import subprocess
+
+    root = tmp_path / 'repo'
+    for relative in ('scripts/bash/e2e-isolated.sh', 'scripts/bash/e2e-isolated-body.sh', 'scripts/python/secure_file_lock.py'):
+        dest = root / relative
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(ROOT / relative, dest)
+    parent = root / 'e2e' / directory
+    target = parent if position == 'parent' else parent / 'base2-obsidian'
+    target.parent.mkdir(parents=True, exist_ok=True)
+    unrelated = tmp_path / 'unrelated'
+    unrelated.mkdir()
+    (unrelated / 'retained.txt').write_text('must-not-touch')
+    target.symlink_to(unrelated, target_is_directory=True)
+    binaries = tmp_path / 'bin'
+    binaries.mkdir()
+    marker = tmp_path / 'docker-called'
+    docker = binaries / 'docker'
+    docker.write_text(f'#!/bin/sh\ntouch "{marker}"\nexit 99\n')
+    docker.chmod(0o700)
+    monkeypatch.setenv('PATH', str(binaries) + os.pathsep + os.environ['PATH'])
+    monkeypatch.setenv('E2E_SITE_PROFILE', 'base2-obsidian')
+    result = subprocess.run(['bash', str(root / 'scripts/bash/e2e-isolated.sh')], capture_output=True, text=True, timeout=10)
+    assert result.returncode == 2 and 'unsafe E2E artifact directory' in result.stderr
+    assert not marker.exists()
+    assert (unrelated / 'retained.txt').read_text() == 'must-not-touch'

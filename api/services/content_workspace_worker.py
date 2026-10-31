@@ -172,6 +172,15 @@ def publish_scheduled_record(*, site_id: str, record_id: UUID) -> str:
     return 'published'
 
 
+# Only these supported packs have concrete public detail renderers. Other types
+# retain the existing projection contract; this is not a generic page renderer.
+PUBLIC_PACK_PATHS = {
+    'blog-post': 'blog',
+    'doc-page': 'docs',
+    'portfolio-item': 'portfolio',
+}
+
+
 def due_index_records(*, limit: int = 25) -> list[tuple[str, str, int]]:
     """Discover records whose durable search projection is absent or stale."""
     if not 1 <= limit <= 100:
@@ -184,8 +193,13 @@ def due_index_records(*, limit: int = 25) -> list[tuple[str, str, int]]:
                  ON d.content_id=c.id AND d.site_id=c.site_id
                WHERE d.id IS NULL OR d.source_updated_at<c.updated_at
                   OR (c.deleted_at IS NOT NULL AND d.tombstoned_at IS NULL)
+                  OR (c.content_type=ANY(%s)
+                      AND d.source_updated_at=c.updated_at
+                      AND d.url_path='/' || c.content_type || '/' || c.slug
+                      AND c.deleted_at IS NULL AND c.state<>'deleted'
+                      AND d.tombstoned_at IS NULL)
                ORDER BY c.updated_at, c.id LIMIT %s""",
-            (limit,),
+            (list(PUBLIC_PACK_PATHS), limit),
         )
         return [(row[0], str(row[1]), int(row[2])) for row in cur.fetchall()]
 
@@ -206,7 +220,7 @@ def build_search_projection(
     return {
         'title': title,
         'body': body,
-        'url_path': f'/{content_type}/{slug}',
+        'url_path': f'/{PUBLIC_PACK_PATHS.get(content_type, content_type)}/{slug}',
         'visibility': (
             'public' if state == 'published' and search_visible and not tombstoned else 'private'
         ),
@@ -252,6 +266,31 @@ def index_workspace_record(*, site_id: str, record_id: UUID, job_version: int) -
                 )
                 existing = cur.fetchone()
                 if existing and existing[0] >= projection['source_updated_at']:
+                    if (
+                        existing[0] == projection['source_updated_at']
+                        and row[1] in PUBLIC_PACK_PATHS
+                        and not projection['tombstoned']
+                    ):
+                        # The source lock holds the version stable. Recheck every
+                        # projection predicate in UPDATE so a concurrent writer
+                        # cannot lose a newer version, custom path or tombstone.
+                        # URL-only repair preserves all content and timestamps.
+                        cur.execute(
+                            """UPDATE sitecontent_searchdocument SET url_path=%s
+                               WHERE content_id=%s AND site_id=%s
+                                 AND source_updated_at=%s AND url_path=%s
+                                 AND tombstoned_at IS NULL RETURNING id""",
+                            (
+                                projection['url_path'],
+                                str(record_id),
+                                site_id,
+                                projection['source_updated_at'],
+                                f'/{row[1]}/{row[2]}',
+                            ),
+                        )
+                        if cur.fetchone():
+                            conn.commit()
+                            return 'indexed'
                     return 'current'
                 cur.execute(
                     """INSERT INTO sitecontent_searchdocument

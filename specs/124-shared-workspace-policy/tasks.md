@@ -531,3 +531,45 @@ not executed locally; its actual PostgreSQL proof remains part of native accepta
       Current worker URLs use type names while pack pages use `/blog`, `/docs` and
       `/portfolio`. Preserve document IDs, tenant/visibility checks and intentional
       custom paths; do not call generic search inclusion usable page navigation.
+
+### Native prerequisite fixes and representative candidate
+
+At `0fa9f1b24365fb96878726b3f21b7b562ecee3d7`, frontend and both real-service shell
+runs pass. Backend reveals two test prerequisites: Django's separate development
+environment did not install Ruff, and the three direct-route PostgreSQL type cases
+lacked a cursor signing key. Declare the existing pinned Ruff version in Django's
+dev requirements; install a scoped synthetic key and prove codec/scope behavior
+before requesting the database fixture. Production cursor requirements are unchanged.
+The dedicated restore was skipped after earlier integration failures, not verified.
+
+Independent restore diagnosis now runs after an actually executed core integration
+step even if that step fails, but never after skipped setup or cancellation. Both
+steps remain fail-on-error, and successful restoration evidence is retained only
+after its own verified success. This gathers independent failures without making a
+failed backend job pass or weakening disposable-role/client/database prerequisites.
+
+The supported-pack worker now uses the real `/blog`, `/docs` and `/portfolio` paths.
+Exact legacy generated paths at equal source timestamps are corrected by a URL-only
+conditional update; newer/custom/tombstoned/stale projections and content history
+remain protected. Eighteen real PostgreSQL cases are collected. Scoped discovery
+predicate tests execute real restricted-worker SQL with a fixture-only tenant
+conjunction; they do not claim global queue fairness or local database execution.
+Full API validation passes 1,743 unit tests, Ruff and mypy; changed worker executable
+lines are covered 6/6. Native PostgreSQL proof remains pending.
+
+The new representative journey uses conservative fresh defaults, then actual UI
+optional→required→public policy transitions before any content exists. It creates,
+reviews and publishes all three real family types, follows returned public search
+links, and checks immediate restriction and retained member access. The explicit
+matrix is base2 Bash/PowerShell plus journey-reference Bash; each selects four auth
+tests and exactly its one workspace journey, without skip-based success. The
+journey-reference frontend build passes locally. Runtime and image review remain
+pending, and no generic custom-type page renderer is claimed.
+
+The complete-gate manifest now has 134 required checks: 132 prior descriptors are
+unchanged, the base2 check is explicitly profile-bound, and one required representative
+check is added. Both use a closed native-shell/profile wrapper with profile-separated
+JSON/traces/screenshots so sequential runs cannot overwrite each other's evidence.
+The wrapper does not establish real cancellation cleanup; current reporters do not
+produce the configured HTML report. Registration and source tests do not run or pass
+the full release gate.

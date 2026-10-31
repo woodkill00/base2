@@ -565,6 +565,7 @@ def main() -> None:
             "api/tests/test_settings_postgres.py",
             "api/tests/test_workspace_policy_postgres.py",
             "api/tests/test_workspace_type_keys_postgres.py",
+            "api/tests/test_public_pack_search_postgres.py",
             "api/tests/test_workspace_review_notifications_postgres.py",
             "api/tests/test_workspace_review_history_postgres.py",
             "api/tests/test_media_policy_concurrency_postgres.py",
