@@ -410,3 +410,6 @@ lerna-debug.log*
 
 # WSL
 .wsl-venv
+
+# Disposable real-service acceptance evidence
+e2e/artifacts/

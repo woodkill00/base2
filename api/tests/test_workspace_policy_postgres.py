@@ -385,11 +385,22 @@ def test_notification_header_and_choices_raw_runtime_rls(workspace_policy_fixtur
                     f'SELECT count(*) FROM {table} WHERE user_id=%s', (str(f['reviewer_id']),)
                 )
                 assert cur.fetchone()[0] == 0
-                cur.execute(
-                    f'UPDATE {table} SET tenant_id=tenant_id WHERE user_id=%s',
-                    (str(f['reviewer_id']),),
-                )
-                assert cur.rowcount == 0
+                cur.execute('SAVEPOINT denied_update')
+                if table == 'api_notification_preferences':
+                    # Choices intentionally use replace DELETE+INSERT, not UPDATE grants.
+                    with pytest.raises(psycopg2.errors.InsufficientPrivilege):
+                        cur.execute(
+                            f'UPDATE {table} SET tenant_id=tenant_id WHERE user_id=%s',
+                            (str(f['reviewer_id']),),
+                        )
+                    cur.execute('ROLLBACK TO SAVEPOINT denied_update')
+                else:
+                    cur.execute(
+                        f'UPDATE {table} SET tenant_id=tenant_id WHERE user_id=%s',
+                        (str(f['reviewer_id']),),
+                    )
+                    assert cur.rowcount == 0
+                cur.execute('RELEASE SAVEPOINT denied_update')
             with pytest.raises(psycopg2.errors.InsufficientPrivilege):
                 cur.execute(
                     'INSERT INTO api_notification_preference_sets(id,user_id,tenant_id) VALUES(%s,%s,%s)',
@@ -532,7 +543,9 @@ def test_same_upload_grant_concurrency_binds_once_without_holding_io_lock(
     import hashlib
     from uuid import UUID
     from api.services.content_workspace_storage import PrivateArtifactStore
+    from api.settings import settings
 
+    monkeypatch.setattr(settings, 'TOKEN_PEPPER', 'synthetic-private-grant-key-124')
     f = workspace_policy_fixture
     content = (
         b'\x89PNG\r\n\x1a\n'
@@ -702,8 +715,9 @@ def test_optional_policy_sole_owner_can_publish_without_reviewer_or_fabricated_a
     )
 
 
-@pytest.mark.parametrize('factory', [workspace_db_conn, workspace_worker_db_conn])
-def test_revision_parent_scope_allows_only_bound_tenant(workspace_policy_fixture, factory):
+@pytest.mark.parametrize('role', ['WORKSPACE', 'WORKSPACE_WORKER'])
+def test_revision_parent_scope_allows_only_bound_tenant(workspace_policy_fixture, role):
+    factory = workspace_db_conn if role == 'WORKSPACE' else workspace_worker_db_conn
     f = workspace_policy_fixture
     insert = """INSERT INTO sitecontent_contentrevision
       (id,content_id,revision,snapshot,actor_ref,created_at,schema_version,
@@ -718,7 +732,6 @@ def test_revision_parent_scope_allows_only_bound_tenant(workspace_policy_fixture
     # A fresh actual-role connection has no inherited tenant session setting.
     from api.tests.test_workspace_review_history_postgres import connection
 
-    role = 'WORKSPACE' if factory is workspace_db_conn else 'WORKSPACE_WORKER'
     with connection(role) as (_, cur):
         cur.execute("SELECT current_setting('app.tenant_id',true)")
         assert cur.fetchone()[0] in (None, '')
@@ -732,7 +745,8 @@ def test_revision_parent_scope_allows_only_bound_tenant(workspace_policy_fixture
         (str(f['record_id']),),
     )[0][0]
     for site in ('unrelated-tenant', ''):
-        with factory(tenant_id=site) as conn, conn.cursor() as cur:
+        with connection(role) as (conn, cur):
+            cur.execute("SELECT set_config('app.tenant_id',%s,true)", (site,))
             cur.execute(
                 'SELECT count(*) FROM sitecontent_contentrevision WHERE content_id=%s',
                 (str(f['record_id']),),
@@ -767,8 +781,9 @@ def test_revision_history_not_exposed_to_other_roles(workspace_policy_fixture, r
             assert cur.fetchall() == []  # Rights worker without an exact durable claim.
 
 
-@pytest.mark.parametrize('factory', [workspace_db_conn, workspace_worker_db_conn])
-def test_revision_reparent_cannot_escape_bound_tenant(workspace_policy_fixture, factory):
+@pytest.mark.parametrize('role', ['WORKSPACE', 'WORKSPACE_WORKER'])
+def test_revision_reparent_cannot_escape_bound_tenant(workspace_policy_fixture, role):
+    factory = workspace_db_conn if role == 'WORKSPACE' else workspace_worker_db_conn
     f = workspace_policy_fixture
     foreign_id = uuid4()
     f['execute'](
@@ -807,3 +822,62 @@ def test_revision_upgrade_preserves_forced_rls_and_restrictive_claim_fence(
     ))
     assert policies['data_rights_claim_fence'] == 'RESTRICTIVE'
     assert policies['workspace_revision_tenant_scope'] == 'PERMISSIVE'
+
+
+@pytest.mark.parametrize('isolation', ['REPEATABLE READ', 'SERIALIZABLE'])
+def test_locked_policy_read_rejects_stale_snapshot_isolation(workspace_policy_fixture, isolation):
+    from api.tests.test_workspace_review_history_postgres import connection
+
+    f = workspace_policy_fixture
+    with connection('WORKSPACE_WORKER') as (_, cur):
+        cur.execute('SET TRANSACTION ISOLATION LEVEL ' + isolation)
+        cur.execute("SELECT set_config('app.tenant_id',%s,true)", (f['site_id'],))
+        with pytest.raises(psycopg2.errors.InvalidTransactionState, match='isolation_unsupported'):
+            policy.read_policy(cur, site_id=f['site_id'], lock=True)
+
+
+def test_worker_policy_read_after_lock_wait_observes_committed_policy(workspace_policy_fixture):
+    from threading import Event
+    from time import monotonic, sleep
+
+    f = workspace_policy_fixture
+    waiting = Event()
+    reader_pid = []
+
+    def read():
+        with workspace_worker_db_conn(tenant_id=f['site_id']) as conn, conn.cursor() as cur:
+            cur.execute("SET LOCAL lock_timeout='5s'")
+            cur.execute('SELECT pg_backend_pid()')
+            reader_pid.append(cur.fetchone()[0])
+            waiting.set()
+            result = policy.read_policy(cur, site_id=f['site_id'], lock=True)
+            conn.rollback()
+            return result
+
+    with workspace_db_conn(tenant_id=f['site_id']) as writer, writer.cursor() as cur:
+        cur.execute('SELECT pg_backend_pid()')
+        writer_pid = cur.fetchone()[0]
+        policy.begin_effect(cur, actor_ref=f"user:{f['reviewer_id']}")
+        cur.execute(
+            'UPDATE sitecontent_workspacepolicy SET require_review=FALSE,version=version+1 '
+            'WHERE site_id=%s RETURNING version', (f['site_id'],),
+        )
+        version = cur.fetchone()[0]
+        with ThreadPoolExecutor(max_workers=1) as pool:
+            future = pool.submit(read)
+            try:
+                assert waiting.wait(3)
+                deadline = monotonic() + 3
+                blocked = False
+                while monotonic() < deadline:
+                    blockers = f['execute']('SELECT pg_blocking_pids(%s)', (reader_pid[0],))[0][0]
+                    if writer_pid in blockers:
+                        blocked = True
+                        break
+                    sleep(0.01)
+                assert blocked, 'reader must actually wait on the writer, not merely be unscheduled'
+                assert not future.done()
+            finally:
+                writer.commit()
+            result = future.result(timeout=5)
+        assert result['version'] == version and result['require_review'] is False

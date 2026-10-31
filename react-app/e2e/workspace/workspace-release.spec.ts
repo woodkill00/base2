@@ -1,6 +1,7 @@
 import { setSessionFixture, fulfillSessionFixture } from '../session-fixture';
 import { expect, test } from '@playwright/test';
 import { readFileSync } from 'node:fs';
+import { writeFile } from 'node:fs/promises';
 import profile from '../../src/config/generated/base2-obsidian.json';
 
 const axeSource = readFileSync('node_modules/axe-core/axe.min.js', 'utf8');
@@ -219,6 +220,22 @@ async function prepareStableFullPageCapture(page) {
 test('workspace release corpus is accessible, responsive, and visually stable', async ({
   page,
 }, testInfo) => {
+  const evidence = {
+    fixture: 'synthetic-api',
+    project: testInfo.project.name,
+    sourceCommit: process.env.GITHUB_SHA || null,
+  };
+  const captures: Array<{ view: string; file: string; reference: string }> = [];
+  const retainCapture = async (view: string, reference: string) => {
+    const file = `workspace-${view}-post-assert.png`;
+    await page.screenshot({
+      path: testInfo.outputPath(file),
+      fullPage: true,
+      animations: 'disabled',
+      caret: 'hide',
+    });
+    captures.push({ view, file, reference });
+  };
   await page.goto('/workspace');
   await expect(page.getByRole('heading', { name: /records · universal articles/i })).toBeVisible();
   await assertUsable(page);
@@ -234,14 +251,17 @@ test('workspace release corpus is accessible, responsive, and visually stable', 
       )
   ).toBe(true);
   await page.addScriptTag({ content: axeSource });
-  expect(
-    await page.evaluate(async () =>
-      (await window.axe.run(document, { resultTypes: ['violations'] })).violations.map((item) => ({
-        id: item.id,
-        nodes: item.nodes.map((node) => ({ target: node.target, summary: node.failureSummary })),
-      }))
-    )
-  ).toEqual([]);
+  const violations = await page.evaluate(async () =>
+    (await window.axe.run(document, { resultTypes: ['violations'] })).violations.map((item) => ({
+      id: item.id,
+      nodes: item.nodes.map((node) => ({ target: node.target, summary: node.failureSummary })),
+    }))
+  );
+  await writeFile(
+    testInfo.outputPath('workspace-accessibility.json'),
+    JSON.stringify({ ...evidence, violations }, null, 2)
+  );
+  expect(violations).toEqual([]);
   await page.keyboard.press('Tab');
   await expect(page.locator(':focus')).toBeVisible();
   await expect(page.locator('.volcano-header-frame')).toHaveCSS('position', 'sticky');
@@ -252,6 +272,7 @@ test('workspace release corpus is accessible, responsive, and visually stable', 
     caret: 'hide',
     maxDiffPixelRatio: 0.01,
   });
+  await retainCapture('records', `workspace-records-${testInfo.project.name}.png`);
 
   await page.getByRole('tab', { name: 'Schemas' }).click();
   await expect(page.getByRole('heading', { name: /schema · universal articles/i })).toBeVisible();
@@ -263,6 +284,7 @@ test('workspace release corpus is accessible, responsive, and visually stable', 
     caret: 'hide',
     maxDiffPixelRatio: 0.01,
   });
+  await retainCapture('schema', `workspace-schema-${testInfo.project.name}.png`);
 
   for (const tab of ['Imports', 'Exports']) {
     await page.getByRole('tab', { name: tab }).click();
@@ -275,7 +297,19 @@ test('workspace release corpus is accessible, responsive, and visually stable', 
       `workspace-${tab.toLowerCase()}-${testInfo.project.name}.png`,
       { fullPage: true, animations: 'disabled', caret: 'hide', maxDiffPixelRatio: 0.01 }
     );
+    await retainCapture(
+      tab.toLowerCase(),
+      `workspace-${tab.toLowerCase()}-${testInfo.project.name}.png`
+    );
   }
+  await writeFile(
+    testInfo.outputPath('workspace-release-summary.json'),
+    JSON.stringify(
+      { ...evidence, phase: 'assertions-completed', captures, comparisonThresholdUnchanged: 0.01 },
+      null,
+      2
+    )
+  );
 });
 
 declare global {

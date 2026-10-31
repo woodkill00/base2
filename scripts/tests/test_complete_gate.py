@@ -46,6 +46,54 @@ def check(
 
 
 class CompleteGateTests(unittest.TestCase):
+    def test_operational_shell_tokens_are_closed_and_match_the_runner(self):
+        root = Path("/repo")
+        for shell, directory, suffix in (("bash", "bash", "sh"), ("pwsh", "powershell", "ps1")):
+            with patch.dict(os.environ, {"BASE2_GATE_SHELL": shell}):
+                self.assertEqual(self.gate.resolve_tool("{operations-shell}", root), shell)
+                self.assertEqual(self.gate.resolve_tool("{e2e-runner}", root), str(root / f"scripts/{directory}/e2e-isolated.{suffix}"))
+        for value in ("", "sh", "bash -c", "/tmp/custom", "powershell"):
+            with (
+                patch.dict(os.environ, {"BASE2_GATE_SHELL": value}),
+                self.assertRaisesRegex(ValueError, "shell"),
+            ):
+                self.gate.resolve_tool("{operations-shell}", root)
+
+    def test_operations_ui_uses_direct_node_with_exact_existing_test_and_flags(self):
+        manifest = json.loads((MODULE_PATH.parents[1] / "config/complete-gate-v1.json").read_text())
+        item = next(row for row in manifest["checks"] if row["id"] == "operations-ui-contract")
+        self.assertEqual(item["command"], [
+            "node", "react-app/node_modules/vitest/vitest.mjs", "run",
+            "src/__tests__/operations-center.test.jsx", "--root=react-app",
+            "--config=vite.config.mjs", "--coverage=false", "--pool=threads", "--maxWorkers=1",
+        ])
+        self.assertEqual(item["timeoutSeconds"], 60)
+        self.assertEqual(item["dependsOn"], ["operations-api-contract"])
+        self.assertTrue(item["required"])
+        self.assertEqual(item["requiredTools"], ["node"])
+
+    def test_complete_gate_wrappers_select_native_shell_and_restore_powershell_environment(self):
+        root = MODULE_PATH.parents[2]
+        bash = (root / "scripts/bash/complete-gate.sh").read_text()
+        powershell = (root / "scripts/powershell/complete-gate.ps1").read_text()
+        self.assertIn("export BASE2_GATE_SHELL=bash", bash)
+        self.assertIn("$env:BASE2_GATE_SHELL = 'pwsh'", powershell)
+        self.assertIn("$previousShell = $env:BASE2_GATE_SHELL", powershell)
+        self.assertIn("finally", powershell)
+        self.assertIn("$env:BASE2_GATE_SHELL = $previousShell", powershell)
+        self.assertIn(".venv/bin/python", powershell)
+        self.assertIn(".venv/Scripts/python.exe", powershell)
+
+    def test_workspace_live_journeys_are_required_through_isolated_runner(self):
+        manifest = json.loads((MODULE_PATH.parents[1] / "config/complete-gate-v1.json").read_text())
+        item = next(row for row in manifest["checks"] if row["id"] == "feature-124-workspace-live-journeys")
+        self.assertTrue(item["required"])
+        self.assertEqual(item["command"], ["{operations-shell}", "{e2e-runner}"])
+        self.assertEqual(item.get("maxAttempts", 1), 1)
+        self.assertFalse(item.get("retryOn"))
+        self.assertIn("docker", item["requiredTools"])
+        self.assertIn("workspace-postgres-contract", item["dependsOn"])
+
     def test_auth_journeys_remain_required_without_retries(self):
         manifest = json.loads((MODULE_PATH.parents[1] / "config/complete-gate-v1.json").read_text())
         item = next(row for row in manifest["checks"] if row["id"] == "feature-117-auth-journeys-browser")

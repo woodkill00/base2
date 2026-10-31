@@ -214,6 +214,8 @@ jobs:
           CELERY_BROKER_URL: redis://localhost:6379/0
           CELERY_RESULT_BACKEND: redis://localhost:6379/1
           WORKSPACE_POLICY_DISPOSABLE: '1'
+          RUNTIME_WORKER_DB_USER: ci_runtime_worker
+          RUNTIME_WORKER_DB_PASSWORD: ci_runtime_worker_password_003
           WORKSPACE_DB_USER: ci_workspace_runtime
           WORKSPACE_DB_PASSWORD: ci_workspace_runtime_password_001
           WORKSPACE_WORKER_DB_USER: ci_workspace_worker

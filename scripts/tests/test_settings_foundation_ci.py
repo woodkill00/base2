@@ -81,6 +81,17 @@ def test_workspace_release_matrix_runs_and_retains_its_own_evidence():
     assert upload["with"]["path"] == ".artifacts/workspace-124"
     assert upload["with"]["name"] == "workspace-124"
     assert upload["with"]["retention-days"] == 7
+    assert upload["with"]["if-no-files-found"] == "error"
+
+
+def test_workspace_success_retains_synthetic_scope_and_post_assert_evidence():
+    source = (ROOT / "react-app/e2e/workspace/workspace-release.spec.ts").read_text()
+    assert "workspace-accessibility.json" in source
+    assert "workspace-release-summary.json" in source
+    assert "synthetic-api" in source
+    assert "post-assert.png" in source
+    assert "maxDiffPixelRatio: 0.01" in source
+    assert "expect(violations).toEqual([])" in source
 
 
 def test_browser_diagnostics_are_independent_but_require_successful_setup():

@@ -237,10 +237,18 @@ def test_policy_flip_rechecks_optional_author_recipient_without_backfill(
 ):
     fixture = workspace_policy_fixture
     site = fixture['site_id']
-    fixture['execute'](
-        'UPDATE sitecontent_workspacepolicy SET require_review=%s,version=version+1 WHERE site_id=%s',
-        (before, site),
-    )
+    from api.repositories import workspace_policy
+
+    def set_policy(required):
+        current = workspace_policy.get_policy(site_id=site, user_id=fixture['reviewer_id'])
+        updated = workspace_policy.update_policy(
+            site_id=site, user_id=fixture['reviewer_id'],
+            expected_version=current['version'], require_review=required,
+            public_access=current['public_access'],
+        )
+        assert updated is not None
+
+    set_policy(before)
     # Existing durable recipient is now an author, but not the request's submitter.
     # The final current policy, not the enqueue-time policy, governs its eligibility.
     fixture['execute'](
@@ -248,10 +256,7 @@ def test_policy_flip_rechecks_optional_author_recipient_without_backfill(
            WHERE site_id=%s AND record_id=%s""",
         (str(fixture['reviewer_id']), site, str(fixture['record_id'])),
     )
-    fixture['execute'](
-        'UPDATE sitecontent_workspacepolicy SET require_review=%s,version=version+1 WHERE site_id=%s',
-        (after, site),
-    )
+    set_policy(after)
     result = run(fixture, datetime.now(UTC) + timedelta(seconds=1))
     assert result['delivered'] == expected
     assert len(receipts(fixture)) == expected

@@ -12,6 +12,10 @@ concurrency:
 jobs:
   e2e:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        runner-shell: [bash, pwsh]
 
     steps:
       - name: Checkout
@@ -32,110 +36,24 @@ jobs:
         working-directory: e2e
         run: npm run install:browsers
 
-      - name: Start stack (docker compose)
+      - name: Run isolated real-service acceptance (Bash)
+        if: matrix.runner-shell == 'bash'
         shell: bash
-        run: |
-          set -euo pipefail
+        run: bash scripts/bash/e2e-isolated.sh
 
-          max_attempts=6
-          delay_seconds=5
+      - name: Run isolated real-service acceptance (PowerShell)
+        if: matrix.runner-shell == 'pwsh'
+        shell: pwsh
+        run: ./scripts/powershell/e2e-isolated.ps1
 
-          for attempt in $(seq 1 "$max_attempts"); do
-            echo "Starting stack (attempt ${attempt}/${max_attempts})"
-
-            set +e
-            output=$(docker compose -f e2e/docker-compose.e2e.yml up -d --build 2>&1)
-            exit_code=$?
-            set -e
-
-            echo "$output"
-
-            if [ "$exit_code" -eq 0 ]; then
-              exit 0
-            fi
-
-            if echo "$output" | grep -qiE "toomanyrequests|rate exceeded|504 Gateway Timeout|context deadline exceeded|server didn't respond in time"; then
-              echo "Transient registry error detected; retrying in ${delay_seconds}s" >&2
-              docker compose -f e2e/docker-compose.e2e.yml down -v || true # ci-policy: diagnostic-cleanup
-              sleep "$delay_seconds"
-              delay_seconds=$((delay_seconds * 2))
-              continue
-            fi
-
-            echo "Non-retryable failure starting stack" >&2
-            exit "$exit_code"
-          done
-
-          echo "Failed to start stack after ${max_attempts} attempts" >&2
-          exit 1
-
-      - name: Wait for health
-        run: |
-          for i in {1..90}; do
-            curl -fsS http://localhost:5001/api/health >/dev/null && curl -fsS http://localhost:5002/synthetic-health >/dev/null && curl -fsS http://localhost:8080/ >/dev/null && exit 0
-            sleep 2
-          done
-          echo "Services did not become healthy in time" >&2
-          docker compose -f e2e/docker-compose.e2e.yml ps
-          docker compose -f e2e/docker-compose.e2e.yml logs --no-color
-          exit 1
-
-      - name: Run Playwright
-        working-directory: e2e
-        env:
-          E2E_BASE_URL: http://localhost:8080
-          E2E_API_URL: http://localhost:5001
-          E2E_TEST_SUPPORT_URL: http://localhost:5002
-          E2E_TEST_KEY: local-e2e-key
-        run: npm run test:ci
-
-      - name: Save compose logs on failure
-        if: failure()
-        run: docker compose -f e2e/docker-compose.e2e.yml logs --no-color > compose-logs.txt
-
-      - name: Upload Playwright artifacts on failure
-        if: failure()
+      - name: Upload real-service evidence (including successful runs)
+        if: always()
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:
-          name: e2e-playwright-artifacts
+          name: e2e-real-service-evidence-${{ matrix.runner-shell }}
           path: |
+            e2e/artifacts
             e2e/test-results
             e2e/playwright-report
-          if-no-files-found: ignore
+          if-no-files-found: warn
           retention-days: 7
-
-      - name: Upload compose logs on failure
-        if: failure()
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
-        with:
-          name: e2e-compose-logs
-          path: compose-logs.txt
-          retention-days: 7
-
-      - name: Tail targeted container logs on failure
-        if: failure()
-        run: |
-          docker compose -f e2e/docker-compose.e2e.yml logs --no-color api | tail -n 200 > api.log || true # ci-policy: diagnostic-cleanup
-          docker compose -f e2e/docker-compose.e2e.yml logs --no-color api-migrate django-migrate | tail -n 300 > migrations.log || true # ci-policy: diagnostic-cleanup
-          docker compose -f e2e/docker-compose.e2e.yml logs --no-color react-app | tail -n 200 > react-app.log || true # ci-policy: diagnostic-cleanup
-          docker compose -f e2e/docker-compose.e2e.yml logs --no-color postgres | tail -n 200 > postgres.log || true # ci-policy: diagnostic-cleanup
-
-      - name: Upload targeted logs on failure
-        if: failure()
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
-        with:
-          name: e2e-targeted-logs
-          path: |
-            api.log
-            react-app.log
-            postgres.log
-          if-no-files-found: ignore
-          retention-days: 7
-
-      - name: Dump compose logs on failure
-        if: failure()
-        run: docker compose -f e2e/docker-compose.e2e.yml logs --no-color
-
-      - name: Stop stack
-        if: always()
-        run: docker compose -f e2e/docker-compose.e2e.yml down -v

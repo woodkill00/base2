@@ -155,7 +155,7 @@ jobs:
         with:
           name: workspace-124
           path: .artifacts/workspace-124
-          if-no-files-found: warn
+          if-no-files-found: error
           retention-days: 7
 
       - name: Shared layout contracts and visual evidence

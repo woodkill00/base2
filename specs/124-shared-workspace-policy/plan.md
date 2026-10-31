@@ -305,3 +305,57 @@ backfill. Existing pending records explain missing required reviewers truthfully
 adding an eligible member permits ordinary review, while requesting a new notice
 requires the supported explicit resubmission flow. UI status copy must distinguish
 optional workflow review from mandatory independent approval.
+
+## Disposable real-service acceptance extension
+
+The existing `e2e/docker-compose.e2e.yml` and isolated Bash/PowerShell runners are
+the acceptance path; no deployed preview, public test API, tenant selector or
+production authentication bypass is introduced. Frontend, API, content worker and
+beat share the generated `base2-obsidian` profile. One-shot setup owns the fresh
+disposable database; runtime requests and content jobs retain their restricted
+roles. Artifact bytes use the existing encrypted local store, and notification
+business effects are local database receipts only, never live email.
+
+The test boundary is deliberately mixed and must be reported precisely:
+
+- Actual rendered browser interactions cover password login and two notification
+  settings tabs, including version conflict, explicit reconciliation and reload.
+- Other policy, record, approval, role, public/search, export and asset journeys use
+  authenticated Playwright API request contexts after real login. They exercise
+  the actual API/database, not route mocks, but are **not UI-click coverage** of
+  those controls. CSRF-protected cookie refresh is checked separately; existing
+  bearer-authenticated API contracts are not replaced by a test-only session.
+- Immediate review delivery after restarting the content worker and due-publication
+  denial use the actual broker/worker/beat schedule. Execution is fenced until
+  reviewer revocation commits, rather than relying on a timing race.
+- Opt-out, digest and replay checks stop beat and the queue consumer, then invoke
+  the production consumer in fresh restricted worker containers with an explicit
+  bounded UTC clock. They independently verify next UTC midnight, no delivery just
+  before it and one durable effect after replay. These are **controlled-clock service
+  proofs**, not additional evidence of beat execution.
+- The same viewer's asset/export grants succeed before a fixed fixture-driven
+  suspension, then fail while still unexpired. Only the existing owner-only setup
+  service may change that predetermined synthetic viewer after validating fixture
+  ownership and taking the production effect lock. Runtime containers receive no
+  owner credentials. This proves access reauthorization, **not a user-facing
+  suspension flow**; no arbitrary actor/site/SQL input or HTTP control is added.
+
+Loopback HTTP, non-Secure test cookies and Nginx are explicitly scoped differences,
+not production Traefik/TLS acceptance. The synthetic pre-ready PNG exercises real
+storage/access checks but does not prove media inspection or scanning. A single
+base2-obsidian run cannot close representative publishing/docs/portfolio coverage,
+migration/restore/race obligations or the complete release gate.
+
+CI schedules separate Ubuntu Bash and PowerShell jobs with distinct retained
+success/failure artifacts. The required live-journey descriptor brings the complete
+manifest to **133 checks**; registering it is not execution, and no CI workflow
+currently invokes that entire gate. Shell selection is closed to the matching
+supported runner. The one inherited Bash-only operations UI invocation becomes an
+equivalent direct Node invocation; all other 131 prior descriptors remain unchanged.
+
+At the 2026-10-31 integration checkpoint, remote
+`e6deb5864ea9f38bad25d6261b756d35cefe1e81` has 8 of 10 workflows passing and all
+433 synthetic browser tests green. Those results do not cover the pending backend
+repair or this new live-service stack. Source/static review is complete; execution
+of the new journeys and PowerShell runtime parity remains pending CI. The next
+published batch must retain success artifacts as well as first-failure evidence.

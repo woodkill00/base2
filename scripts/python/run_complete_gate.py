@@ -330,6 +330,15 @@ def dependency_ordered_checks(manifest: dict) -> list[dict]:
 
 
 def resolve_tool(tool: str, repo_root: Path) -> str:
+    if tool in {"{operations-shell}", "{e2e-runner}"}:
+        # Only supported entrypoints select a shell; never accept a command/path.
+        shell = os.environ.get("BASE2_GATE_SHELL", "pwsh" if os.name == "nt" else "bash")
+        if shell not in {"bash", "pwsh"}:
+            raise ValueError("unsupported complete-gate operations shell")
+        if tool == "{operations-shell}":
+            return shell
+        relative = "scripts/bash/e2e-isolated.sh" if shell == "bash" else "scripts/powershell/e2e-isolated.ps1"
+        return str(repo_root / relative)
     if tool in TOOL_TOKENS:
         candidates = TOOL_TOKENS[tool]
         selected = candidates[1] if os.name == "nt" else candidates[0]

@@ -180,3 +180,44 @@ It is now a required independent CI suite with its own retained artifact and a
 fail-closed aggregate outcome. This does not turn its synthetic API fixtures into
 real-service proof. The remaining browser/API/database evidence gap is being addressed
 through the existing disposable E2E runner, not a deployed preview or TLS bypass.
+
+## Disposable live-acceptance batch: source ready, execution pending
+
+Checkpoint 2026-10-31: remote
+`e6deb5864ea9f38bad25d6261b756d35cefe1e81` has 8/10 workflows passing and all
+433 synthetic browser tests green. This is evidence for that source and synthetic
+suite only. The backend repair and new live-service acceptance still await their
+next published CI run. T16/T19 are not complete, and no deployment is authorized.
+
+Before publication, the combined local contract batch passed 135 tests; the backend
+full suite passed 1,649 tests, with mypy covering 272 files and Ruff passing. These
+checks do not replace the pending real-service/PostgreSQL/browser CI evidence.
+
+- [x] T25 Extend the existing disposable E2E stack with a shared base2-obsidian
+      profile, restricted content worker/beat, encrypted local artifacts and
+      one-shot synthetic fixtures; independently source-review the interfaces.
+      Static/guard tests and Playwright collection pass, not runtime acceptance.
+- [ ] T26 Execute both isolated Bash and PowerShell Ubuntu CI jobs on the exact
+      next published source. Retain successful JSON/Compose/cleanup/source artifacts
+      and first failures. Establish actual login/two-tab UI CAS and authenticated
+      API-context approval/visibility/export/asset behavior against PostgreSQL.
+      Do not describe API requests as UI clicks or collection as execution.
+- [ ] T27 Verify actual beat delivery and due-publication denial separately from
+      bounded controlled-UTC consumer proofs. Verify immediate/disabled/digest,
+      midnight-minus-one-millisecond non-delivery, exact-once restart/replay and
+      revoked recipients. Verify the same viewer's own grants before/after fixed
+      fixture suspension while still unexpired; label the mutation fixture-driven,
+      not a user-facing membership action. Record seeded asset readiness and
+      loopback HTTP as non-scanner/non-TLS evidence.
+- [ ] T28 Complete remaining representative publishing/docs/portfolio profile,
+      migration/restore/race and exact-source release obligations. The new required
+      descriptor makes the manifest 133 checks; registration does not run the full
+      gate, which is not currently invoked by CI. Preserve independent release
+      blockers and do not resume stopped Feature 122 work.
+
+The bounded addition preserves real login/cookies/CSRF and restricted roles. Only
+one-shot fixture setup has owner credentials; no arbitrary browser-selected tenant,
+role-grant bypass or HTTP fixture-control endpoint is introduced. Other authenticated
+journeys use the existing API after login, not mocked responses. The local sink is
+not a mail provider, the pre-ready PNG is not scanning proof, and no live preview or
+TLS bypass is part of this batch.

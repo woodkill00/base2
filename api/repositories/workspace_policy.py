@@ -71,10 +71,19 @@ def member(cur, *, site_id: str, user_id, permission: str, lock: bool = False) -
 
 
 def read_policy(cur, *, site_id: str, lock: bool = False) -> dict:
+    if lock:
+        # Every policy writer takes this advisory lock before its statement. A
+        # separate READ COMMITTED SELECT after acquisition observes a waiting
+        # writer's commit without granting policy UPDATE to read-only workers.
+        cur.execute("""DO $$ BEGIN
+          IF current_setting('transaction_isolation') <> 'read committed' THEN
+            RAISE EXCEPTION 'workspace_policy_isolation_unsupported' USING ERRCODE='25000';
+          END IF;
+        END; $$""")
+        begin_effect(cur)
     cur.execute(
         """SELECT schema_version,version,require_review,public_access,organization_id,provenance
-                   FROM sitecontent_workspacepolicy WHERE site_id=%s"""
-        + (' FOR UPDATE' if lock else ''),
+                   FROM sitecontent_workspacepolicy WHERE site_id=%s""",
         (site_id,),
     )
     row = cur.fetchone()

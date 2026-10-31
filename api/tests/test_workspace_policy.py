@@ -723,3 +723,23 @@ def test_optional_unknown_authorship_does_not_hide_submit_or_invent_recovery_req
     result = repo.review_metadata(site_id='site-a', record_id=RECORD, user_id=ACTOR)
     assert 'submit_review' in result['allowedActions']
     assert result['review']['recoveryReason'] is None
+
+
+def test_locked_policy_read_uses_shared_advisory_not_mutation_privileges():
+    class ReadOnlyCursor:
+        def __init__(self):
+            self.calls = []
+        def execute(self, sql, params=()):
+            self.calls.append((' '.join(sql.split()), params))
+            assert 'FOR UPDATE' not in sql and 'FOR SHARE' not in sql
+        def fetchone(self):
+            return (1, 7, True, 'members_only', UUID(int=1), 'explicit')
+
+    cursor = ReadOnlyCursor()
+    assert repo.read_policy(cursor, site_id='site-a', lock=True)['version'] == 7
+    assert "current_setting('transaction_isolation') <> 'read committed'" in cursor.calls[0][0]
+    assert "ERRCODE='25000'" in cursor.calls[0][0]
+    assert cursor.calls[1] == (
+        'SELECT pg_advisory_xact_lock(hashtext(%s))', (repo.POLICY_LOCK,),
+    )
+    assert cursor.calls[2][1] == ('site-a',)

@@ -113,3 +113,37 @@ before deletion. Unsupported remote/governed histories, missing deletion evidenc
 organization scope remain explicit blocked cases. Purged tombstones and execution
 proof remain; this is not a general personal-data-erasure certification. See the
 Feature 124 plan for the precise storage, rollback and retention boundaries.
+
+### Current acceptance status and evidence boundaries
+
+At the 2026-10-31 checkpoint, remote source
+`e6deb5864ea9f38bad25d6261b756d35cefe1e81` has 8 of 10 workflows passing and all
+433 synthetic browser tests green. The backend repair and new disposable
+real-service journeys are still pending their next CI execution. These numbers are
+not a complete-release pass or proof that the new live stack has run.
+
+The new acceptance suite reuses the isolated repository runners and tests one
+shared `base2-obsidian` site against actual API/PostgreSQL services:
+
+- Login and notification two-tab conflict/reload use rendered browser interactions.
+  Review, visibility, role, export and asset checks use authenticated API request
+  contexts after real login; they are not UI-click coverage of those controls.
+- Actual worker/beat execution is checked separately from deterministic UTC digest
+  tests. The latter stop the queue consumer and run the production consumer in
+  fresh restricted containers with a bounded test clock; they do not prove that
+  beat executed at a simulated midnight.
+- A viewer's own valid asset/export grants are checked before and after a fixed
+  trusted fixture suspension, while still unexpired. This is a fixture-driven state
+  change to one synthetic actor, not a user-facing suspension feature. Owner
+  credentials remain confined to the one-shot setup service.
+- Local HTTP/non-Secure cookies are not production TLS acceptance. A synthetic
+  pre-ready asset exercises encrypted storage and access controls, not scanning.
+  Notification receipts remain local-only; no real email is sent.
+
+Separate Bash and PowerShell Ubuntu CI jobs retain success and failure artifacts;
+their new runtime results remain pending. Adding the required journey to the
+**133-check complete-gate manifest** does not execute that gate, and CI does not
+currently invoke the entire gate. Representative publishing/docs/portfolio profile
+coverage, migration/restore/race evidence, visual approval and independent release
+blockers remain separate obligations. No deployment or TLS bypass is authorized by
+this acceptance work.
