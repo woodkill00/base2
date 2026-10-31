@@ -130,3 +130,49 @@ Passing finite tests does not prove absence of unknown defects. Provider outages
 new vulnerabilities, browser changes, credential compromise, operator error, and
 unmodeled workload remain possible. Production owners accept documented residual
 risk only after reviewing current evidence; elapsed time alone never closes work.
+
+### Security-preserving recovery compatibility
+
+New production backup configurations require `securityTrustedOwner` (the existing
+migration/database/SECURITY DEFINER owner), `securityRuntimeRoles` (the restricted
+runtime role names), and `securityRoleMap` (an explicit object mapping every
+non-`pg_` cluster role name to that identical existing target name). Supply these
+through the existing owner-only backup configuration, not command-line credentials.
+The supported boundary is the same PostgreSQL major and role topology. Both databases
+must already have the approved owner, database ACLs and database/role settings; the
+recovery tool never changes roles, memberships, passwords or database privileges.
+
+New archives contain authenticated `security.json`, bound to the exact database dump.
+Ownership, ACLs (including PUBLIC function EXECUTE revocations), RLS/FORCE and policies
+are preserved by transactional restore and checked before any restored application SQL
+or successful restore receipt. Missing/unmapped/renamed or escalated roles and any
+security mismatch fail closed. A failed parity check leaves the isolated target
+unaccepted: do not connect runtime users or promote it. Dispose of the isolated target
+through its existing authorized lifecycle and correct prerequisites before retrying.
+
+Legacy encrypted archives without this evidence still support `restore-isolated`
+offline extraction, explicitly returning `databaseRestoreExecuted: false` and
+`securityVerified: false`. They are rejected by `restore-database-isolated` before
+`pg_restore`; no readiness or restore-success receipt is issued. Do not reconstruct
+ACLs from fixtures or manufacture a manifest for old bytes. Make a new backup from
+the verified source using the updated configuration. If that source is unavailable,
+legacy disaster recovery requires a separate reviewed recovery/security procedure,
+not this supported acceptance path.
+
+The current closed support envelope requires PostgreSQL 15 or newer, a fresh target
+with the standard `public` schema owned by `pg_database_owner` and PUBLIC USAGE
+without CREATE, and direct-grant runtime roles with no effective membership in any
+other role (including predefined `pg_*` authority roles). Every non-predefined cluster
+role is mapped; subset maps and cross-cluster logical role renaming are unsupported.
+Foreign servers/wrappers/mappings, large objects, subscriptions, event triggers,
+non-`plpgsql` extensions, custom languages and user aggregates are unsupported and
+fail closed. Do not remove legitimate source objects to make the check pass; request
+separately reviewed support for that recovery topology.
+
+The closed envelope also rejects parameter-level ACL grants, publications, user-schema
+collations/operators/operator classes/operator families/conversions/text-search
+objects, and any stored role/database settings. These authority and execution settings
+require separate reviewed support; never clear legitimate settings or privileges to
+force acceptance. Database encoding, locale/provider, ICU rules and collation version
+must match exactly, and internal constraint triggers must retain ordinary enabled
+execution. Connection-local test/service settings are not transported as role settings.

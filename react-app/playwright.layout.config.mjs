@@ -49,7 +49,7 @@ export default defineConfig({
     baseURL: 'http://127.0.0.1:4192',
     reducedMotion: 'reduce',
     colorScheme: 'dark',
-    trace: 'off',
+    trace: 'retain-on-failure',
   },
   webServer: {
     command:

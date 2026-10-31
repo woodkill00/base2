@@ -20,6 +20,7 @@ from scripts.python.production_backup import (
     restore_database_isolated,
     verify_receipt,
 )
+from scripts.tests.test_backup_security_manifest import catalog, empty_target
 
 
 def test_exported_snapshot_uses_a_second_connection_for_the_post_capture_fence():
@@ -95,6 +96,9 @@ def _config(tmp_path: Path):
     service.write_text("[base2_backup]\nhost=db\n", encoding="utf-8")
     service.chmod(0o600)
     return {
+        "securityRoleMap": {"owner": "owner", "runtime": "runtime"},
+        "securityRuntimeRoles": ["runtime"],
+        "securityTrustedOwner": "owner",
         "schemaVersion": 1,
         "targetId": "base2-backup",
         "dataSchema": 31,
@@ -123,6 +127,8 @@ def _runner(command, **kwargs):
     del kwargs
     if command[0] == "psql":
         query = command[-1]
+        if "WITH namespaces AS" in query:
+            return subprocess.CompletedProcess(command, 0, json.dumps(catalog()), "")
         output = (
             "31\n"
             if "django_migrations" in query
@@ -348,7 +354,7 @@ def test_backup_binds_pg_dump_and_reference_ledger_to_one_exported_snapshot(tmp_
     )
     dump_command = next(command for command in commands if command[0] == "pg_dump")
     assert dump_command[dump_command.index("--snapshot") + 1] == "00000003-1"
-    assert not any(command[0] == "psql" for command in commands)
+    assert all("WITH namespaces AS" in command[-1] for command in commands if command[0] == "psql")
 
 
 def test_database_restore_requires_exact_empty_isolated_database(tmp_path):
@@ -361,8 +367,18 @@ def test_database_restore_requires_exact_empty_isolated_database(tmp_path):
     reference_ledger = _runner(["psql", "SELECT kind"]).stdout
     responses = iter(["base2_restore_trial\n", "0\n", "", "3\n", "31\n", reference_ledger])
 
+    security_calls = []
     def restore_runner(command, **kwargs):
         del kwargs
+        if "WITH namespaces AS" in command[-1]:
+            value = catalog()
+            if not security_calls:
+                value["objects"] = empty_target()["objects"]
+            security_calls.append(command)
+            return subprocess.CompletedProcess(command, 0, json.dumps(value), "")
+        if command[0] == "pg_restore":
+            assert "--single-transaction" in command
+            assert "--no-owner" not in command and "--no-privileges" not in command
         return subprocess.CompletedProcess(command, 0, next(responses), "")
 
     result = restore_database_isolated(
@@ -374,6 +390,118 @@ def test_database_restore_requires_exact_empty_isolated_database(tmp_path):
         expected_database="base2_restore_trial",
         runner=restore_runner,
     )
+    assert result["securityVerified"] is True
+    assert len(result["securityManifestSha256"]) == 64
     assert result["databaseRestoreExecuted"] is True
     assert result["databaseTableCount"] == 3
     assert (Path(config["operationsReceiptRoot"]) / "restore.json").is_file()
+
+
+@pytest.mark.parametrize('failure', ['missing', 'tamper', 'dump', 'role', 'membership', 'owner', 'public_execute', 'force_rls', 'policy', 'nonempty'])
+def test_restore_security_failures_never_execute_runtime_or_issue_receipt(tmp_path, failure):
+    from scripts.python.backup_security_manifest import (
+        SecurityManifestError,
+        build_security_manifest,
+    )
+
+    config = _config(tmp_path)
+    payload = tmp_path / 'payload'
+    payload.mkdir()
+    dump = payload / 'database.dump'
+    dump.write_bytes(b'dump')
+    import hashlib
+    manifest = build_security_manifest(
+        catalog(), database_dump_sha256=hashlib.sha256(b'dump').hexdigest(),
+        role_map=config['securityRoleMap'], runtime_roles=config['securityRuntimeRoles'],
+        trusted_owner=config['securityTrustedOwner'], key=config['_key'])
+    if failure == 'tamper':
+        manifest['catalog']['objects'][0]['acl'].append('=X/owner')
+    if failure == 'dump':
+        dump.write_bytes(b'changed')
+    path = payload / 'security.json'
+    if failure != 'missing':
+        path.write_text(json.dumps(manifest))
+    calls, probes = [], []
+    def runner(command, **kwargs):
+        calls.append(command)
+        query = command[-1]
+        if 'WITH namespaces AS' in query:
+            value = catalog()
+            if not probes:
+                value['objects'] = empty_target()['objects']
+                if failure == 'role':
+                    value['roles'][1]['super'] = True
+                elif failure == 'membership':
+                    value['memberships'] = ['extra']
+                elif failure == 'owner':
+                    value['databaseOwner'] = 'runtime'
+                elif failure == 'nonempty':
+                    value['objects'] = [{'kind': 'eventTrigger', 'name': 'hostile'}]
+            elif failure == 'public_execute':
+                value['objects'][0]['acl'].append('=X/owner')
+            elif failure == 'force_rls':
+                value['objects'][0]['forceRls'] = False
+            elif failure == 'policy':
+                value['policies'].append({'using': 'true'})
+            probes.append(query)
+            output = json.dumps(value)
+        elif 'current_database()' in query:
+            output = 'base2_restore_trial'
+        elif 'count(*)' in query:
+            output = '0'
+        elif command[0] == 'pg_restore':
+            output = ''
+        else:
+            pytest.fail('Runtime query executed before security parity: ' + query)
+        return subprocess.CompletedProcess(command, 0, output, '')
+    with patch('scripts.python.production_backup.isolated_restore', return_value={
+        'databaseDump': str(dump), 'securityManifest': str(path),
+    }), pytest.raises((ProductionBackupError, SecurityManifestError)):
+        restore_database_isolated(config, receipt_path=tmp_path / 'unused',
+            restore_root=tmp_path / 'restore', pg_service_file=Path(config['pgServiceFile']),
+            pg_service='base2_restore', expected_database='base2_restore_trial', runner=runner)
+    assert not (Path(config['operationsReceiptRoot']) / 'restore.json').exists()
+    if failure in {'missing', 'tamper', 'dump', 'role', 'membership', 'owner', 'nonempty'}:
+        assert not any(c[0] == 'pg_restore' for c in calls)
+
+
+def test_security_change_during_backup_removes_unaccepted_archive(tmp_path):
+    from scripts.python.backup_security_manifest import SecurityManifestError
+    config = _config(tmp_path)
+    count = []
+    def runner(command, **kwargs):
+        if 'WITH namespaces AS' in command[-1]:
+            value = catalog()
+            if count:
+                value['objects'][0]['acl'].append('=X/owner')
+            count.append(command)
+            return subprocess.CompletedProcess(command, 0, json.dumps(value), '')
+        return _runner(command, **kwargs)
+    with pytest.raises(SecurityManifestError):
+        create_production_backup(config, runner=runner)
+    assert not list(Path(config['backupRoot']).glob('*.tar.enc'))
+    assert not list(Path(config['receiptRoot']).glob('*.json'))
+
+
+@pytest.mark.parametrize('bad_member', ['duplicate', 'oversized', 'special'])
+def test_archive_shape_rejected_before_extraction(tmp_path, bad_member):
+    import tarfile
+    from unittest.mock import MagicMock
+
+    config = _config(tmp_path)
+    create_production_backup(config, runner=_runner)
+    receipt_path = next(Path(config['receiptRoot']).glob('*.json'))
+    members = [tarfile.TarInfo(name) for name in ['database.dump', 'objects.json', 'security.json']]
+    if bad_member == 'duplicate':
+        members.append(tarfile.TarInfo('security.json'))
+    elif bad_member == 'oversized':
+        members[-1].size = 16 * 1024 * 1024 + 1
+    else:
+        members[-1].type = tarfile.FIFOTYPE
+    fake = MagicMock()
+    fake.__enter__.return_value = fake
+    fake.getmembers.return_value = members
+    with patch('scripts.python.production_backup.tarfile.open', return_value=fake), \
+         pytest.raises(ProductionBackupError, match='archive_invalid'):
+        isolated_restore(config, receipt_path=receipt_path, restore_root=tmp_path / 'restore')
+    fake.extractall.assert_not_called()

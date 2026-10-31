@@ -1,0 +1,244 @@
+"""Authenticated, fail-closed database security evidence; never repairs privileges.
+
+Catalog reads use pg_catalog only. Role passwords are deliberately never selected.
+The conservative compatibility boundary is the same PostgreSQL/role topology.
+"""
+from __future__ import annotations
+
+import hashlib
+import hmac
+import json
+import re
+from typing import Any
+
+
+class SecurityManifestError(ValueError):
+    pass
+
+
+def canonical(value: Any) -> bytes:
+    return json.dumps(value, sort_keys=True, separators=(',', ':')).encode()
+
+
+# ACL NULL is preserved: it differs from an explicit empty ACL/revocation. Text
+# ACL items contain names, not cluster-local OIDs. Sorted arrays avoid dump order drift.
+SECURITY_CATALOG_SQL = r"""
+SET search_path = pg_catalog;
+WITH namespaces AS (
+ SELECT oid,nspname FROM pg_namespace
+ WHERE nspname !~ '^pg_' AND nspname <> 'information_schema'
+), objects AS (
+ SELECT jsonb_build_object('kind','schema','name',n.nspname,
+ 'owner',pg_get_userbyid(n.nspowner),'acl',
+ CASE WHEN n.nspacl IS NULL THEN NULL ELSE COALESCE((SELECT jsonb_agg(a::text ORDER BY a::text) FROM unnest(n.nspacl) a),'[]') END) value
+ FROM pg_namespace n JOIN namespaces x USING(oid)
+ UNION ALL
+ SELECT jsonb_build_object('kind','relation','name',format('%I.%I',n.nspname,c.relname),
+ 'type',c.relkind,'owner',pg_get_userbyid(c.relowner),
+ 'acl',CASE WHEN c.relacl IS NULL THEN NULL ELSE COALESCE((SELECT jsonb_agg(a::text ORDER BY a::text) FROM unnest(c.relacl) a),'[]') END,
+ 'rls',c.relrowsecurity,'forceRls',c.relforcerowsecurity)
+ FROM pg_class c JOIN namespaces n ON n.oid=c.relnamespace
+ UNION ALL
+ SELECT jsonb_build_object('kind','column','name',format('%I.%I.%I',n.nspname,c.relname,a.attname),
+ 'acl',CASE WHEN a.attacl IS NULL THEN NULL ELSE COALESCE((SELECT jsonb_agg(v::text ORDER BY v::text) FROM unnest(a.attacl) v),'[]') END)
+ FROM pg_attribute a JOIN pg_class c ON c.oid=a.attrelid
+ JOIN namespaces n ON n.oid=c.relnamespace WHERE a.attnum>0 AND NOT a.attisdropped
+ UNION ALL
+ SELECT jsonb_build_object('kind','function',
+ 'name',format('%I.%I(%s)',n.nspname,p.proname,pg_get_function_identity_arguments(p.oid)),
+ 'owner',pg_get_userbyid(p.proowner),'definer',p.prosecdef,
+ 'definitionDigest',CASE WHEN p.prokind <> 'a' THEN encode(sha256(convert_to(pg_get_functiondef(p.oid),'UTF8')),'hex') ELSE NULL END,
+ 'volatility',p.provolatile,'leakproof',p.proleakproof,'parallel',p.proparallel,
+ 'config',p.proconfig,'acl',
+ CASE WHEN p.proacl IS NULL THEN NULL ELSE COALESCE((SELECT jsonb_agg(a::text ORDER BY a::text) FROM unnest(p.proacl) a),'[]') END)
+ FROM pg_proc p JOIN namespaces n ON n.oid=p.pronamespace
+ UNION ALL
+ SELECT jsonb_build_object('kind','default','name',jsonb_build_array(pg_get_userbyid(d.defaclrole),n.nspname,d.defaclobjtype),
+ 'owner',pg_get_userbyid(d.defaclrole),'acl',
+ CASE WHEN d.defaclacl IS NULL THEN NULL ELSE COALESCE((SELECT jsonb_agg(a::text ORDER BY a::text) FROM unnest(d.defaclacl) a),'[]') END)
+ FROM pg_default_acl d LEFT JOIN pg_namespace n ON n.oid=d.defaclnamespace
+ UNION ALL
+ SELECT jsonb_build_object('kind','type','name',format('%I.%I',n.nspname,t.typname),
+ 'owner',pg_get_userbyid(t.typowner),'acl',
+ CASE WHEN t.typacl IS NULL THEN NULL ELSE COALESCE((SELECT jsonb_agg(a::text ORDER BY a::text) FROM unnest(t.typacl) a),'[]') END)
+ FROM pg_type t JOIN namespaces n ON n.oid=t.typnamespace
+ UNION ALL
+ SELECT jsonb_build_object('kind','trigger','name',format('%I.%I.%I',n.nspname,c.relname,t.tgname),
+ 'enabled',t.tgenabled,'definition',pg_get_triggerdef(t.oid))
+ FROM pg_trigger t JOIN pg_class c ON c.oid=t.tgrelid
+ JOIN namespaces n ON n.oid=c.relnamespace WHERE NOT t.tgisinternal
+ UNION ALL
+ SELECT jsonb_build_object('kind','constraint','name',format('%I.%I.%I',n.nspname,c.relname,t.conname),
+ 'validated',t.convalidated,'definition',pg_get_constraintdef(t.oid))
+ FROM pg_constraint t JOIN pg_class c ON c.oid=t.conrelid
+ JOIN namespaces n ON n.oid=c.relnamespace
+ UNION ALL
+ SELECT jsonb_build_object('kind','eventTrigger','name',evtname,
+ 'owner',pg_get_userbyid(evtowner),'event',evtevent,'enabled',evtenabled,
+ 'function',evtfoid::regprocedure::text,'tags',evttags) FROM pg_event_trigger
+), policies AS (
+ SELECT jsonb_build_object('name',format('%I.%I.%I',n.nspname,c.relname,p.polname),
+ 'command',p.polcmd,'permissive',p.polpermissive,
+ 'roles',(SELECT jsonb_agg(CASE WHEN r=0 THEN 'PUBLIC' ELSE pg_get_userbyid(r) END
+ ORDER BY CASE WHEN r=0 THEN 'PUBLIC' ELSE pg_get_userbyid(r) END) FROM unnest(p.polroles) r),
+ 'using',pg_get_expr(p.polqual,p.polrelid),'check',pg_get_expr(p.polwithcheck,p.polrelid)) value
+ FROM pg_policy p JOIN pg_class c ON c.oid=p.polrelid JOIN namespaces n ON n.oid=c.relnamespace
+), roles AS (
+ SELECT jsonb_build_object('name',rolname,'super',rolsuper,'bypass',rolbypassrls,
+ 'inherit',rolinherit,'createRole',rolcreaterole,'createDb',rolcreatedb,
+ 'login',rolcanlogin,'replication',rolreplication,'connectionLimit',rolconnlimit,
+ 'validUntil',rolvaliduntil::text,'config',rolconfig) value FROM pg_roles
+), memberships AS (
+ SELECT jsonb_build_object('role',pg_get_userbyid(m.roleid),'member',pg_get_userbyid(m.member),
+ 'grantor',pg_get_userbyid(m.grantor),'admin',m.admin_option,
+ 'inherit',to_jsonb(m)->'inherit_option','set',to_jsonb(m)->'set_option') value FROM pg_auth_members m
+), authority AS (
+ SELECT jsonb_build_object('member',a.rolname,'role',b.rolname,
+ 'memberOf',pg_has_role(a.oid,b.oid,'MEMBER'),'usage',pg_has_role(a.oid,b.oid,'USAGE')) value
+ FROM pg_roles a CROSS JOIN pg_roles b WHERE a.oid<>b.oid
+ AND (pg_has_role(a.oid,b.oid,'MEMBER') OR pg_has_role(a.oid,b.oid,'USAGE'))
+)
+SELECT jsonb_build_object(
+ 'unsupportedObjects',(SELECT count(*) FROM pg_foreign_server)
+ + (SELECT count(*) FROM pg_foreign_data_wrapper)
+ + (SELECT count(*) FROM pg_parameter_acl)
+ + (SELECT count(*) FROM pg_publication)
+ + (SELECT count(*) FROM pg_collation o JOIN namespaces n ON n.oid=o.collnamespace)
+ + (SELECT count(*) FROM pg_operator o JOIN namespaces n ON n.oid=o.oprnamespace)
+ + (SELECT count(*) FROM pg_opclass o JOIN namespaces n ON n.oid=o.opcnamespace)
+ + (SELECT count(*) FROM pg_opfamily o JOIN namespaces n ON n.oid=o.opfnamespace)
+ + (SELECT count(*) FROM pg_conversion o JOIN namespaces n ON n.oid=o.connamespace)
+ + (SELECT count(*) FROM pg_ts_config o JOIN namespaces n ON n.oid=o.cfgnamespace)
+ + (SELECT count(*) FROM pg_ts_dict o JOIN namespaces n ON n.oid=o.dictnamespace)
+ + (SELECT count(*) FROM pg_ts_parser o JOIN namespaces n ON n.oid=o.prsnamespace)
+ + (SELECT count(*) FROM pg_ts_template o JOIN namespaces n ON n.oid=o.tmplnamespace)
+ + (SELECT count(*) FROM pg_user_mapping)
+ + (SELECT count(*) FROM pg_largeobject_metadata)
+ + (SELECT count(*) FROM pg_subscription)
+ + (SELECT count(*) FROM pg_event_trigger)
+ + (SELECT count(*) FROM pg_trigger t JOIN pg_class c ON c.oid=t.tgrelid
+    JOIN namespaces n ON n.oid=c.relnamespace WHERE t.tgisinternal AND t.tgenabled <> 'O')
+ + (SELECT count(*) FROM pg_extension WHERE extname <> 'plpgsql')
+ + (SELECT count(*) FROM pg_proc p JOIN namespaces n ON n.oid=p.pronamespace WHERE p.prokind='a')
+ + (SELECT count(*) FROM pg_language WHERE lanname NOT IN ('internal','c','sql','plpgsql')),
+ 'serverMajor',current_setting('server_version_num')::int / 10000,
+ 'databaseSettings',COALESCE((SELECT jsonb_agg(jsonb_build_object('role',CASE WHEN setrole=0 THEN 'ALL' ELSE pg_get_userbyid(setrole) END,'database',CASE WHEN setdatabase=0 THEN 'ALL' ELSE 'CURRENT' END,'settings',setconfig) ORDER BY setrole=0,pg_get_userbyid(setrole),setdatabase=0) FROM pg_db_role_setting WHERE setdatabase=0 OR setdatabase=(SELECT oid FROM pg_database WHERE datname=current_database())),'[]'),
+ 'databaseSemantics',(SELECT jsonb_build_object('encoding',pg_encoding_to_char(d.encoding),
+ 'collate',d.datcollate,'ctype',d.datctype,'provider',to_jsonb(d)->'datlocprovider',
+ 'icuLocale',to_jsonb(d)->'daticulocale','locale',to_jsonb(d)->'datlocale',
+ 'icuRules',to_jsonb(d)->'daticurules','collationVersion',to_jsonb(d)->'datcollversion')
+ FROM pg_database d WHERE d.datname=current_database()),
+ 'databaseOwner',(SELECT pg_get_userbyid(datdba) FROM pg_database WHERE datname=current_database()),
+ 'databaseAcl',(SELECT CASE WHEN datacl IS NULL THEN NULL ELSE COALESCE((SELECT jsonb_agg(a::text ORDER BY a::text) FROM unnest(datacl) a),'[]') END FROM pg_database WHERE datname=current_database()),
+ 'roles',COALESCE((SELECT jsonb_agg(value ORDER BY value::text) FROM roles),'[]'),
+ 'memberships',COALESCE((SELECT jsonb_agg(value ORDER BY value::text) FROM memberships),'[]'),
+ 'authority',COALESCE((SELECT jsonb_agg(value ORDER BY value::text) FROM authority),'[]'),
+ 'objects',COALESCE((SELECT jsonb_agg(value ORDER BY value::text) FROM objects),'[]'),
+ 'policies',COALESCE((SELECT jsonb_agg(value ORDER BY value::text) FROM policies),'[]'));
+"""
+
+
+def capture_security_catalog(runner, *, pg_service, environment, snapshot_id=None):
+    sql = SECURITY_CATALOG_SQL
+    if snapshot_id is not None:
+        if not re.fullmatch(r'[A-Za-z0-9-]+', snapshot_id):
+            raise SecurityManifestError('security:snapshot_invalid')
+        sql = ("BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY; SET TRANSACTION SNAPSHOT '"
+               + snapshot_id + "'; " + sql + ' COMMIT;')
+    result = runner(['psql', '--no-psqlrc', '--quiet', '--tuples-only', '--no-align',
+                     '--set', 'ON_ERROR_STOP=1', f'service={pg_service}', '--command', sql],
+                    env=environment, capture_output=True, text=True, timeout=120, check=False)
+    try:
+        value = json.loads(result.stdout)
+        if result.returncode != 0 or not isinstance(value, dict):
+            raise ValueError
+        return value
+    except (ValueError, TypeError) as exc:
+        raise SecurityManifestError('security:catalog_unavailable') from exc
+
+
+def validate_security_configuration(*, role_map, runtime_roles, trusted_owner):
+    if (not isinstance(role_map, dict) or not role_map
+            or any(not isinstance(k, str) or not k or k != v for k, v in role_map.items())
+            or not isinstance(runtime_roles, list) or not runtime_roles
+            or any(not isinstance(r, str) or r not in role_map for r in runtime_roles)
+            or len(set(runtime_roles)) != len(runtime_roles)
+            or not isinstance(trusted_owner, str) or trusted_owner not in role_map
+            or trusted_owner in runtime_roles):
+        raise SecurityManifestError('security:configuration_invalid')
+
+
+def _validate(catalog, role_map, runtime_roles, trusted_owner):
+    validate_security_configuration(role_map=role_map, runtime_roles=runtime_roles,
+                                    trusted_owner=trusted_owner)
+    try:
+        if set(catalog) != {'databaseSemantics', 'unsupportedObjects', 'serverMajor', 'databaseSettings', 'databaseOwner', 'databaseAcl', 'roles', 'memberships', 'authority', 'objects', 'policies'}:
+            raise ValueError
+        if catalog['unsupportedObjects'] != 0:
+            raise ValueError
+        roles = {r['name']: r for r in catalog['roles']}
+        if catalog['databaseSettings'] or any(r.get('config') for r in roles.values()):
+            raise ValueError
+        if (not roles or len(roles) != len(catalog['roles']) or not isinstance(role_map, dict)
+                or set(role_map) != {n for n in roles if not n.startswith('pg_')}
+                or any(k != v for k, v in role_map.items())
+                or catalog['databaseOwner'] != trusted_owner or trusted_owner not in role_map
+                or not runtime_roles or len(set(runtime_roles)) != len(runtime_roles)
+                or trusted_owner in runtime_roles):
+            raise ValueError
+        privileged = {name for name, role in roles.items()
+                      if any(role.get(k, False) for k in ('super', 'bypass', 'createRole', 'createDb', 'replication'))}
+        for name in runtime_roles:
+            if name not in role_map or name in privileged:
+                raise ValueError
+            if any(a['member'] == name and a['role'] != name
+                   and (a['memberOf'] or a['usage']) for a in catalog['authority']):
+                raise ValueError
+        if any(o.get('definer') and o.get('owner') != trusted_owner for o in catalog['objects']):
+            raise ValueError
+    except (KeyError, TypeError, ValueError) as exc:
+        raise SecurityManifestError('security:role_contract_invalid') from exc
+
+
+def build_security_manifest(catalog, *, database_dump_sha256, role_map, runtime_roles, trusted_owner, key):
+    _validate(catalog, role_map, runtime_roles, trusted_owner)
+    if not re.fullmatch('[0-9a-f]{64}', database_dump_sha256) or len(key) < 32:
+        raise SecurityManifestError('security:binding_invalid')
+    body = {'schemaVersion': 1, 'databaseDumpSha256': database_dump_sha256,
+            'roleMap': role_map, 'runtimeRoles': runtime_roles, 'trustedOwner': trusted_owner,
+            'catalog': catalog}
+    return {**body, 'hmac': hmac.new(key, canonical(body), hashlib.sha256).hexdigest()}
+
+
+def verify_security_manifest(manifest, **options):
+    try:
+        expected = build_security_manifest(manifest['catalog'], **options)
+        if not hmac.compare_digest(canonical(manifest), canonical(expected)):
+            raise ValueError
+        return manifest['catalog']
+    except (KeyError, TypeError, ValueError) as exc:
+        raise SecurityManifestError('security:manifest_invalid_or_legacy') from exc
+
+
+def verify_target_roles(expected_catalog, actual_catalog):
+    if any(expected_catalog.get(k) != actual_catalog.get(k)
+           for k in ('databaseSemantics', 'serverMajor', 'databaseSettings', 'databaseOwner', 'databaseAcl', 'roles', 'memberships', 'authority')):
+        raise SecurityManifestError('security:target_role_mismatch')
+
+
+def verify_catalog_parity(expected_catalog, actual_catalog):
+    if canonical(expected_catalog) != canonical(actual_catalog):
+        raise SecurityManifestError('security:catalog_mismatch')
+
+
+def verify_empty_target(catalog):
+    """Accept only the PostgreSQL 15+ template public schema, no executable objects.
+
+    Its owner pseudo-role binds to the already verified database owner. PUBLIC may
+    use the schema but cannot create objects during restore. No GRANT repair occurs.
+    """
+    baseline = {'kind': 'schema', 'name': 'public', 'owner': 'pg_database_owner',
+                'acl': ['=U/pg_database_owner', 'pg_database_owner=UC/pg_database_owner']}
+    if (catalog.get('unsupportedObjects') != 0 or catalog.get('serverMajor', 0) < 15 or catalog.get('policies')
+            or catalog.get('objects') != [baseline]):
+        raise SecurityManifestError('security:target_not_empty_or_unsafe')

@@ -190,3 +190,11 @@ def test_loading_evidence_holds_pending_state_until_capture_and_always_releases(
     assert "await page.unrouteAll({ behavior: 'wait' })" in loading[release:]
     assert "toHaveAttribute('aria-busy', 'false')" in loading[release:]
     assert "test('partial-error state retains explicit visual evidence'" in source
+
+
+def test_layout_failures_retain_trace_without_automatic_retry():
+    config = (ROOT / 'react-app/playwright.layout.config.mjs').read_text()
+    assert "trace: 'retain-on-failure'" in config
+    assert 'retries: 0' in config
+    workflow = (ROOT / '.github/workflows/ci-frontend.yml').read_text()
+    assert 'path: .artifacts/layout-109' in workflow

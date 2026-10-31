@@ -64,6 +64,11 @@ def run_idempotent_native_safe(command, **kwargs):
 
 
 def main() -> None:
+    if '--restore-security' in sys.argv[1:]:
+        raise RuntimeError(
+            'workspace_restore_requires_host_combined_dependencies_and_matching_postgres_clients; '
+            'use_the_guarded_hosted_restore_acceptance_step'
+        )
     root = Path(__file__).resolve().parents[2]
     name = f"base2-workspace-postgres-{os.getpid()}"
     owner_password = secrets.token_urlsafe(32)

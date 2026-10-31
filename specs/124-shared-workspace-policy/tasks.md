@@ -1,7 +1,9 @@
 # Feature 124 task ledger
 
-Status: implementation and local verification in progress. No PostgreSQL, native-browser
-or release acceptance is claimed; unchecked tasks include those outstanding proof obligations.
+Status: implementation and acceptance are in progress. Real PostgreSQL, native-browser
+and both isolated live-service shell runs have passed at the source checkpoints below.
+Whole-database recovery, representative profiles and the full release gate remain open.
+Historical pending statements below describe their dated checkpoints, not current results.
 Scope approved by user on 2026-10-31 after the four-capability recommendation. Preserve
 unrelated dirty Feature 122 files and draft PR 89. Production work follows independent
 review of this contract. Do not resume/delegate stopped Expat repair.
@@ -197,12 +199,12 @@ checks do not replace the pending real-service/PostgreSQL/browser CI evidence.
       profile, restricted content worker/beat, encrypted local artifacts and
       one-shot synthetic fixtures; independently source-review the interfaces.
       Static/guard tests and Playwright collection pass, not runtime acceptance.
-- [ ] T26 Execute both isolated Bash and PowerShell Ubuntu CI jobs on the exact
+- [x] T26 Execute both isolated Bash and PowerShell Ubuntu CI jobs on the exact
       next published source. Retain successful JSON/Compose/cleanup/source artifacts
       and first failures. Establish actual login/two-tab UI CAS and authenticated
       API-context approval/visibility/export/asset behavior against PostgreSQL.
       Do not describe API requests as UI clicks or collection as execution.
-- [ ] T27 Verify actual beat delivery and due-publication denial separately from
+- [x] T27 Verify actual beat delivery and due-publication denial separately from
       bounded controlled-UTC consumer proofs. Verify immediate/disabled/digest,
       midnight-minus-one-millisecond non-delivery, exact-once restart/replay and
       revoked recipients. Verify the same viewer's own grants before/after fixed
@@ -411,3 +413,81 @@ unrelated probes be healthy is added. Pure regression cases reject stale,
 expired, malformed, wrong-site/environment and duplicate observations and retain
 an unrelated degraded probe. Thirty local topology/support tests pass; actual
 fresh ready observation remains pending CI, not inferred from collection counts.
+
+## Acceptance reconciliation and bounded recovery correction
+
+At `4532892a5172adebcdeafb169708e78989d90370`, all ten workflows are terminal:
+nine pass and only the inherited media-security workflow fails. Both isolated Bash
+and PowerShell runs pass all five tests and all six ordered workspace substeps.
+This closes T26/T27 for that source: real settings UI conflicts, independent review,
+synchronous public search restriction, authorized asset/export access, same-actor
+unexpired grant revocation, scheduler role revocation and controlled-UTC digest/replay
+are executed. The seeded asset and fixed membership-suspension action remain explicitly
+fixture-driven; no scanner, TLS or live-email proof is inferred. The next source adds
+a persisted operations sample assertion and requires fresh CI for that addition.
+
+The same checkpoint passes the real restricted-role PostgreSQL suite, including
+policy CAS/lock waits, membership revocation, notification retries/digest boundaries,
+media claims and two asset/variant projection regressions. Those are existing race
+evidence, not missing solely because broad aggregate tasks remain unchecked.
+Frontend verification passes 668 UI tests, 27 tooling tests and 433 browser executions.
+Native Storybook builds pass; external Chromatic publication is skipped without its
+token. The unchanged 71 inherited media findings remain a release blocker.
+
+A distinct T06/T18/T28 gap remains: record-level restore and fresh migrations do not
+prove whole-database backup/restore of policy, preference versions, review history
+and durable notification effects. Source analysis also finds that both production
+dump and restore omit ownership/ACLs. A restored database can therefore lose runtime
+grants and regain default PUBLIC EXECUTE on SECURITY DEFINER functions. Do not call
+restored runtime functions or repair grants in a fixture to manufacture acceptance.
+
+- [ ] T29 Implement a versioned authenticated recovery security manifest, preserving
+      source ownership/ACL/RLS and checking exact existing roles, effective memberships
+      and trusted definer ownership. Reject legacy or mismatched evidence before
+      restore; verify restored catalogs before runtime execution or success receipts.
+      No real target, credential, new role or deployment is authorized by this task.
+- [ ] T30 Exercise the production encrypted backup/isolated restore path with two
+      fresh owned disposable databases and actual matching PostgreSQL tools. Verify
+      security parity, restored Feature124 state and restricted-runtime denials/replay
+      effects; prove source unchanged and tear down only exact owned test databases.
+- [ ] T31 Resolve the supported workspace/public-pack type-key compatibility gap
+      before claiming blog/docs/portfolio representative journeys. Use an explicit
+      generated-profile allowlist and retain disabled-profile negative checks.
+
+These bounded obligations complete Feature124 acceptance before broader family
+engines advance. They do not reopen stopped media-runtime repair or authorize
+merging, provider activation, real backups or deployment.
+
+## Native sign-out regression after a4c60ab
+
+Both isolated live-service shell runs now pass all seven workspace steps, including
+a fresh persisted `migrations.ready` sample from the owner operations API. This is
+not an all-probes health claim. The same candidate has a retained shared-layout
+390px failure: sign-out clears account actions but ends on public Home instead of
+Sign in. Its earlier appearance screenshots passed; later sign-out isolation
+assertions did not execute. Final Storybook/Chromatic stages were skipped after
+that frontend failure, unlike earlier token-only publication skips.
+
+- [ ] T32 Resolve the real competing logout destinations with a controlled delayed
+      completion reproduction, canonical Sign in target, retained failure guidance
+      and explicit native response/navigation/account-isolation evidence. Preserve
+      the original failure; do not relax assertions or update image baselines.
+
+Shared-layout browser failures now retain a trace in the existing evidence artifact.
+Automatic retries remain zero; this improves diagnosis without weakening any test.
+
+### Recovery and sign-out candidate source checkpoint
+
+Independent reviews accepted the closed recovery envelope, disposable restore
+harness and controlled sign-out repair before publication. The combined local
+repository-contract run passes 251 tests. API validation passes 1,689 unit tests,
+mypy and Ruff; the new actual restore case is collected but has not run locally.
+Frontend validation passes 672 unit tests and 27 tooling tests, lint, types and
+build. Changed executable lines in the recovery/security implementation and the
+three sign-out statements are covered; existing coverage floors are unchanged.
+These results do not substitute for native restore or browser execution.
+
+A local ancestry check initially failed because this checkout lacked history.
+Fetching its missing history established the unchanged planning baseline as an
+ancestor, and the exact original check passed. No baseline policy was altered.
+The native full-gate checkout must likewise include sufficient history.

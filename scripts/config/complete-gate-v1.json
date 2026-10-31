@@ -1020,7 +1020,9 @@
         "-q",
         "-o",
         "addopts=",
-        "scripts/tests/test_production_backup.py"
+        "scripts/tests/test_production_backup.py",
+        "scripts/tests/test_backup_security_manifest.py",
+        "scripts/tests/test_workspace_policy_restore_contract.py"
       ],
       "required": true,
       "timeoutSeconds": 60,

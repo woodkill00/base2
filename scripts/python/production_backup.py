@@ -31,6 +31,17 @@ from typing import Any
 from cryptography.exceptions import InvalidTag
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
+from scripts.python.backup_security_manifest import (
+    SecurityManifestError,
+    build_security_manifest,
+    canonical,
+    capture_security_catalog,
+    validate_security_configuration,
+    verify_catalog_parity,
+    verify_empty_target,
+    verify_security_manifest,
+    verify_target_roles,
+)
 from scripts.python.data_readiness import provision_restore_root
 from scripts.python.recovery_assurance import (
     RecoveryDenied,
@@ -58,6 +69,7 @@ CONFIG_KEYS = {
     "operationsReceiptRoot",
     "operationsReceiptKeyFile",
     "sourceCommit",
+    "securityRoleMap", "securityRuntimeRoles", "securityTrustedOwner",
 }
 
 
@@ -88,6 +100,10 @@ def load_config(path: Path) -> dict[str, Any]:
         raise ProductionBackupError("backup:configuration_invalid") from exc
     if not isinstance(value, dict) or set(value) != CONFIG_KEYS:
         raise ProductionBackupError("backup:configuration_invalid")
+    validate_security_configuration(
+        role_map=value["securityRoleMap"], runtime_roles=value["securityRuntimeRoles"],
+        trusted_owner=value["securityTrustedOwner"],
+    )
     absolute = (
         "pgServiceFile",
         "objectRoot",
@@ -519,11 +535,13 @@ def create_production_backup(
                     raise ProductionBackupError("backup:schema_ledger_invalid")
             if live_schema != config["dataSchema"]:
                 raise ProductionBackupError("backup:schema_mismatch")
+            security_catalog = capture_security_catalog(
+                runner, pg_service=config["pgService"], environment=environment,
+                snapshot_id=before_fence_text if database_snapshot is not None else None,
+            )
             dump_command = [
                 "pg_dump",
                 "--format=custom",
-                "--no-owner",
-                "--no-privileges",
             ]
             if database_snapshot is not None:
                 dump_command.extend(["--snapshot", before_fence_text])
@@ -539,6 +557,12 @@ def create_production_backup(
             if completed.returncode != 0 or not dump.is_file() or dump.stat().st_size < 1:
                 raise ProductionBackupError("backup:pg_dump_failed")
             dump_digest = _sha256_file(dump)
+            security_manifest = build_security_manifest(
+                security_catalog, database_dump_sha256=dump_digest,
+                role_map=config.get("securityRoleMap"),
+                runtime_roles=config.get("securityRuntimeRoles"),
+                trusted_owner=config.get("securityTrustedOwner"), key=config["_key"],
+            )
             # Read the live object tree exactly once into a private temporary
             # boundary. The archive never rereads mutable production paths.
             # The reference-ledger comparison below proves no database-visible
@@ -559,6 +583,7 @@ def create_production_backup(
             try:
                 bundle = create_database_object_bundle(
                     database_dump=dump,
+                    security_manifest=security_manifest,
                     object_root=staged_objects,
                     output=output,
                     target_id=config["targetId"],
@@ -598,6 +623,12 @@ def create_production_backup(
                     or after_fence.returncode != 0
                     or before_fence_text != after_fence.stdout
                 )
+            try:
+                verify_catalog_parity(security_catalog, capture_security_catalog(
+                    runner, pg_service=config["pgService"], environment=environment))
+            except SecurityManifestError:
+                output.unlink(missing_ok=True)
+                raise
             if snapshot_changed:
                 output.unlink(missing_ok=True)
                 raise ProductionBackupError("backup:cross_surface_snapshot_changed")
@@ -712,13 +743,20 @@ def isolated_restore(
     payload.mkdir(mode=0o700)
     with tarfile.open(archive, "r:") as bundle:
         members = bundle.getmembers()
+        names = [member.name for member in members]
+        if (len(set(names)) != len(names) or names.count("database.dump") != 1
+                or names.count("objects.json") != 1
+                or any(member.name == "security.json" and member.size > 16 * 1024 * 1024
+                       for member in members)):
+            raise ProductionBackupError("restore:archive_invalid")
         if any(
-            member.issym()
+            not member.isfile()
+            or member.issym()
             or member.islnk()
             or member.name.startswith("/")
             or ".." in Path(member.name).parts
             or not (
-                member.name in {"database.dump", "objects.json"}
+                member.name in {"database.dump", "objects.json", "security.json"}
                 or member.name.startswith("objects/")
             )
             for member in members
@@ -746,6 +784,8 @@ def isolated_restore(
         "objectCount": len(actual),
         "objectDigest": inventory.get("digest"),
         "databaseRestoreExecuted": False,
+        "securityVerified": False,
+        "securityManifest": str(payload / "security.json"),
     }
 
 
@@ -780,6 +820,20 @@ def restore_database_isolated(
         if completed.returncode != 0:
             raise ProductionBackupError(error)
         return completed.stdout.strip()
+
+    manifest_path = Path(restored["securityManifest"])
+    if not manifest_path.is_file():
+        raise ProductionBackupError("restore:security_manifest_missing_legacy")
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        expected_security = verify_security_manifest(
+            manifest, database_dump_sha256=_sha256_file(Path(restored["databaseDump"])),
+            role_map=config.get("securityRoleMap"),
+            runtime_roles=config.get("securityRuntimeRoles"),
+            trusted_owner=config.get("securityTrustedOwner"), key=config["_key"],
+        )
+    except (ValueError, TypeError) as exc:
+        raise ProductionBackupError("restore:security_manifest_invalid") from exc
 
     identity = run_checked(
         [
@@ -816,18 +870,23 @@ def restore_database_isolated(
         != "0"
     ):
         raise ProductionBackupError("restore:database_not_empty")
+    target_security = capture_security_catalog(
+        runner, pg_service=pg_service, environment=environment)
+    verify_target_roles(expected_security, target_security)
+    verify_empty_target(target_security)
     run_checked(
         [
             "pg_restore",
             "--exit-on-error",
-            "--no-owner",
-            "--no-privileges",
+            "--single-transaction",
             "--dbname",
             f"service={pg_service}",
             restored["databaseDump"],
         ],
         "restore:pg_restore_failed",
     )
+    verify_catalog_parity(expected_security, capture_security_catalog(
+        runner, pg_service=pg_service, environment=environment))
     after = run_checked(
         [
             "psql",
@@ -895,6 +954,8 @@ def restore_database_isolated(
         "database": expected_database,
         "databaseTableCount": int(after),
         "databaseRestoreExecuted": True,
+        "securityVerified": True,
+        "securityManifestSha256": hashlib.sha256(canonical(manifest)).hexdigest(),
     }
 
 

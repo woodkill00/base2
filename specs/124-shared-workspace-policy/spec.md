@@ -88,3 +88,23 @@ builder, multi-organization administration, live adapters or complete CRM/social
 engines. Broader work remains ordered in `backlog.md`. Required baseline security
 acceptance remains blocked independently of this implementation; stopped Feature 122
 Expat repair must not be resumed, delegated or bypassed here. Draft PR 89 is unchanged.
+
+## Bounded recovery security acceptance
+
+A whole-database recovery must retain source ownership, access grants and revocations,
+row security and trusted function boundaries before any restored runtime action or
+successful readiness receipt. Existing target roles must match explicitly approved
+same-name source roles, including inherited and assumable authority. Recovery must
+never create or repair roles or invent missing privileges. Older backups without
+authenticated security evidence remain available for offline extraction only; they
+cannot claim database recovery acceptance. Unknown or escalated roles and security
+drift fail closed without modifying the original source database.
+
+## Sign-out navigation consistency
+
+After local authentication state is cleared, both shared and Volcano layouts settle
+on Sign in. A delayed successful server logout must not replace the protected-route
+Sign in redirect with Home. Preserve server-failure retry guidance, ordinary public
+navigation, and cleared account-scoped appearance/settings state. This is an explicit
+resolution of conflicting existing navigation contracts, not permission to weaken
+the native sign-out isolation test or change the approved visual design.

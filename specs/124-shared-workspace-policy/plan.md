@@ -359,3 +359,51 @@ At the 2026-10-31 integration checkpoint, remote
 repair or this new live-service stack. Source/static review is complete; execution
 of the new journeys and PowerShell runtime parity remains pending CI. The next
 published batch must retain success artifacts as well as first-failure evidence.
+
+## Bounded recovery security manifest (2026-10-31)
+
+Production backup now binds a version-1 HMAC-authenticated security.json to the dump
+SHA-256 inside the existing encrypted database/object bundle. Catalog evidence includes
+schema/table/sequence/column/default/function ACLs (including explicit PUBLIC revokes),
+object ownership, database owner, RLS enabled/FORCE flags and complete policy expressions.
+Capture the catalog from the dump's exported snapshot and compare fresh security state
+after capture. Preserve pg_dump ownership and privileges. Explicit configuration names
+the trusted migration/definer/database owner, restricted runtime roles, and same-name
+map of every non-predefined cluster role. Capture nonsecret role attributes, membership
+edges with INHERIT/SET options and effective transitive MEMBER/USAGE authority; no
+passwords, CREATE/ALTER ROLE, membership changes or repair GRANTs are transported.
+
+Before database restore, authenticate manifest/dump and compare existing target role
+security and database owner. pg_restore uses --exit-on-error --single-transaction,
+without --no-owner or --no-privileges. Compare postrestore catalogs before any runtime
+function/query or success receipt. Unknown/unmapped/renamed roles, unsafe runtime
+attributes, trusted-owner mismatch, missing legacy manifest and security drift deny
+acceptance. Offline extraction remains explicitly unverified. Same-version PostgreSQL
+and same existing role topology are the conservative compatibility boundary; no role
+migration engine is introduced. Unit negatives precede implementation; disposable CI
+source-to-target restore establishes real catalog and restricted-runtime behavior.
+
+Review hardening: runtime roles use direct grants and may not have any effective
+nonself MEMBER/USAGE authority, including predefined PostgreSQL roles. Target preflight
+requires PostgreSQL15+ standard public-schema owner/ACL, not source-specific runtime
+schema grants (those are restored transactionally). Function definition digests,
+trigger enabled/definitions and constraint validation/definitions augment ACL/RLS
+parity. Quoted SQL identifiers prevent ambiguous object identity. Uncaptured foreign
+object/large-object/subscription authority, event triggers, nonbaseline extensions,
+custom languages and user aggregates are explicitly unsupported and fail closed.
+
+Final closed-catalog review also rejects parameter ACL grants, publications, user-schema
+collations/operators/opclasses/opfamilies/conversions/text-search objects and all stored
+role/database settings. Source and target encoding/locale/provider/ICU/collation-version
+semantics must match, and internal constraint triggers must be ordinarily enabled.
+These are compatibility failures, never authority to mutate the source into acceptance.
+
+## Delayed sign-out navigation repair
+
+Retain the first 390px native failure at candidate a4c60ab. Reproduce with the real
+AuthProvider, ProtectedRoute and Navigation while holding the logout response: the
+null-user guard reaches Sign in before the successful handler previously navigated
+to Home. Align the terminal target with the existing Volcano Sign in behavior and
+retain failure/retry state. Test delayed success, failed server response and account
+preference cleanup, then rerun the unchanged native isolation journey with explicit
+request/response evidence. No style or screenshot reference changes are involved.
