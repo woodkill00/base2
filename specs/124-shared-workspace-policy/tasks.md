@@ -792,3 +792,30 @@ Coverage lines85.86%, statements83.94%, branches77.63%, functions82.80%; no prod
 executable delta. Native5ec50d0 is terminal with8/10 workflows green; only this
 frontend unit observation and inherited media-security fail. Backend/restore and
 all three real E2E jobs pass. First complete-gate invocation remains next, not passed.
+
+### First complete-gate workflow setup attempt
+
+The first opt-in workflow41214219187 on7fcbc15 verified exact clean source, installed
+all three Python environments and passed dependency/import preflights and pinned
+Node24.20.0/npm11.19.0 checks. Root npm ci then failed resolving peer dependencies
+missing from the existing lock. No browsers/images/repetitions or134gate checks ran.
+Safe stage-summary artifact13046803635 is retained; no pass receipts were fabricated.
+Existing security workflows already install root dependencies with --legacy-peer-deps.
+Match that established locked policy in the opt-in workflow, with a consistency
+regression; do not regenerate locks, update unrelated dependencies or suppress errors.
+Local copied-lock offline legacy dry-run succeeds265packages with unchanged hashes,
+but uses npm11.9 and is not proof of the hosted install. Native rerun remains required.
+
+- [ ] T38 Restore approved white/10 Records separator color with a scoped existing
+      utility and native computed-paint assertion. Current matrix already passes;
+      this corrects documented pre-existing tolerated drift, not the earlier fixture
+      permission failure. No global CSS/framework/baseline changes.
+
+T38 source and native assertion are independently accepted. The production change
+is one existing border-white/10 utility on Records items; divider widths/layout
+and global styles are unchanged. Native checks sample real computed1px solid paint
+and respect forced-color CanvasText instead of disabling accessibility preferences.
+Full frontend753 tests plus27 tooling pass, focused17/lint/types/build are green;
+53 fixture contracts and24 matrix cases collect. Actual native paint verification
+and pixel review remain pending. Root install-policy repair has85 focused checks
+and independent acceptance; neither repair changes locks, permissions or baselines.

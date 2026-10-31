@@ -204,3 +204,13 @@ composition and approved Obsidian/Volcano visual tokens. Add actual viewport cap
 around focused public fields to distinguish fixed-shell screenshot compositing from
 real occlusion, and assert a practical field width at390px alongside no overflow and
 control reachability. No automatic visual-baseline replacement is permitted.
+
+### Preserve Records divider appearance
+
+The current passing workspace matrix isolates a pre-existing styling mismatch:
+record separators paint opaque light gray instead of approved white at10% opacity.
+The zero-specificity generated divide color loses to a later universal border reset.
+Restore the intended color only on Records list items using the existing explicit
+border utility, preserving divider widths, layout and all other components. Add a
+native computed-paint assertion so a large screenshot's tolerance cannot mask this
+specific defect. No global stylesheet/framework change or baseline update is allowed.

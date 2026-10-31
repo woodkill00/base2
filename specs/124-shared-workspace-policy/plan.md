@@ -497,3 +497,11 @@ padding in workspace panels, creation form and public-copy fields; reduce only s
 mobile spacing constraints. Prove actual rendered widths and focused viewport
 visibility on390px, retain1440 screenshots, review pixels before acceptance. Re-run
 shared component unit/static coverage and existing native workspace/visual suites.
+
+### Scoped pre-existing divider compatibility correction
+
+After7fcbc15's workspace matrix passes with corrected fixtures, treat the known
+opaque-gray separator as its own bounded visual correction. Give Records list items
+an existing nonzero-specificity white/10 border color, retaining existing divide
+geometry. Unit/source regression precedes change; native computed-paint assertion
+and unchanged visual baselines verify actual rendering across the existing matrix.

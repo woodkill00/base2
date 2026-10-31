@@ -147,6 +147,22 @@ describe('content workspace', () => {
     expect(screen.getByRole('tab', { name: 'Records' })).toHaveAttribute('aria-selected', 'true');
   });
 
+  test('keeps Records divider widths and explicitly paints each item with subtle white borders', async () => {
+    contentWorkspaceAPI.records.mockResolvedValue({
+      items: [
+        { id: 'one', title: 'First', slug: 'first', state: 'draft', version: 1 },
+        { id: 'two', title: 'Second', slug: 'second', state: 'draft', version: 1 },
+      ],
+    });
+    renderWorkspace();
+    const list = await screen.findByRole('list', { name: 'Records' });
+    expect(list).toHaveClass('divide-y', 'divide-white/10');
+    expect(list.children).toHaveLength(2);
+    // Explicit item color outranks the universal compatibility border reset.
+    // Native computed-style checks verify paint; jsdom checks the scoped utility.
+    for (const item of list.children) expect(item).toHaveClass('py-4', 'border-white/10');
+  });
+
   test.each([
     ['schemas', 'Schemas', /schema · articles/i],
     ['imports', 'Imports', /imports · articles/i],

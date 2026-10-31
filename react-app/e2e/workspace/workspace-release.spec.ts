@@ -194,6 +194,57 @@ test.beforeEach(async ({ page }, testInfo) => {
   });
 });
 
+async function assertRecordDivider(page) {
+  const divider = page
+    .getByRole('list', { name: 'Records', exact: true })
+    .locator('li:not(:last-child)')
+    .first();
+  await expect(divider).toBeVisible();
+  const paint = await divider.evaluate((element) => {
+    const style = getComputedStyle(element);
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = 1;
+    const context = canvas.getContext('2d');
+    if (!context) throw new Error('Canvas color inspection unavailable');
+    const rgba = (color: string) => {
+      context.clearRect(0, 0, 1, 1);
+      context.fillStyle = color;
+      context.fillRect(0, 0, 1, 1);
+      return Array.from(context.getImageData(0, 0, 1, 1).data);
+    };
+    const probe = document.createElement('span');
+    probe.setAttribute('aria-hidden', 'true');
+    probe.style.cssText =
+      'position:fixed;visibility:hidden;color:CanvasText;background-color:Canvas';
+    document.body.append(probe);
+    try {
+      const system = getComputedStyle(probe);
+      return {
+        width: style.borderBottomWidth,
+        style: style.borderBottomStyle,
+        color: rgba(style.borderBottomColor),
+        forcedColors: matchMedia('(forced-colors: active)').matches,
+        systemText: rgba(system.color),
+        systemCanvas: rgba(system.backgroundColor),
+      };
+    } finally {
+      probe.remove();
+    }
+  });
+  expect(paint.width).toBe('1px');
+  expect(paint.style).toBe('solid');
+  if (paint.forcedColors) {
+    // Respect the browser's accessibility palette; never disable forced colors.
+    expect(paint.color).toEqual(paint.systemText);
+    expect(paint.color[3]).toBe(255);
+    expect(paint.color.slice(0, 3)).not.toEqual(paint.systemCanvas.slice(0, 3));
+  } else {
+    for (const channel of paint.color.slice(0, 3)) expect(channel).toBeGreaterThanOrEqual(254);
+    expect(paint.color[3]).toBeGreaterThanOrEqual(25);
+    expect(paint.color[3]).toBeLessThanOrEqual(26);
+  }
+}
+
 async function assertUsable(page) {
   expect(
     await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)
@@ -252,6 +303,7 @@ test('workspace release corpus is accessible, responsive, and visually stable', 
   await expect(newRecord).toBeVisible();
   await expect(newRecord).toBeEnabled();
   await assertUsable(page);
+  await assertRecordDivider(page);
   // Axe does not check non-text SVG contrast: the original edge-tab icon must
   // inherit its contrasting foreground, rather than the unrelated header color.
   expect(

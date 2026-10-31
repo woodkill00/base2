@@ -255,3 +255,16 @@ def test_archive_child_timeout_is_not_swallowed(tmp_path, monkeypatch):
     monkeypatch.setattr(subprocess, 'run', timeout)
     with pytest.raises(subprocess.TimeoutExpired):
         run_archive(tmp_path)
+
+
+def test_root_install_matches_existing_locked_security_peer_policy():
+    security = yaml.safe_load((ROOT / '.github/workflows/security.yml').read_text())
+    root_audit = next(step['run'] for step in security['jobs']['npm-audit']['steps']
+                      if step.get('name') == 'Install root deps')
+    root_licenses = next(step['run'].splitlines()[0] for step in security['jobs']['node-licenses']['steps']
+                         if step.get('name') == 'Install locked Node dependencies')
+    dependencies = next(step['run'] for step in workflow()['jobs']['complete-gate']['steps']
+                        if step.get('id') == 'dependencies')
+    root_install = [line for line in dependencies.splitlines()
+                    if line.startswith('npm ci') and '--prefix' not in line]
+    assert root_install == [root_audit] == [root_licenses] == ['npm ci --legacy-peer-deps']

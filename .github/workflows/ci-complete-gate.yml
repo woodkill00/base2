@@ -75,7 +75,8 @@ jobs:
           .venv-django/bin/python -c 'import django, pytest, pytest_django, mypy, ruff'
           test "$(node --version)" = v24.20.0
           test "$(npm --version)" = 11.19.0
-          npm ci
+          # Match the root lock install policy used by both security jobs.
+          npm ci --legacy-peer-deps
           npm ci --prefix react-app --legacy-peer-deps
           npm ci --prefix e2e
 

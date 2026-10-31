@@ -279,3 +279,31 @@ def test_journey_evidence_uses_exact_current_run_directories_not_hidden_root_glo
         assert step['env']['JOURNEY_ATTEMPT'] == 'ci-${{ github.run_id }}-${{ github.run_attempt }}-' + suffix
     config = (ROOT / 'react-app/playwright.journeys.config.mjs').read_text()
     assert 'outputDir: `../.artifacts/journeys-${attempt}`' in config
+
+
+def test_workspace_divider_asserts_computed_paint_and_real_nonlast_border():
+    source = (ROOT / 'react-app/e2e/workspace/workspace-release.spec.ts').read_text()
+    helper = source.split('async function assertRecordDivider(', 1)[1].split('\nasync function ', 1)[0]
+    assert 'li:not(:last-child)' in helper
+    assert 'borderBottomWidth' in helper and 'borderBottomStyle' in helper
+    assert "toBe('1px')" in helper and "toBe('solid')" in helper
+    assert 'borderBottomColor' in helper
+    assert "document.createElement('canvas')" in helper
+    assert 'getImageData(0, 0, 1, 1)' in helper
+    assert 'toBeGreaterThanOrEqual(254)' in helper
+    assert 'toBeGreaterThanOrEqual(25)' in helper
+    assert 'toBeLessThanOrEqual(26)' in helper
+    assert source.index('await assertRecordDivider(page)') < source.index("await page.keyboard.press('Tab')")
+
+
+def test_workspace_divider_keeps_forced_color_accessibility_override():
+    source = (ROOT / 'react-app/e2e/workspace/workspace-release.spec.ts').read_text()
+    helper = source.split('async function assertRecordDivider(', 1)[1].split('async function assertUsable', 1)[0]
+    assert "matchMedia('(forced-colors: active)')" in helper
+    assert 'if (paint.forcedColors)' in helper
+    assert 'color:CanvasText;background-color:Canvas' in helper
+    assert 'getComputedStyle(probe)' in helper
+    assert 'finally' in helper and 'probe.remove()' in helper
+    assert 'expect(paint.color).toEqual(paint.systemText)' in helper
+    assert 'not.toEqual(paint.systemCanvas.slice(0, 3))' in helper
+    assert 'emulateMedia' not in helper and 'forced-color-adjust' not in helper

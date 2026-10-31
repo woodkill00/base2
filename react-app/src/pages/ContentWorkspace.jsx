@@ -839,7 +839,7 @@ function WorkspaceContent({ locale = 'en', scopeKey, canEdit }) {
                         >
                           <ul className="divide-y divide-white/10" aria-label="Records">
                             {records.map((record) => (
-                              <li key={record.id} className="py-4">
+                              <li key={record.id} className="border-white/10 py-4">
                                 <button
                                   type="button"
                                   aria-label={`Open ${record.title}`}
