@@ -310,3 +310,108 @@ def test_restore_diagnostic_is_independent_but_never_masks_core_failure():
     assert restore['if'] == "${{ !cancelled() && (steps.integration_core.outcome == 'success' || steps.integration_core.outcome == 'failure') }}"
     assert not restore.get('continue-on-error', False)
     assert receipt['if'] == "${{ !cancelled() && steps.workspace_restore.outcome == 'success' }}"
+
+
+def test_failed_restore_retains_only_sanitized_bound_diagnostic(monkeypatch, tmp_path):
+    import json
+
+    from scripts.python.backup_security_manifest import catalog_difference
+
+    monkeypatch.setenv('WORKSPACE_POLICY_DISPOSABLE', '1')
+    monkeypatch.setenv('WORKSPACE_RESTORE_DISPOSABLE', '1')
+    run_id = 'a' * 32
+    path = tmp_path / f'workspace-policy-failure-{run_id}.json'
+    monkeypatch.setenv('WORKSPACE_RESTORE_RUN_ID', run_id)
+    monkeypatch.setenv('WORKSPACE_RESTORE_DIAGNOSTIC', str(path))
+    diagnostic = catalog_difference({'databaseOwner': 'private-source'}, {'databaseOwner': 'private-target'})
+    fixture.retain_restore_failure(diagnostic, source_commit='b' * 40)
+    result = json.loads(path.read_text())
+    assert result == {'schemaVersion': 1, 'status': 'failed', 'stage': 'restore_security_catalog',
+                      'runId': run_id, 'sourceCommit': 'b' * 40, 'diagnostic': diagnostic}
+    assert 'private-' not in path.read_text()
+    assert path.stat().st_mode & 0o777 == 0o600
+    with pytest.raises(fixture.RestoreFixtureError, match='execution_receipt_invalid'):
+        monkeypatch.setattr(fixture.subprocess, 'check_output', lambda *a, **k: 'b' * 40)
+        fixture.verify_report(path)
+
+
+@pytest.mark.parametrize('diagnostic', [None, {'raw': 'PRIVATE_SECRET'},
+                                       {'schemaVersion': 1, 'categories': [], 'unknownCategories': 'PRIVATE_SECRET'}])
+def test_untrusted_restore_diagnostic_cannot_leak(monkeypatch, tmp_path, capsys, diagnostic):
+    monkeypatch.setenv('WORKSPACE_POLICY_DISPOSABLE', '1')
+    monkeypatch.setenv('WORKSPACE_RESTORE_DISPOSABLE', '1')
+    run_id = 'a' * 32
+    path = tmp_path / f'workspace-policy-failure-{run_id}.json'
+    monkeypatch.setenv('WORKSPACE_RESTORE_RUN_ID', run_id)
+    monkeypatch.setenv('WORKSPACE_RESTORE_DIAGNOSTIC', str(path))
+    fixture.retain_restore_failure(diagnostic, source_commit='b' * 40)
+    assert not path.exists()
+    output = capsys.readouterr()
+    assert 'PRIVATE_SECRET' not in output.out + output.err
+    assert 'restore_fixture:diagnostic_unavailable' in output.err
+
+
+def test_restore_parity_error_is_reraised_without_success(monkeypatch, tmp_path):
+    from scripts.python import production_backup
+    from scripts.python.backup_security_manifest import SecurityManifestError
+
+    harness = object.__new__(fixture.DisposableRestore)
+    harness.root, harness.target, harness.security_verified = tmp_path, 'owned_target', False
+    config = {'receiptRoot': str(tmp_path), 'pgServiceFile': str(tmp_path / 'service'), 'sourceCommit': 'b' * 40}
+    monkeypatch.setattr(harness, 'config', lambda: config)
+    monkeypatch.setattr(production_backup, 'create_production_backup', lambda *a, **k: {'backupFile': 'owned.tar.enc'})
+    failure = SecurityManifestError('security:catalog_mismatch', diagnostic={'sentinel': True})
+    def restore(*args, **kwargs):
+        raise failure
+    monkeypatch.setattr(production_backup, 'restore_database_isolated', restore)
+    retained = []
+    monkeypatch.setattr(fixture, 'retain_restore_failure', lambda value, **kwargs: retained.append((value, kwargs)))
+    with pytest.raises(SecurityManifestError) as raised:
+        harness.backup_restore()
+    assert raised.value is failure
+    assert retained == [(failure.diagnostic, {'source_commit': 'b' * 40})]
+    assert harness.security_verified is False
+
+
+def test_failed_restore_artifact_is_separate_and_never_success_evidence():
+    import yaml
+
+    steps = yaml.safe_load((fixture.ROOT / '.github/workflows/ci-backend.yml').read_text())['jobs']['backend-integration']['steps']
+    failed = next(step for step in steps if step.get('name') == 'Retain failed isolated restoration diagnostic')
+    success = next(step for step in steps if step.get('name') == 'Retain successful isolated restoration evidence')
+    assert failed['if'] == "${{ !cancelled() && steps.workspace_restore.outcome == 'failure' }}"
+    assert failed['with']['if-no-files-found'] == 'warn'
+    assert failed['with']['path'].endswith('/workspace-policy-failure-*.json')
+    assert failed['with']['name'] != success['with']['name']
+    assert 'failure' not in success['with']['path']
+
+
+def test_diagnostic_write_failure_never_overwrites_existing_evidence(monkeypatch, tmp_path, capsys):
+    from scripts.python.backup_security_manifest import catalog_difference
+
+    monkeypatch.setenv('WORKSPACE_POLICY_DISPOSABLE', '1')
+    monkeypatch.setenv('WORKSPACE_RESTORE_DISPOSABLE', '1')
+    run_id = 'a' * 32
+    path = tmp_path / f'workspace-policy-failure-{run_id}.json'
+    path.write_text('prior evidence')
+    monkeypatch.setenv('WORKSPACE_RESTORE_RUN_ID', run_id)
+    monkeypatch.setenv('WORKSPACE_RESTORE_DIAGNOSTIC', str(path))
+    diagnostic = catalog_difference({'databaseOwner': 'before'}, {'databaseOwner': 'after'})
+    fixture.retain_restore_failure(diagnostic, source_commit='b' * 40)
+    assert path.read_text() == 'prior evidence'
+    assert capsys.readouterr().err == 'restore_fixture:diagnostic_unavailable\n'
+
+
+@pytest.mark.parametrize('invalid', ['run', 'commit', 'path', 'guard'])
+def test_failure_diagnostic_requires_owned_run_binding(monkeypatch, tmp_path, invalid):
+    from scripts.python.backup_security_manifest import catalog_difference
+
+    monkeypatch.setenv('WORKSPACE_POLICY_DISPOSABLE', '1')
+    monkeypatch.setenv('WORKSPACE_RESTORE_DISPOSABLE', '0' if invalid == 'guard' else '1')
+    run_id = 'a' * 32
+    path = tmp_path / ('wrong.json' if invalid == 'path' else f'workspace-policy-failure-{run_id}.json')
+    monkeypatch.setenv('WORKSPACE_RESTORE_RUN_ID', 'invalid' if invalid == 'run' else run_id)
+    monkeypatch.setenv('WORKSPACE_RESTORE_DIAGNOSTIC', str(path))
+    fixture.retain_restore_failure(catalog_difference({}, {}),
+                                   source_commit='invalid' if invalid == 'commit' else 'b' * 40)
+    assert not path.exists()

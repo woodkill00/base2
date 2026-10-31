@@ -252,3 +252,116 @@ def test_catalog_success_status_with_invalid_output_is_sanitized_and_denied(stdo
     with pytest.raises(SecurityManifestError) as failure:
         capture_security_catalog(runner, pg_service='private-service', environment={})
     assert str(failure.value) == f'security:catalog_unavailable:exit=0:reason={category}'
+
+
+def test_catalog_mismatch_diagnostic_identifies_fields_without_catalog_values():
+    from scripts.python.backup_security_manifest import catalog_difference
+    source, target = catalog(), catalog()
+    secret = 'PRIVATE_FUNCTION_NAME_SELECT_PASSWORD'
+    source['objects'][0]['name'] = secret
+    target['objects'][0]['name'] = secret
+    target['objects'][0]['acl'].append('private_grantee=X/private_owner')
+    target['objects'][0]['definitionDigest'] = 'private-definition'
+    diagnostic = catalog_difference(source, target)
+    import json
+    encoded = json.dumps(diagnostic)
+    assert secret not in encoded and 'private_grantee' not in encoded
+    assert 'private-definition' not in encoded
+    category = diagnostic['categories'][0]
+    assert category['category'] == 'objects'
+    assert category['expected']['count'] == category['actual']['count'] == 1
+    assert {f['field'] for f in category['entries'][0]['fields']} == {'acl', 'definitionDigest'}
+    with pytest.raises(SecurityManifestError) as failure:
+        verify_catalog_parity(source, target)
+    assert failure.value.diagnostic == diagnostic
+    assert str(failure.value) == 'security:catalog_mismatch:categories=objects'
+
+
+def test_catalog_diagnostic_bounds_unknown_values_and_reports_missing_entries():
+    import json
+
+    from scripts.python.backup_security_manifest import catalog_difference
+    source, target = catalog(), catalog()
+    source['objects'] = [{'kind': 'function', 'name': f'secret{i}', 'acl': None} for i in range(30)]
+    target['objects'] = [{'kind': 'function', 'name': f'secret{i}', 'acl': []} for i in range(15, 45)]
+    target['private-category'] = 'private-value'
+    diagnostic = catalog_difference(source, target)
+    category = diagnostic['categories'][0]
+    assert len(category['entries']) <= 12
+    assert category['omittedEntries'] > 0
+    assert diagnostic['unknownCategories'] is True
+    assert 'private' not in json.dumps(diagnostic) and 'secret' not in json.dumps(diagnostic)
+    assert len(json.dumps(diagnostic)) < 32768
+
+
+def test_catalog_diagnostic_scalars_and_identical_state():
+    from scripts.python.backup_security_manifest import catalog_difference
+    assert catalog_difference(catalog(), catalog())['categories'] == []
+    target = catalog()
+    target['databaseOwner'] = 'private-owner'
+    target['objects'] = 'malformed-private-value'
+    diagnostic = catalog_difference(catalog(), target)
+    assert {v['category'] for v in diagnostic['categories']} == {'databaseOwner', 'objects'}
+    assert all('entries' not in v for v in diagnostic['categories'])
+
+
+def test_diagnostic_validator_accepts_generated_evidence_and_denies_mutations():
+    import copy
+
+    from scripts.python.backup_security_manifest import (
+        catalog_difference,
+        validate_catalog_diagnostic,
+    )
+    target = catalog()
+    target['objects'][0]['acl'].append('private=X/owner')
+    valid = catalog_difference(catalog(), target)
+    assert validate_catalog_diagnostic(valid)
+    assert validate_catalog_diagnostic(catalog_difference(catalog(), catalog()))
+    for mutate in [
+        lambda v: v.update(secret='private'),
+        lambda v: v.update(schemaVersion=True),
+        lambda v: v.update(unknownCategories=1),
+        lambda v: v['categories'][0].update(category='private'),
+        lambda v: v['categories'][0]['expected'].update(sha256='private'),
+        lambda v: v['categories'][0]['expected'].update(count=True),
+        lambda v: v['categories'][0]['expected'].update(type='private'),
+        lambda v: v['categories'][0]['entries'][0].update(kind='private'),
+        lambda v: v['categories'][0]['entries'][0].update(identitySha256='private'),
+        lambda v: v['categories'][0]['entries'][0]['fields'][0].update(field='private'),
+        lambda v: v['categories'][0].update(entries=v['categories'][0]['entries'] * 13),
+        lambda v: v.update(categories=v['categories'] * 12),
+    ]:
+        malformed = copy.deepcopy(valid)
+        mutate(malformed)
+        assert not validate_catalog_diagnostic(malformed)
+    for value in [None, 'private', [], {'schemaVersion': 1}]:
+        assert not validate_catalog_diagnostic(value)
+
+
+def test_diagnostic_validator_covers_added_removed_scalar_and_malformed_detail():
+    import copy
+
+    from scripts.python.backup_security_manifest import (
+        catalog_difference,
+        validate_catalog_diagnostic,
+    )
+    target = catalog()
+    target['objects'] = [{'kind': 'function', 'name': 'different'}]
+    target['databaseOwner'] = 'different'
+    assert validate_catalog_diagnostic(catalog_difference(catalog(), target))
+    target = catalog()
+    target['objects'][0]['acl'] = []
+    valid = catalog_difference(catalog(), target)
+    mutations = [
+        lambda v: v['categories'][0].update(ambiguousIdentity=1),
+        lambda v: v['categories'][0].update(entries='private'),
+        lambda v: v['categories'][0]['entries'][0].update(status='changed', fields='private'),
+        lambda v: v['categories'][0]['entries'][0].update(unknownFields=1),
+        lambda v: v['categories'][0]['entries'][0].update(fields=v['categories'][0]['entries'][0]['fields'] * 9),
+        lambda v: v['categories'][0]['entries'][0].update(kind=[]),
+        lambda v: v['categories'][0]['entries'][0]['fields'][0].update(expected={}),
+    ]
+    for mutate in mutations:
+        value = copy.deepcopy(valid)
+        mutate(value)
+        assert validate_catalog_diagnostic(value) is False

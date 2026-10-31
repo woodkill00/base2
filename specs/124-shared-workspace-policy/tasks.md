@@ -573,3 +573,24 @@ JSON/traces/screenshots so sequential runs cannot overwrite each other's evidenc
 The wrapper does not establish real cancellation cleanup; current reporters do not
 produce the configured HTML report. Registration and source tests do not run or pass
 the full release gate.
+
+### New concrete findings at 5c6a8d5
+
+All three family records are independently reviewed/published and canonical search
+paths are returned; the first blog link reaches the correct route and title. Its
+body assertion fails because public excerpt/body are empty, although private values
+persist. Later family rendering/restriction is unreached. Do not weaken that assertion
+or auto-expose private JSON; the missing explicit authoring capability is real.
+
+- [ ] T35 Implement explicit bounded public excerpt/body authoring, atomic CAS/history
+      and canonical/API/UI validation, with legacy restore coverage and private-value
+      non-disclosure. Verify normal UI use, review invalidation/re-review, restoration
+      and public rendering in the representative native journey.
+
+The same candidate performs actual encrypted backup and pg_restore, then correctly
+fails strict security-catalog parity before restored runtime use or success receipt.
+The exact differing field is still unknown. Add only bounded sanitized failure
+diagnostics and retain strict comparison; no guessed normalization or privilege repair.
+An API-only source guard also imported an unavailable Playwright package; evaluate
+its actual config logic with only the decorator supplied in the source-test harness,
+while real Playwright validation remains native collection/execution evidence.

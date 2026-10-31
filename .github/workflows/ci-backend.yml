@@ -282,6 +282,7 @@ jobs:
           fi
           export WORKSPACE_RESTORE_RUN_ID="$(python -c 'import uuid; print(uuid.uuid4().hex)')"
           export WORKSPACE_RESTORE_REPORT="$RUNNER_TEMP/workspace-policy-restore-$WORKSPACE_RESTORE_RUN_ID.json"
+          export WORKSPACE_RESTORE_DIAGNOSTIC="$RUNNER_TEMP/workspace-policy-failure-$WORKSPACE_RESTORE_RUN_ID.json"
           python -m scripts.python.workspace_policy_restore_fixture
           timeout 300 python -m pytest api/tests/test_workspace_policy_restore_postgres.py -c api/pytest.ini -o addopts= -m integration --no-cov
           python -m scripts.python.workspace_policy_restore_fixture --verify-report "$WORKSPACE_RESTORE_REPORT"
@@ -293,4 +294,13 @@ jobs:
           name: workspace-policy-restoration
           path: ${{ runner.temp }}/workspace-policy-restore-*.json
           if-no-files-found: error
+          retention-days: 7
+
+      - name: Retain failed isolated restoration diagnostic
+        if: ${{ !cancelled() && steps.workspace_restore.outcome == 'failure' }}
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: workspace-policy-restoration-failure
+          path: ${{ runner.temp }}/workspace-policy-failure-*.json
+          if-no-files-found: warn
           retention-days: 7

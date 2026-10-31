@@ -451,3 +451,29 @@ its real returned search link, then restrict access and prove public search/dire
 page denial while authorized workspace access remains. Preserve actual disabled
 module/profile guard contracts separately. Source contract collection is not live
 profile proof; retain successful screenshots and response/status evidence for review.
+
+## Public body capability exposed by representative execution
+
+The real representative run proves normal record values persist, but the public
+response's excerpt/body/metadata remain empty because no supported authoring path
+writes them. Retain that failure and implement intentional plain-text copy through
+existing atomic create/update, not fixture SQL or automatic dynamic-field exposure.
+
+First add canonical validation and versioned snapshot/restore helpers, then mirrored
+API contracts and all record-return projections. Extend exactly the existing worker
+due-publication/import-update snapshot producers, without accepting public import
+input or changing scheduler semantics. Preserve forensic context and existing
+revision numbering; audit snapshot diff, retention and data-rights consumers for
+format compatibility. Test legacy flat/private-field-name collisions, unsupported
+formats, stale/denied saves, public-copy invalidation and safe restore under actual
+restricted roles. All new public text stays private until existing publication and
+visibility rules authorize it.
+
+Then integrate an explicit public excerpt/body section with existing record editing,
+one saved/draft snapshot and one CAS save. Include copy in dirty/discard/unload and
+scope-change handling; preserve rejected/stale drafts until explicit reload. History
+must show whether public text is recorded, preserved or unsupported before restore.
+Keep existing design and text-only rendering, including Unicode-limit equivalence;
+no arbitrary HTML or metadata controls. Extend the representative journey to author
+explicit public copy (including one actual UI edit), retain distinct private values,
+and prove rendered/search text without private-value leakage before restriction.

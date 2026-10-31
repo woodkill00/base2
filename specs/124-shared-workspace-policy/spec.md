@@ -141,3 +141,32 @@ entry. Prove actual supported pack creation/review/publication, search-link navi
 and visibility revocation in that profile. Do not claim generic page rendering,
 all-family maturity, disabled-profile runtime proof or representative PowerShell
 coverage that has not actually run.
+
+## Explicit public text authoring
+
+Managed workspace records need an intentional public-text authoring path, not
+automatic promotion of private dynamic values. Add optional `publicContent` with
+required `excerpt` and `body` strings to normal record create/update. Limits are
+2,000 and 20,000 Unicode code points respectively, matching bounded plain-text
+semantics. Reject null, unknown keys, nonstrings and NUL; do not trim or interpret
+HTML. Omitted create copy is empty; omitted update copy is preserved; an explicit
+empty pair clears it. All authenticated record responses include the persisted pair.
+Public endpoints/search continue to use only existing explicit public fields under
+current state, review, membership and site-visibility gates.
+
+Save values and public copy atomically under the existing version precondition and
+lock order. Public-copy edits participate in current semantic approval invalidation;
+no new roles, grants, metadata authoring, automatic private-field projection or generic
+renderer is permitted. Canonical native validation precedes the mirrored API path.
+
+New revision snapshots use the collision-safe `snapshotFormat: workspace-record-v1`
+envelope with values, publicContent and existing forensic record context. Preserve
+revision numbering and the persisted state captured by each existing producer;
+context is historical evidence, never restoration authority. Restoration changes
+only supported values/public copy, never historical state, title, slug, metadata or
+flags. Recognized legacy full snapshots restore their explicit copy; legacy flat
+values snapshots preserve current public copy. Unknown/malformed formats fail closed.
+Expose history restore coverage and actual restoration result so the UI can explain
+legacy partial restoration before the user confirms it. Existing identity-history
+pseudonymization, legal holds and record retention boundaries remain intact; this
+feature does not claim generic erasure of free-form personal content.

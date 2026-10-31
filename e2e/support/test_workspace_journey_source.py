@@ -227,16 +227,38 @@ def test_profiles_explicitly_collect_auth_and_exact_journey_without_skips():
     import subprocess
 
     config = SOURCE.parents[1] / 'playwright.config.js'
+    # Source/config proof only: the API job deliberately installs no Playwright.
+    # Inject only its identity config decorator, never browser APIs or selection.
+    loader = """
+const assert=require('node:assert/strict');
+const fs=require('node:fs'); const path=require('node:path'); const vm=require('node:vm');
+let decoratorCalls=0;
+const configEnv={...process.env};
+const sandbox={module:{exports:{}},__dirname:path.dirname(process.argv[1]),process:{env:configEnv},
+ require(name) {
+  if(name==='@playwright/test') return {defineConfig(value){decoratorCalls++;return value;}};
+  if(name==='node:fs') return fs;
+  if(name==='node:path') return path;
+  throw new Error('Unexpected config dependency: '+name);
+ }};
+vm.runInNewContext(fs.readFileSync(process.argv[1],'utf8'),sandbox,{filename:process.argv[1]});
+const c=JSON.parse(JSON.stringify(sandbox.module.exports));
+assert.equal(decoratorCalls,1);
+"""
     for profile, journey in [
         ('base2-obsidian', 'workspace-policy.spec.js'),
         ('journey-reference', 'workspace-representative.spec.js'),
     ]:
-        script = "const assert=require('node:assert/strict'); const path=require('node:path'); const c=require(process.argv[1]); assert.deepEqual(c.testMatch,['auth.spec.js',process.argv[2]]); assert.equal(c.outputDir,path.join(path.dirname(process.argv[1]),'test-results',process.env.E2E_SITE_PROFILE)); assert.equal(process.env.PLAYWRIGHT_HTML_OUTPUT_DIR,path.join(path.dirname(process.argv[1]),'playwright-report',process.env.E2E_SITE_PROFILE));"
+        script = loader + """
+assert.deepEqual(c.testMatch,['auth.spec.js',process.argv[2]]);
+assert.equal(c.outputDir,path.join(path.dirname(process.argv[1]),'test-results',configEnv.E2E_SITE_PROFILE));
+assert.equal(configEnv.PLAYWRIGHT_HTML_OUTPUT_DIR,path.join(path.dirname(process.argv[1]),'playwright-report',configEnv.E2E_SITE_PROFILE));
+"""
         result = subprocess.run(['node', '-e', script, str(config), journey],
                                 env={**os.environ, 'E2E_SITE_PROFILE': profile}, capture_output=True, text=True)
         assert result.returncode == 0, result.stderr
     for profile in ['', '../journey-reference', 'ember-studio', 'northstar-library']:
-        result = subprocess.run(['node', '-e', 'require(process.argv[1])', str(config)],
+        result = subprocess.run(['node', '-e', loader, str(config)],
                                 env={**os.environ, 'E2E_SITE_PROFILE': profile}, capture_output=True, text=True)
         assert result.returncode != 0 and 'Invalid E2E_SITE_PROFILE' in result.stderr
 

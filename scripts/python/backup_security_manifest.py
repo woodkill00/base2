@@ -13,7 +13,9 @@ from typing import Any
 
 
 class SecurityManifestError(ValueError):
-    pass
+    def __init__(self, message, *, diagnostic=None):
+        super().__init__(message)
+        self.diagnostic = diagnostic
 
 
 def canonical(value: Any) -> bytes:
@@ -249,9 +251,100 @@ def verify_target_roles(expected_catalog, actual_catalog):
         raise SecurityManifestError('security:target_role_mismatch')
 
 
+_DIAGNOSTIC_CATEGORIES = (
+    'objects', 'policies', 'roles', 'memberships', 'authority', 'databaseSettings',
+    'databaseSemantics', 'databaseOwner', 'databaseAcl', 'serverMajor', 'unsupportedObjects',
+)
+_DIAGNOSTIC_IDENTITIES = {
+    'objects': ('kind', 'name'), 'policies': ('name',), 'roles': ('name',),
+    'memberships': ('role', 'member', 'grantor'), 'authority': ('member', 'role'),
+    'databaseSettings': ('role', 'database'),
+}
+_DIAGNOSTIC_FIELDS = frozenset((
+    'acl', 'owner', 'type', 'rls', 'forceRls', 'definer', 'definitionDigest',
+    'volatility', 'leakproof', 'parallel', 'config', 'enabled', 'definition',
+    'validated', 'event', 'function', 'tags', 'command', 'permissive', 'roles',
+    'using', 'check', 'super', 'bypass', 'inherit', 'createRole', 'createDb',
+    'login', 'replication', 'connectionLimit', 'validUntil', 'admin', 'set',
+    'memberOf', 'usage', 'settings',
+))
+_DIAGNOSTIC_KINDS = frozenset((
+    'schema', 'relation', 'column', 'function', 'default', 'type', 'trigger',
+    'constraint', 'eventTrigger',
+))
+
+
+def _diagnostic_summary(value, *, present=True):
+    kind = ('null' if value is None else 'list' if isinstance(value, list)
+            else 'object' if isinstance(value, dict) else 'scalar')
+    return {'present': present, 'type': kind,
+            'count': len(value) if isinstance(value, list | dict) else int(value is not None),
+            'sha256': hashlib.sha256(canonical(value)).hexdigest()}
+
+
+def catalog_difference(expected_catalog, actual_catalog):
+    """Bounded hashes/closed labels only; never transport raw catalog identities.
+
+    This is diagnostic evidence, NOT normalization or a comparison authority.
+    The exact original canonical comparison remains the acceptance boundary.
+    """
+    result: dict[str, Any] = {'schemaVersion': 1, 'categories': [], 'unknownCategories': bool(
+        (set(expected_catalog) | set(actual_catalog)) - set(_DIAGNOSTIC_CATEGORIES))}
+    budget = 12
+    for category in _DIAGNOSTIC_CATEGORIES:
+        before, after = expected_catalog.get(category), actual_catalog.get(category)
+        if before == after and (category in expected_catalog) == (category in actual_catalog):
+            continue
+        item = {'category': category,
+                'expected': _diagnostic_summary(before, present=category in expected_catalog),
+                'actual': _diagnostic_summary(after, present=category in actual_catalog)}
+        identity_fields = _DIAGNOSTIC_IDENTITIES.get(category)
+        if identity_fields and isinstance(before, list) and isinstance(after, list) and all(
+            isinstance(row, dict) for row in before + after
+        ):
+            def index(rows, fields=identity_fields):
+                return {hashlib.sha256(canonical([row.get(k) for k in fields])).hexdigest(): row
+                        for row in rows}
+            left, right = index(before), index(after)
+            # Duplicate identities need separate investigation; never silently pair them.
+            item['ambiguousIdentity'] = len(left) != len(before) or len(right) != len(after)
+            changed = [key for key in sorted(set(left) | set(right)) if left.get(key) != right.get(key)]
+            entries = []
+            for key in changed[:budget]:
+                old, new = left.get(key), right.get(key)
+                row = old if old is not None else new
+                raw_kind = row.get('kind')
+                entry = {'identitySha256': key,
+                         'kind': raw_kind if isinstance(raw_kind, str) and raw_kind in _DIAGNOSTIC_KINDS else 'other',
+                         'status': 'added' if old is None else 'removed' if new is None else 'changed'}
+                if old is not None and new is not None:
+                    changed_fields = [field for field in sorted(_DIAGNOSTIC_FIELDS)
+                                      if old.get(field) != new.get(field)
+                                      or (field in old) != (field in new)]
+                    entry['fields'] = [
+                        {'field': field,
+                         'expected': _diagnostic_summary(old.get(field), present=field in old),
+                         'actual': _diagnostic_summary(new.get(field), present=field in new)}
+                        for field in changed_fields[:8]]
+                    entry['omittedFields'] = max(0, len(changed_fields) - 8)
+                    entry['unknownFields'] = bool(
+                        (set(old) | set(new)) - _DIAGNOSTIC_FIELDS - set(identity_fields))
+                entries.append(entry)
+            budget -= len(entries)
+            item['entries'] = entries
+            item['omittedEntries'] = len(changed) - len(entries)
+        result['categories'].append(item)
+    return result
+
+
 def verify_catalog_parity(expected_catalog, actual_catalog):
     if canonical(expected_catalog) != canonical(actual_catalog):
-        raise SecurityManifestError('security:catalog_mismatch')
+        diagnostic = catalog_difference(expected_catalog, actual_catalog)
+        categories = ','.join(item['category'] for item in diagnostic['categories'])
+        raise SecurityManifestError(
+            'security:catalog_mismatch:categories=' + (categories or 'unknown'),
+            diagnostic=diagnostic,
+        )
 
 
 def verify_empty_target(catalog):
@@ -265,3 +358,78 @@ def verify_empty_target(catalog):
     if (catalog.get('unsupportedObjects') != 0 or catalog.get('serverMajor', 0) < 15 or catalog.get('policies')
             or catalog.get('objects') != [baseline]):
         raise SecurityManifestError('security:target_not_empty_or_unsafe')
+
+
+def validate_catalog_diagnostic(value) -> bool:
+    """Closed safe-to-persist evidence schema; unknown content is never forwarded."""
+    def integer(item):
+        return type(item) is int and 0 <= item <= 2**63 - 1
+
+    def digest(item):
+        return isinstance(item, str) and re.fullmatch('[0-9a-f]{64}', item) is not None
+
+    def summary(item):
+        return (isinstance(item, dict) and set(item) == {'present', 'type', 'count', 'sha256'}
+                and type(item['present']) is bool
+                and item['type'] in ('null', 'list', 'object', 'scalar')
+                and integer(item['count']) and digest(item['sha256'])
+                and (item['type'] != 'null' or item['count'] == 0)
+                and (item['type'] != 'scalar' or item['count'] <= 1))
+
+    try:
+        if (not isinstance(value, dict)
+                or set(value) != {'schemaVersion', 'categories', 'unknownCategories'}
+                or type(value['schemaVersion']) is not int or value['schemaVersion'] != 1
+                or type(value['unknownCategories']) is not bool
+                or not isinstance(value['categories'], list)
+                or len(value['categories']) > len(_DIAGNOSTIC_CATEGORIES)):
+            return False
+        categories = set()
+        total_entries = 0
+        for category in value['categories']:
+            base = {'category', 'expected', 'actual'}
+            detail = {'ambiguousIdentity', 'entries', 'omittedEntries'}
+            if (not isinstance(category, dict) or set(category) not in (base, base | detail)
+                    or category['category'] not in _DIAGNOSTIC_CATEGORIES
+                    or category['category'] in categories
+                    or not summary(category['expected']) or not summary(category['actual'])):
+                return False
+            categories.add(category['category'])
+            if 'entries' not in category:
+                continue
+            if (category['category'] not in _DIAGNOSTIC_IDENTITIES
+                    or type(category['ambiguousIdentity']) is not bool
+                    or not integer(category['omittedEntries'])
+                    or not isinstance(category['entries'], list)):
+                return False
+            total_entries += len(category['entries'])
+            if total_entries > 12:
+                return False
+            identities = set()
+            for entry in category['entries']:
+                base_entry = {'identitySha256', 'kind', 'status'}
+                changed = {'fields', 'omittedFields', 'unknownFields'}
+                if (not isinstance(entry, dict) or set(entry) not in (base_entry, base_entry | changed)
+                        or not digest(entry['identitySha256'])
+                        or entry['identitySha256'] in identities
+                        or entry['kind'] not in _DIAGNOSTIC_KINDS | {'other'}
+                        or entry['status'] not in ('added', 'removed', 'changed')
+                        or (entry['status'] == 'changed') != ('fields' in entry)):
+                    return False
+                identities.add(entry['identitySha256'])
+                if entry['status'] != 'changed':
+                    continue
+                if (not isinstance(entry['fields'], list) or len(entry['fields']) > 8
+                        or not integer(entry['omittedFields'])
+                        or type(entry['unknownFields']) is not bool):
+                    return False
+                fields = set()
+                for field in entry['fields']:
+                    if (not isinstance(field, dict) or set(field) != {'field', 'expected', 'actual'}
+                            or field['field'] not in _DIAGNOSTIC_FIELDS or field['field'] in fields
+                            or not summary(field['expected']) or not summary(field['actual'])):
+                        return False
+                    fields.add(field['field'])
+        return len(canonical(value)) <= 65536
+    except (KeyError, TypeError, ValueError, OverflowError):
+        return False

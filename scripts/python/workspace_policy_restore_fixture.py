@@ -82,6 +82,30 @@ def private_write(path, data):
         stream.write(data)
 
 
+def retain_restore_failure(diagnostic, *, source_commit):
+    """Best-effort failed-stage evidence; never masks the original restore error."""
+    try:
+        from scripts.python.backup_security_manifest import validate_catalog_diagnostic
+
+        require_disposable()
+        run_id = os.environ.get('WORKSPACE_RESTORE_RUN_ID', '')
+        path = Path(os.environ.get('WORKSPACE_RESTORE_DIAGNOSTIC', ''))
+        if (not re.fullmatch(r'[0-9a-f]{32}', run_id)
+                or not re.fullmatch(r'[0-9a-f]{40}', source_commit)
+                or path.name != f'workspace-policy-failure-{run_id}.json'
+                or not validate_catalog_diagnostic(diagnostic)):
+            raise ValueError('invalid_diagnostic')
+        envelope = {'schemaVersion': 1, 'status': 'failed', 'stage': 'restore_security_catalog',
+                    'runId': run_id, 'sourceCommit': source_commit, 'diagnostic': diagnostic}
+        encoded = json.dumps(envelope, sort_keys=True).encode()
+        if len(encoded) > 65536:
+            raise ValueError('diagnostic_too_large')
+        private_write(path, encoded)
+    except Exception:
+        # No exception strings, arbitrary diagnostic values or paths in output.
+        print('restore_fixture:diagnostic_unavailable', file=sys.stderr, flush=True)
+
+
 class DisposableRestore:
     def __init__(self, root):
         require_disposable()
@@ -209,6 +233,7 @@ class DisposableRestore:
         return load_config(path)
 
     def backup_restore(self):
+        from scripts.python.backup_security_manifest import SecurityManifestError
         from scripts.python.production_backup import (
             _repeatable_read_snapshot,
             create_production_backup,
@@ -220,11 +245,15 @@ class DisposableRestore:
             config, runner=bounded_runner, snapshot_factory=_repeatable_read_snapshot,
         )
         receipt_path = Path(config['receiptRoot']) / (receipt['backupFile'].removesuffix('.tar.enc') + '.json')
-        result = restore_database_isolated(
-            config, receipt_path=receipt_path, restore_root=self.root / 'restored',
-            pg_service_file=Path(config['pgServiceFile']), pg_service='target',
-            expected_database=self.target, runner=bounded_runner,
-        )
+        try:
+            result = restore_database_isolated(
+                config, receipt_path=receipt_path, restore_root=self.root / 'restored',
+                pg_service_file=Path(config['pgServiceFile']), pg_service='target',
+                expected_database=self.target, runner=bounded_runner,
+            )
+        except SecurityManifestError as exc:
+            retain_restore_failure(exc.diagnostic, source_commit=config['sourceCommit'])
+            raise
         if (result.get('database') != self.target or result.get('securityVerified') is not True
                 or not re.fullmatch(
             r'[0-9a-f]{64}', str(result.get('securityManifestSha256', '')),
