@@ -12,6 +12,8 @@ BROWSER_SUITES = {
     "ACCOUNT": "account_acceptance",
     "SETTINGS": "settings_acceptance",
     "WORKSPACE": "workspace_acceptance",
+    "MEDIA_HC": "media_hc_acceptance",
+    "OPERATIONS_HC": "operations_hc_acceptance",
     "LAYOUT": "layout_acceptance",
     "VOLCANO": "volcano_acceptance",
     "JOURNEYS": "journeys_acceptance",
@@ -307,3 +309,153 @@ def test_workspace_divider_keeps_forced_color_accessibility_override():
     assert 'expect(paint.color).toEqual(paint.systemText)' in helper
     assert 'not.toEqual(paint.systemCanvas.slice(0, 3))' in helper
     assert 'emulateMedia' not in helper and 'forced-color-adjust' not in helper
+
+
+def test_workspace_forced_colors_is_a_real_context_option_and_observed_state():
+    config = (ROOT / 'react-app/playwright.workspace-release.config.mjs').read_text()
+    assert "contextOptions: { forcedColors: 'active' }" in config
+    assert "}, { forcedColors: 'active' })" not in config
+    source = (ROOT / 'react-app/e2e/workspace/workspace-release.spec.ts').read_text()
+    helper = (ROOT / 'react-app/e2e/forced-color-state.ts').read_text()
+    assert 'async function assertForcedColorState(' in helper
+    assert "matchMedia('(forced-colors: active)').matches" in helper
+    assert "matchMedia('(forced-colors: none)').matches" in helper
+    assert 'expect(state.active).toBe(expectedActive)' in helper
+    assert 'expect(state.none).toBe(!expectedActive)' in helper
+    assert source.count('await assertForcedColorState(page, testInfo)') >= 4
+    compact = "".join(source.split())
+    assert "expect.configure({soft:testInfo.project.name==='chromium-high-contrast',})" in compact
+    assert "comparison: testInfo.errors.length === errorsBefore ? 'passed' : 'failed'" in source
+    assert "status: failed ? 'failed' : 'passed'" in source
+    assert "failed ? 'assertions-completed-with-failures' : 'assertions-completed'" in source
+    assert 'maxDiffPixelRatio: 0.01' in source
+    assert 'emulateMedia' not in source
+
+
+def test_all_named_forced_color_configs_use_supported_context_options_without_playwright_import():
+    import json
+    import subprocess
+
+    # Evaluate only these local config objects with inert Playwright declarations;
+    # API-only CI intentionally has no npm browser dependencies installed.
+    loader = r"""
+const fs = require('node:fs'); const vm = require('node:vm');
+const paths = JSON.parse(process.argv[1]); const results = [];
+for (const path of paths) {
+  let source = fs.readFileSync(path, 'utf8');
+  const declaration = "import { defineConfig, devices } from '@playwright/test';";
+  if (!source.startsWith(declaration)) throw new Error('Unexpected config imports');
+  source = source.slice(declaration.length).replace('export default defineConfig(', 'result = defineConfig(');
+  if (/\bimport\s/.test(source)) throw new Error('Unexpected additional import');
+  let calls = 0;
+  const sandbox = {defineConfig(value) {calls++; return value;}, result: null,
+    devices: {'Desktop Chrome': {}, 'Desktop Firefox': {}, 'Desktop Safari': {}, 'iPhone 13': {}}};
+  vm.runInNewContext(source, sandbox, {filename: path, timeout: 1000});
+  if (calls !== 1) throw new Error('Config declaration missing');
+  results.push(sandbox.result.projects);
+}
+process.stdout.write(JSON.stringify(results));
+"""
+    names = ('workspace', 'media', 'operations', 'settings')
+    paths = [str(ROOT / f'react-app/playwright.{name}-release.config.mjs') for name in names]
+    receipt = ROOT / 'specs/106-production-readiness-program/operations-visual-runner.json'
+    receipt_before = receipt.read_bytes()
+    result = subprocess.run(['node', '-e', loader, json.dumps(paths)], check=True,
+                            capture_output=True, text=True, timeout=10)
+    assert receipt.read_bytes() == receipt_before  # Config inspection must never execute its reporter.
+    matrices = json.loads(result.stdout)
+    for name, projects in zip(names, matrices, strict=True):
+        active = []
+        for project in projects:
+            options = project['use']
+            assert 'forcedColors' not in options
+            forced = options.get('contextOptions', {}).get('forcedColors', 'none')
+            if 'high-contrast' in project['name']:
+                assert forced == 'active'
+                active.append(project['name'])
+            else:
+                assert forced == 'none'
+        assert len(active) == (2 if name == 'settings' else 1)
+
+
+def test_media_operations_keep_hard_comparisons_and_accepted_receipt_semantics():
+    for name in ('media', 'operations'):
+        source = (ROOT / f'react-app/e2e/{name}/{name}-release.spec.ts').read_text()
+        assert "from '../forced-color-state'" in source
+        assert 'test.beforeEach' in source and 'test.afterEach' in source
+        assert source.count('await assertForcedColorState(page, testInfo)') >= 4
+        assert "emulateMedia({ forcedColors:" not in source
+        assert 'expect.soft' not in source and 'expect.configure' not in source
+    operations = (ROOT / 'react-app/e2e/operations/operations-release.spec.ts').read_text()
+    assert operations.index('await expect(page).toHaveScreenshot(name') < operations.index('const acceptedCapture')
+    assert 'body: readFileSync(acceptedCapture)' in operations
+
+
+def test_forced_color_state_assertion_rejects_wrong_named_media_state():
+    import subprocess
+
+    script = r"""
+const fs = require('node:fs'); const vm = require('node:vm'); const assert = require('node:assert/strict');
+let source = fs.readFileSync(process.argv[1], 'utf8');
+source = source.replace("import { expect, type Page, type TestInfo } from '@playwright/test';", '')
+  .replace('export async function', 'async function').replace('page: Page, testInfo: TestInfo', 'page, testInfo');
+const sandbox = {expect(value) {return {toBe(expected) {assert.equal(value, expected);}};}};
+vm.runInNewContext(source, sandbox, {timeout: 1000});
+(async () => {
+  for (const name of ['chromium-high-contrast', 'chromium-light', 'firefox-desktop']) {
+    const active = name === 'chromium-high-contrast';
+    const info = {project: {name}};
+    assert.equal(await sandbox.assertForcedColorState({evaluate: async () => ({active, none: !active})}, info), active ? 'active' : 'none');
+    await assert.rejects(() => sandbox.assertForcedColorState({evaluate: async () => ({active: !active, none: active})}, info));
+    await assert.rejects(() => sandbox.assertForcedColorState({evaluate: async () => ({active, none: active})}, info));
+  }
+})().catch(error => {process.exitCode = 1; console.error(error);});
+"""
+    subprocess.run(['node', '-e', script, str(ROOT / 'react-app/e2e/forced-color-state.ts')],
+                   check=True, capture_output=True, text=True, timeout=10)
+
+
+def test_targeted_forced_color_runs_are_partial_diagnostics_not_full_visual_receipts():
+    steps = frontend_steps()
+    for area in ('media', 'operations'):
+        step = next(item for item in steps if item.get('id') == f'{area}_hc_acceptance')
+        assert f'npm run test:{area}-release -- --project=chromium-high-contrast --reporter=line' in step['run']
+        assert f'--output=../.artifacts/forced-colors-ci-${{{{ github.run_id }}}}-${{{{ github.run_attempt }}}}-{area}' in step['run']
+        assert 'continue-on-error' not in step
+    operations = next(item for item in steps if item.get('id') == 'operations_hc_acceptance')
+    assert 'sha256sum ../specs/106-production-readiness-program/operations-visual-runner.json' in operations['run']
+    assert '|| status=$?' in operations['run'] and 'exit "$status"' in operations['run']
+    assert 'git checkout' not in operations['run'] and 'git restore' not in operations['run']
+    upload = next(item for item in steps if item.get('name') == 'Retain targeted forced-color diagnostics')
+    assert upload['with']['path'].splitlines() == [
+        f'.artifacts/forced-colors-ci-${{{{ github.run_id }}}}-${{{{ github.run_attempt }}}}-{area}'
+        for area in ('media', 'operations')]
+    assert upload['with'].get('include-hidden-files', False) is False
+    assert upload['with']['if-no-files-found'] == 'warn'
+
+
+@pytest.mark.parametrize('command_status,mutate,expected', [(0, False, 0), (7, False, 7),
+                                                          (0, True, 1), (7, True, 7),
+                                                          (0, 'remove', 1), (7, 'remove', 7)])
+def test_partial_operations_run_preserves_failure_and_never_repairs_receipt(tmp_path, command_status, mutate, expected):
+    step = next(item for item in frontend_steps() if item.get('id') == 'operations_hc_acceptance')
+    work = tmp_path / 'react-app'
+    work.mkdir()
+    receipt = tmp_path / 'specs/106-production-readiness-program/operations-visual-runner.json'
+    receipt.parent.mkdir(parents=True)
+    receipt.write_text('accepted original')
+    binary = tmp_path / 'bin'
+    binary.mkdir()
+    npm = binary / 'npm'
+    mutation = f"rm '{receipt}'\n" if mutate == 'remove' else (f"printf changed > '{receipt}'\n" if mutate else '')
+    npm.write_text('#!/bin/sh\n' + mutation + f'exit {command_status}\n')
+    npm.chmod(0o700)
+    command = step['run'].replace('${{ github.run_id }}', '123').replace('${{ github.run_attempt }}', '1')
+    result = subprocess.run(['bash', '-c', command], cwd=work,
+                            env=dict(os.environ, PATH=str(binary) + os.pathsep + os.environ['PATH']),
+                            capture_output=True, text=True, timeout=10)
+    assert result.returncode == expected
+    if mutate == 'remove':
+        assert not receipt.exists()
+    else:
+        assert receipt.read_text() == ('changed' if mutate else 'accepted original')

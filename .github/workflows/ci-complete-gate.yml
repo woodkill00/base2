@@ -111,7 +111,12 @@ jobs:
           EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
-          test -z "$(git status --porcelain=v1 --untracked-files=all)"
+          status="$(git status --porcelain=v1 --untracked-files=all)"
+          if [[ -n "$status" ]]; then
+            # Paths only, quoted and bounded; never emit source/file contents.
+            printf '%s' "$status" | python3 -c 'import sys; rows = sys.stdin.read().splitlines(); print("dirty-source-count:", len(rows)); [print("dirty-source:", ascii(row[:240])) for row in rows[:20]]'
+          fi
+          test -z "$status"
           .venv-api/bin/python -m pytest scripts/tests/test_complete_gate_ci.py -q -o addopts= --no-cov
 
       - name: Produce real exact-head stability repetitions

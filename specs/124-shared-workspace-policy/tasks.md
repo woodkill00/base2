@@ -819,3 +819,42 @@ Full frontend753 tests plus27 tooling pass, focused17/lint/types/build are green
 53 fixture contracts and24 matrix cases collect. Actual native paint verification
 and pixel review remain pending. Root install-policy repair has85 focused checks
 and independent acceptance; neither repair changes locks, permissions or baselines.
+
+T38 normal-color native paint assertions and all24 workspace cases pass atc0c2751;
+actual desktop/tablet/mobile/light pixels show restored subtle lines and intact
+layout. Forced-color acceptance is NOT established by the conditional helper: the
+named project uses an unsupported top-level setting. Do not infer that axe reset
+it. Installed runner/type inspection confirms only contextOptions forwards that
+option. Workspace/media/operations share the configuration defect; settings is
+correct, and media-library's explicit prior runtime emulation was genuine.
+
+- [ ] T39 Correct the three forced-color context configurations and assert actual
+      expected media state across their specs. Preserve hard functional/axe/receipt
+      semantics, collect truthful workspace HC comparison failures, inspect genuine
+      pixels before reference corrections, and establish real native acceptance.
+
+Second complete-gate workflow41215984737 passed dependency/browser/font setup and
+both source-built images, then rejected post-setup source dirt before repetitions
+or any134checks. Fresh-Git reproduction shows the two generated service virtualenvs
+were not ignored (local private excludes had masked that). Root-only generated-env
+ignores plus bounded quoted path diagnostics are independently accepted with92
+checks; tracked edits/other untracked/nested paths and wrongSHA still fail. The prior
+hosted paths were not printed, so this is reproduced diagnosis, not observed path
+output from that run. No source reset, broad ignores or false pass receipt.
+
+T39 implementation is independently source-reviewed: explicit contextOptions and
+runtime active/none assertions, truthful HC-only workspace comparison batching,
+and six additional targeted media/operations HC cases in native CI. The targeted
+operations run uses line reporter and checks its tracked full-matrix receipt remains
+unchanged, preserving original command failure even if receipt reads fail. Reviewed
+reference files and visual-review manifests remain untouched.74 focused contracts,
+fixture types and all configured collections pass; genuine native state/pixels are
+not yet accepted. The accidental --list empty operations receipt was preserved for
+diagnosis and restored exactly to HEAD, never accepted as new evidence; subsequent
+collection uses explicit line reporter and verifies unchanged bytes.
+
+Existing operations visual-review metadata already drifts from11 published sources
+before this repair. Obtain fresh full-matrix evidence and source-bound review later;
+never merely rehash it as accepted. Next publication is for genuine-state diagnostics.
+Do not invoke the expensive complete gate again until those visual prerequisites
+are established. The two prior complete-gate workflows executed zero gate checks.

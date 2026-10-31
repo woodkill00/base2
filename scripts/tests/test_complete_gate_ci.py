@@ -268,3 +268,93 @@ def test_root_install_matches_existing_locked_security_peer_policy():
     root_install = [line for line in dependencies.splitlines()
                     if line.startswith('npm ci') and '--prefix' not in line]
     assert root_install == [root_audit] == [root_licenses] == ['npm ci --legacy-peer-deps']
+
+
+def fresh_source_repository(root):
+    environment = {'PATH': '/usr/bin:/bin', 'HOME': str(root),
+                   'GIT_CONFIG_NOSYSTEM': '1', 'GIT_CONFIG_GLOBAL': '/dev/null'}
+
+    def git(*args):
+        return subprocess.run(['git', *args], cwd=root, env=environment,
+                              text=True, capture_output=True, timeout=10, check=True).stdout.strip()
+
+    git('init', '-q')
+    (root / '.gitignore').write_text((ROOT / '.gitignore').read_text())
+    (root / 'source.txt').write_text('original source\n')
+    git('add', '.gitignore', 'source.txt')
+    git('-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.invalid',
+        '-c', 'commit.gpgsign=false', '-c', 'core.hooksPath=/dev/null',
+        'commit', '-qm', 'isolated source fixture')
+    return git, environment
+
+
+def run_source_guard(root, sha, environment):
+    clean = next(step['run'] for step in workflow()['jobs']['complete-gate']['steps']
+                 if step.get('id') == 'clean')
+    guard = clean.split('.venv-api/bin/python -m pytest', 1)[0]
+    return subprocess.run(['bash', '-e', '-o', 'pipefail', '-c', guard], cwd=root,
+                          env={**environment, 'EXPECTED_SHA': sha}, text=True,
+                          capture_output=True, timeout=10, check=False)
+
+
+def test_fresh_checkout_generated_environments_do_not_dirty_source(tmp_path):
+    git, environment = fresh_source_repository(tmp_path)
+    sha = git('rev-parse', 'HEAD')
+    for name in ['.venv', '.venv-api', '.venv-django']:
+        (tmp_path / name).mkdir()
+        (tmp_path / name / 'pyvenv.cfg').write_text('synthetic generated environment\n')
+    assert git('status', '--porcelain=v1', '--untracked-files=all') == ''
+    assert run_source_guard(tmp_path, sha, environment).returncode == 0
+
+
+@pytest.mark.parametrize('change', ['tracked', 'untracked', 'nested-environment'])
+def test_generated_ignores_do_not_hide_other_source_changes(tmp_path, change):
+    git, environment = fresh_source_repository(tmp_path)
+    sha = git('rev-parse', 'HEAD')
+    paths = {'tracked': 'source.txt', 'untracked': 'other.txt',
+             'nested-environment': 'nested/.venv-api/source.py'}
+    path = tmp_path / paths[change]
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text('changed source\n')
+    result = run_source_guard(tmp_path, sha, environment)
+    assert result.returncode != 0
+    assert 'dirty-source:' in result.stdout
+    assert paths[change] in result.stdout
+
+
+def test_dirty_source_diagnostics_are_quoted_bounded_paths_only(tmp_path):
+    git, environment = fresh_source_repository(tmp_path)
+    sha = git('rev-parse', 'HEAD')
+    for number in range(30):
+        name = f'{number:02d}-::warning::\n' + 'x' * 180
+        (tmp_path / name).write_text('NEVER_EMIT_FILE_CONTENTS')
+    result = run_source_guard(tmp_path, sha, environment)
+    assert result.returncode != 0
+    lines = result.stdout.splitlines()
+    assert lines[0] == 'dirty-source-count: 30'
+    assert len(lines) == 21
+    assert all(line.startswith("dirty-source: '") for line in lines[1:])
+    assert all(len(line) <= 1000 for line in lines)
+    assert 'NEVER_EMIT_FILE_CONTENTS' not in result.stdout
+
+
+def test_generated_ignore_does_not_hide_changes_to_already_tracked_file(tmp_path):
+    git, environment = fresh_source_repository(tmp_path)
+    path = tmp_path / '.venv-api/tracked.txt'
+    path.parent.mkdir()
+    path.write_text('tracked original')
+    git('add', '-f', '.venv-api/tracked.txt')
+    git('-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.invalid',
+        '-c', 'commit.gpgsign=false', '-c', 'core.hooksPath=/dev/null',
+        'commit', '-qm', 'tracked-file negative fixture')
+    sha = git('rev-parse', 'HEAD')
+    path.write_text('changed tracked source')
+    result = run_source_guard(tmp_path, sha, environment)
+    assert result.returncode != 0
+    assert '.venv-api/tracked.txt' in result.stdout
+
+
+def test_clean_guard_still_rejects_different_source_sha(tmp_path):
+    _, environment = fresh_source_repository(tmp_path)
+    result = run_source_guard(tmp_path, '0' * 40, environment)
+    assert result.returncode != 0

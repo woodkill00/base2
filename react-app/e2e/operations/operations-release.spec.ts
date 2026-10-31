@@ -1,3 +1,4 @@
+import { assertForcedColorState } from '../forced-color-state';
 import { setSessionFixture, fulfillSessionFixture, getSessionFixture } from '../session-fixture';
 import { expect, test } from '@playwright/test';
 import { readFileSync } from 'node:fs';
@@ -18,8 +19,11 @@ async function captureCurrentRun(page, testInfo, name, maxDiffPixelRatio = 0.01)
     window.scrollTo(0, 0);
   });
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
+  await assertForcedColorState(page, testInfo);
   await expect(page).toHaveScreenshot(name, { ...options, maxDiffPixelRatio });
+  await assertForcedColorState(page, testInfo);
   await page.screenshot({ ...options, path: testInfo.outputPath(`current-${name}`) });
+  await assertForcedColorState(page, testInfo);
   const acceptedCapture = testInfo.snapshotPath(name);
   await testInfo.attach(`visual:${basename(testInfo.snapshotPath(name))}`, {
     // Attach the exact snapshot that Playwright just compared successfully.
@@ -30,7 +34,12 @@ async function captureCurrentRun(page, testInfo, name, maxDiffPixelRatio = 0.01)
   });
 }
 
+test.afterEach(async ({ page }, testInfo) => {
+  await assertForcedColorState(page, testInfo);
+});
+
 test.beforeEach(async ({ page }, testInfo) => {
+  await assertForcedColorState(page, testInfo);
   // Exercise an explicit owner preference, not merely the OS hint: Obsidian defaults dark.
   if (testInfo.project.name === 'chromium-light') {
     await page

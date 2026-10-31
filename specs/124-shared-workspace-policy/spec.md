@@ -214,3 +214,22 @@ Restore the intended color only on Records list items using the existing explici
 border utility, preserving divider widths, layout and all other components. Add a
 native computed-paint assertion so a large screenshot's tolerance cannot mask this
 specific defect. No global stylesheet/framework change or baseline update is allowed.
+
+### Genuine forced-color test states
+
+Installed Playwright forwards forcedColors through BrowserContextOptions, not the
+ignored top-level test-use key currently present in workspace/media/operations
+configs. Correct only those three configuration mappings. Runtime assertions must
+verify named high-contrast projects actually match forced-colors:active and standard
+projects none, before and after relevant checks/captures; do not infer state from a
+project name, a conditional branch passing or a normal-looking screenshot. Settings
+already uses correct nesting; media-library's explicit prior emulation remains valid
+historical evidence, unlike its unverified sibling scenarios.
+
+Do not alter product colors, force-color-adjust, thresholds or baselines to conceal
+invalid prior state evidence. Workspace high-contrast screenshot comparisons may
+collect all four failures softly only while retaining overall test/job failure and
+truthful per-view/final status. Functional, axe and media-state checks remain hard.
+Media/operations retain hard comparisons and accepted-visual receipt semantics;
+failed captures must never be presented as accepted visual artifacts. Review genuine
+state pixels before any correction to invalid reference images.

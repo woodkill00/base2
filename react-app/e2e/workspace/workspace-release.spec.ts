@@ -1,3 +1,4 @@
+import { assertForcedColorState } from '../forced-color-state';
 import { setSessionFixture, fulfillSessionFixture } from '../session-fixture';
 import { expect, test } from '@playwright/test';
 import { readFileSync } from 'node:fs';
@@ -286,8 +287,27 @@ test('workspace release corpus is accessible, responsive, and visually stable', 
     project: testInfo.project.name,
     sourceCommit: process.env.GITHUB_SHA || null,
   };
-  const captures: Array<{ view: string; file: string; reference: string }> = [];
-  const retainCapture = async (view: string, reference: string) => {
+  const captures: Array<{
+    view: string;
+    file: string;
+    reference: string;
+    comparison: string;
+    forcedColors: string;
+  }> = [];
+  // Only stale HC image references are batched; functional/state/axe assertions remain hard.
+  const visualExpect = expect.configure({
+    soft: testInfo.project.name === 'chromium-high-contrast',
+  });
+  const compareAndRetain = async (view: string, reference: string) => {
+    await assertForcedColorState(page, testInfo);
+    const errorsBefore = testInfo.errors.length;
+    await visualExpect(page).toHaveScreenshot(reference, {
+      fullPage: true,
+      animations: 'disabled',
+      caret: 'hide',
+      maxDiffPixelRatio: 0.01,
+    });
+    await assertForcedColorState(page, testInfo);
     const file = `workspace-${view}-post-assert.png`;
     await page.screenshot({
       path: testInfo.outputPath(file),
@@ -295,7 +315,14 @@ test('workspace release corpus is accessible, responsive, and visually stable', 
       animations: 'disabled',
       caret: 'hide',
     });
-    captures.push({ view, file, reference });
+    const forcedColors = await assertForcedColorState(page, testInfo);
+    captures.push({
+      view,
+      file,
+      reference,
+      forcedColors,
+      comparison: testInfo.errors.length === errorsBefore ? 'passed' : 'failed',
+    });
   };
   await page.goto('/workspace');
   await expect(page.getByRole('heading', { name: /records · universal articles/i })).toBeVisible();
@@ -303,6 +330,7 @@ test('workspace release corpus is accessible, responsive, and visually stable', 
   await expect(newRecord).toBeVisible();
   await expect(newRecord).toBeEnabled();
   await assertUsable(page);
+  await assertForcedColorState(page, testInfo);
   await assertRecordDivider(page);
   // Axe does not check non-text SVG contrast: the original edge-tab icon must
   // inherit its contrasting foreground, rather than the unrelated header color.
@@ -326,30 +354,19 @@ test('workspace release corpus is accessible, responsive, and visually stable', 
     testInfo.outputPath('workspace-accessibility.json'),
     JSON.stringify({ ...evidence, violations }, null, 2)
   );
+  await assertForcedColorState(page, testInfo);
   expect(violations).toEqual([]);
   await page.keyboard.press('Tab');
   await expect(page.locator(':focus')).toBeVisible();
   await expect(page.locator('.volcano-header-frame')).toHaveCSS('position', 'sticky');
   await prepareStableFullPageCapture(page);
-  await expect(page).toHaveScreenshot(`workspace-records-${testInfo.project.name}.png`, {
-    fullPage: true,
-    animations: 'disabled',
-    caret: 'hide',
-    maxDiffPixelRatio: 0.01,
-  });
-  await retainCapture('records', `workspace-records-${testInfo.project.name}.png`);
+  await compareAndRetain('records', `workspace-records-${testInfo.project.name}.png`);
 
   await page.getByRole('tab', { name: 'Schemas' }).click();
   await expect(page.getByRole('heading', { name: /schema · universal articles/i })).toBeVisible();
   await page.evaluate(() => scrollTo(0, 0));
   await assertUsable(page);
-  await expect(page).toHaveScreenshot(`workspace-schema-${testInfo.project.name}.png`, {
-    fullPage: true,
-    animations: 'disabled',
-    caret: 'hide',
-    maxDiffPixelRatio: 0.01,
-  });
-  await retainCapture('schema', `workspace-schema-${testInfo.project.name}.png`);
+  await compareAndRetain('schema', `workspace-schema-${testInfo.project.name}.png`);
 
   for (const tab of ['Imports', 'Exports']) {
     await page.getByRole('tab', { name: tab }).click();
@@ -358,19 +375,22 @@ test('workspace release corpus is accessible, responsive, and visually stable', 
     ).toBeVisible();
     await page.evaluate(() => scrollTo(0, 0));
     await assertUsable(page);
-    await expect(page).toHaveScreenshot(
-      `workspace-${tab.toLowerCase()}-${testInfo.project.name}.png`,
-      { fullPage: true, animations: 'disabled', caret: 'hide', maxDiffPixelRatio: 0.01 }
-    );
-    await retainCapture(
+    await compareAndRetain(
       tab.toLowerCase(),
       `workspace-${tab.toLowerCase()}-${testInfo.project.name}.png`
     );
   }
+  const failed = testInfo.errors.length > 0;
   await writeFile(
     testInfo.outputPath('workspace-release-summary.json'),
     JSON.stringify(
-      { ...evidence, phase: 'assertions-completed', captures, comparisonThresholdUnchanged: 0.01 },
+      {
+        ...evidence,
+        status: failed ? 'failed' : 'passed',
+        phase: failed ? 'assertions-completed-with-failures' : 'assertions-completed',
+        captures,
+        comparisonThresholdUnchanged: 0.01,
+      },
       null,
       2
     )

@@ -505,3 +505,14 @@ opaque-gray separator as its own bounded visual correction. Give Records list it
 an existing nonzero-specificity white/10 border color, retaining existing divide
 geometry. Unit/source regression precedes change; native computed-paint assertion
 and unchanged visual baselines verify actual rendering across the existing matrix.
+
+### Forced-color configuration and evidence repair
+
+The c0c2751 passing matrix proves normal-color divider rendering, not necessarily
+forced mode: unsupported top-level forcedColors can make a conditional helper take
+its normal branch. Correct workspace/media/operations to contextOptions, add a shared
+runtime expected-state assertion and source contracts, preserving existing settings
+and valid media-library coverage. Retain all genuine workspace HC captures through
+soft comparison failure batching with explicit failed summaries; never weaken exit
+status or media/operations accepted-artifact guards. No product CSS or baseline edit
+until genuine rendering is inspected. Actual native execution is mandatory.

@@ -1,3 +1,4 @@
+import { assertForcedColorState } from '../forced-color-state';
 import { setSessionFixture, fulfillSessionFixture } from '../session-fixture';
 import { expect, test } from '@playwright/test';
 import { readFileSync } from 'node:fs';
@@ -32,7 +33,12 @@ const assets = [
   version: index + 1,
 }));
 
+test.afterEach(async ({ page }, testInfo) => {
+  await assertForcedColorState(page, testInfo);
+});
+
 test.beforeEach(async ({ page }, testInfo) => {
+  await assertForcedColorState(page, testInfo);
   // Exercise an explicit owner preference, not merely the OS hint: Obsidian defaults dark.
   if (testInfo.project.name === 'chromium-light') {
     await page
@@ -106,7 +112,7 @@ test('media detail preserves safe preview usage and consequence context', async 
   await page.goto('/media');
   if (testInfo.project.name === 'chromium-rtl') {
     await page.locator('html').evaluate((node) => {
-      node.dir = 'rtl';
+      node.setAttribute('dir', 'rtl');
     });
   }
   await page.getByRole('button', { name: 'View details' }).first().click();
@@ -187,6 +193,7 @@ test('media detail preserves safe preview usage and consequence context', async 
       return Math.abs(dialogBox.y + dialogBox.height - (applyingBox.y + applyingBox.height));
     })
     .toBeLessThanOrEqual(2);
+  await assertForcedColorState(page, testInfo);
   await expect(dialog).toHaveScreenshot(`media-detail-${testInfo.project.name}.png`, {
     animations: 'disabled',
     caret: 'hide',
@@ -197,6 +204,7 @@ test('media detail preserves safe preview usage and consequence context', async 
     animations: 'disabled',
     caret: 'hide',
   });
+  await assertForcedColorState(page, testInfo);
   releaseLifecycle();
   await expect(dialog.getByRole('heading', { name: 'Archive and deletion safety' })).toBeFocused();
   await expect(dialog.getByRole('status')).toContainText('soft deleted completed.');
@@ -209,7 +217,7 @@ test('media picker is visually and keyboard contained in a real workflow', async
   await page.goto('/media');
   if (testInfo.project.name === 'chromium-rtl') {
     await page.locator('html').evaluate((node) => {
-      node.dir = 'rtl';
+      node.setAttribute('dir', 'rtl');
     });
   }
   const opener = page.getByRole('button', { name: 'Choose existing media' });
@@ -233,6 +241,7 @@ test('media picker is visually and keyboard contained in a real workflow', async
       nodes: item.nodes.map((node) => ({ target: node.target, summary: node.failureSummary })),
     }))
   ).toEqual([]);
+  await assertForcedColorState(page, testInfo);
   await expect(picker).toHaveScreenshot(`media-picker-${testInfo.project.name}.png`, {
     animations: 'disabled',
     caret: 'hide',
@@ -243,6 +252,7 @@ test('media picker is visually and keyboard contained in a real workflow', async
     animations: 'disabled',
     caret: 'hide',
   });
+  await assertForcedColorState(page, testInfo);
   await picker.getByRole('button', { name: 'Use selected media' }).click();
   await expect(opener).toBeFocused();
   await expect(page.getByText('1 existing media item chosen for reuse.')).toBeVisible();
@@ -263,7 +273,7 @@ test('media library is accessible responsive and visually reviewed', async ({ pa
   }
   if (testInfo.project.name === 'chromium-rtl') {
     await page.locator('html').evaluate((node) => {
-      node.dir = 'rtl';
+      node.setAttribute('dir', 'rtl');
     });
     await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
   }
@@ -273,10 +283,7 @@ test('media library is accessible responsive and visually reviewed', async ({ pa
       true
     );
   }
-  if (testInfo.project.name === 'chromium-high-contrast') {
-    await page.emulateMedia({ forcedColors: 'active' });
-    expect(await page.evaluate(() => matchMedia('(forced-colors: active)').matches)).toBe(true);
-  }
+  await assertForcedColorState(page, testInfo);
   if (testInfo.project.name === 'chromium-reduced-motion') {
     await page.emulateMedia({ reducedMotion: 'reduce' });
     expect(await page.evaluate(() => matchMedia('(prefers-reduced-motion: reduce)').matches)).toBe(
@@ -389,6 +396,7 @@ test('media library is accessible responsive and visually reviewed', async ({ pa
   await page.addStyleTag({
     content: '.volcano-header-frame { position: static !important; }',
   });
+  await assertForcedColorState(page, testInfo);
   await expect(page).toHaveScreenshot(`media-library-${testInfo.project.name}.png`, {
     fullPage: true,
     animations: 'disabled',
@@ -401,6 +409,7 @@ test('media library is accessible responsive and visually reviewed', async ({ pa
     animations: 'disabled',
     caret: 'hide',
   });
+  await assertForcedColorState(page, testInfo);
 });
 
 declare global {
