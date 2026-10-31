@@ -1,6 +1,8 @@
 import { setSessionFixture, fulfillSessionFixture } from '../session-fixture';
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page, type TestInfo } from '@playwright/test';
+import type { AxeResults } from 'axe-core';
 import { readFileSync } from 'node:fs';
+import { writeFile } from 'node:fs/promises';
 
 const axeSource = readFileSync('node_modules/axe-core/axe.min.js', 'utf8');
 const user = {
@@ -20,11 +22,135 @@ const categoryIds = [
   'organization',
   'developer',
 ];
+const requiredColorRepresentatives = [
+  '.app-shell > header .text-lg',
+  '.tracking-tight',
+  '#settings-detail .base2-card strong',
+  '#settings-detail .base2-card .opacity-70',
+  '.app-shell-footer > span',
+];
+
+async function saveJson(testInfo: TestInfo, name: string, data: unknown) {
+  const path = testInfo.outputPath(`${name}.json`);
+  await writeFile(path, JSON.stringify(data, null, 2));
+  await testInfo.attach(name, { path, contentType: 'application/json' });
+}
+
+async function colorDiagnostics(page: Page, failureSelectors: string[] = []) {
+  return page.evaluate(
+    ({ selectors, requiredRepresentatives }) => {
+      const inspect = (element: Element) => {
+        const style = getComputedStyle(element);
+        const opacityChain = [];
+        let effectiveOpacity = 1;
+        for (let current: Element | null = element; current; current = current.parentElement) {
+          const currentStyle = getComputedStyle(current);
+          const opacity = Number(currentStyle.opacity);
+          effectiveOpacity *= opacity;
+          opacityChain.push({
+            tag: current.tagName,
+            id: current.id,
+            classes: [...current.classList],
+            opacity,
+            forcedColorAdjust: currentStyle.forcedColorAdjust,
+          });
+        }
+        return {
+          tag: element.tagName,
+          text: element.textContent?.trim().slice(0, 120),
+          color: style.color,
+          textFillColor: style.getPropertyValue('-webkit-text-fill-color'),
+          backgroundColor: style.backgroundColor,
+          backgroundImage: style.backgroundImage,
+          opacity: style.opacity,
+          effectiveOpacity,
+          opacityChain,
+          forcedColorAdjust: style.forcedColorAdjust,
+          fontSize: style.fontSize,
+          fontWeight: style.fontWeight,
+        };
+      };
+      const probe = document.createElement('div');
+      probe.style.cssText =
+        'background-color:Canvas;color:CanvasText;position:fixed;width:1px;height:1px';
+      document.body.append(probe);
+      const systemColors = inspect(probe);
+      probe.remove();
+      const representative = [
+        'html',
+        'body',
+        '.app-shell-root',
+        '.settings-kicker',
+        '.page-content h1',
+        'label[for="settings-search"]',
+        '#settings-search',
+        '.settings-layout-grid nav a[aria-current="page"]',
+        '#settings-detail h2',
+        '[data-forced-color-control]',
+        ...requiredRepresentatives,
+        ...selectors,
+      ];
+      const elements = representative.map((selector) => {
+        try {
+          return { selector, nodes: [...document.querySelectorAll(selector)].map(inspect) };
+        } catch (error) {
+          return { selector, error: String(error), nodes: [] };
+        }
+      });
+      return {
+        media: {
+          forcedColors: matchMedia('(forced-colors: active)').matches,
+          dark: matchMedia('(prefers-color-scheme: dark)').matches,
+          light: matchMedia('(prefers-color-scheme: light)').matches,
+        },
+        systemColors,
+        elements,
+        missingRequiredRepresentatives: requiredRepresentatives.filter(
+          (selector) => !elements.find((element) => element.selector === selector)?.nodes.length
+        ),
+      };
+    },
+    { selectors: failureSelectors, requiredRepresentatives: requiredColorRepresentatives }
+  );
+}
+
+async function audit(page: Page, testInfo: TestInfo, name: string) {
+  // The engine, complete-document context, rules and thresholds are unchanged.
+  const results = await page.evaluate(async () => {
+    const axe = (window as unknown as { axe: typeof import('axe-core') }).axe;
+    return axe.run(document, { resultTypes: ['violations'] });
+  });
+  await saveJson(testInfo, name, results);
+  const selectors = results.violations.flatMap((violation) =>
+    violation.nodes.flatMap((node) =>
+      node.target.filter((target): target is string => typeof target === 'string')
+    )
+  );
+  await saveJson(testInfo, `${name}-colors`, await colorDiagnostics(page, selectors));
+  return results;
+}
+
+async function capture(page: Page, testInfo: TestInfo, name: string) {
+  await page.evaluate(() => window.scrollTo({ top: 0, left: 0, behavior: 'instant' }));
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
+  const path = testInfo.outputPath(`${name}.png`);
+  const bytes = await page.screenshot({
+    path,
+    fullPage: true,
+    animations: 'disabled',
+    caret: 'hide',
+  });
+  await testInfo.attach(name, { path, contentType: 'image/png' });
+  return bytes;
+}
 
 test.beforeEach(async ({ page }, testInfo) => {
+  const forcedColors = testInfo.project.use.contextOptions?.forcedColors === 'active';
+  const colorScheme = testInfo.project.use.colorScheme === 'light' ? 'light' : 'dark';
   await page.emulateMedia({
     reducedMotion: 'reduce',
-    forcedColors: testInfo.project.name === 'chromium-high-contrast' ? 'active' : 'none',
+    forcedColors: forcedColors ? 'active' : 'none',
+    colorScheme,
   });
   setSessionFixture(page, user);
   await page.route('**/*', async (route) => {
@@ -60,9 +186,17 @@ test.beforeEach(async ({ page }, testInfo) => {
       '*,*::before,*::after{animation-duration:0s!important;transition-duration:0s!important;scroll-behavior:auto!important}',
   });
   await expect(page.locator('#settings-detail')).not.toHaveAttribute('aria-busy', 'true');
-  expect(await page.evaluate(() => matchMedia('(prefers-reduced-motion: reduce)').matches)).toBe(true);
+  expect(await page.evaluate(() => matchMedia('(prefers-reduced-motion: reduce)').matches)).toBe(
+    true
+  );
   expect(await page.evaluate(() => matchMedia('(forced-colors: active)').matches)).toBe(
-    testInfo.project.name === 'chromium-high-contrast'
+    forcedColors
+  );
+  expect(await page.evaluate(() => matchMedia('(prefers-color-scheme: dark)').matches)).toBe(
+    colorScheme === 'dark'
+  );
+  expect(await page.evaluate(() => matchMedia('(prefers-color-scheme: light)').matches)).toBe(
+    colorScheme === 'light'
   );
 });
 
@@ -70,14 +204,114 @@ test('release profile remains readable, reachable, accessible, and visually stab
   page,
 }, testInfo) => {
   await page.addScriptTag({ content: axeSource });
-  const violations = await page.evaluate(async () =>
-    (await window.axe.run(document, { resultTypes: ['violations'] })).violations
-  );
-  await testInfo.attach('settings-accessibility-results', {
-    body: Buffer.from(JSON.stringify(violations, null, 2)),
-    contentType: 'application/json',
-  });
-  expect(violations).toEqual([]);
+  const beforeColors = await colorDiagnostics(page);
+  await saveJson(testInfo, 'settings-native-colors', beforeColors);
+  // Capture before axe or assertions so a contrast failure still has real pixels.
+  const beforePixels = await capture(page, testInfo, 'settings-release-before-axe');
+  const results = await audit(page, testInfo, 'settings-accessibility-results');
+  expect(
+    beforeColors.missingRequiredRepresentatives,
+    'original failing shell, brand, card and footer text must remain in the color diagnostics'
+  ).toEqual([]);
+
+  if (testInfo.project.use.contextOptions?.forcedColors === 'active') {
+    const expectedCanvas =
+      testInfo.project.use.colorScheme === 'light' ? 'rgb(255, 255, 255)' : 'rgb(0, 0, 0)';
+    const expectedCanvasText =
+      testInfo.project.use.colorScheme === 'light' ? 'rgb(0, 0, 0)' : 'rgb(255, 255, 255)';
+    expect(beforeColors.systemColors.backgroundColor).toBe(expectedCanvas);
+    expect(beforeColors.systemColors.color).toBe(expectedCanvasText);
+    const body = beforeColors.elements.find((item) => item.selector === 'body')?.nodes[0];
+    expect(body?.backgroundColor).toBe(expectedCanvas);
+    expect(body?.forcedColorAdjust).toBe('auto');
+    for (const selector of [
+      '.settings-kicker',
+      '.page-content h1',
+      'label[for="settings-search"]',
+    ]) {
+      const element = beforeColors.elements.find((item) => item.selector === selector)?.nodes[0];
+      expect(element, `missing representative color diagnostic: ${selector}`).toBeDefined();
+      expect(element?.color).toBe(expectedCanvasText);
+      expect(element?.textFillColor).toBeTruthy();
+      expect(element?.forcedColorAdjust).toBe('auto');
+      expect(Number(element?.opacity)).toBeGreaterThan(0);
+    }
+
+    const beforeMarkup = await page.locator('body').innerHTML();
+    let negativeResults: AxeResults | undefined;
+    let negativeColors: Awaited<ReturnType<typeof colorDiagnostics>> | undefined;
+    try {
+      await page.evaluate(() => {
+        const controls = document.createElement('div');
+        controls.id = 'forced-color-negative-controls';
+        controls.style.cssText =
+          'padding:24px;background-color:Canvas;color:CanvasText;forced-color-adjust:auto';
+        const optedOut = document.createElement('p');
+        optedOut.id = 'forced-color-opt-out-low-contrast';
+        optedOut.dataset.forcedColorControl = 'opt-out';
+        optedOut.style.cssText =
+          'font:400 16px/24px sans-serif;color:rgb(120,120,120);background-color:rgb(125,125,125);forced-color-adjust:none';
+        optedOut.textContent =
+          'Negative control: author colors remain unreadable when forced colors are opted out.';
+        const lowOpacity = document.createElement('p');
+        lowOpacity.id = 'forced-color-auto-low-opacity';
+        lowOpacity.dataset.forcedColorControl = 'auto-opacity';
+        lowOpacity.style.cssText =
+          'font:400 16px/24px sans-serif;color:CanvasText;background-color:Canvas;opacity:0.1;forced-color-adjust:auto';
+        lowOpacity.textContent =
+          'Negative control: automatic system colors do not repair deliberately low text opacity.';
+        controls.append(optedOut, lowOpacity);
+        document.querySelector('#settings-detail')!.append(controls);
+      });
+      negativeColors = await colorDiagnostics(page);
+      await saveJson(testInfo, 'settings-negative-control-colors', negativeColors);
+      await capture(page, testInfo, 'settings-negative-controls-before-axe');
+      negativeResults = await audit(page, testInfo, 'settings-negative-control-accessibility');
+    } finally {
+      await page
+        .locator('#forced-color-negative-controls')
+        .evaluateAll((nodes) => nodes.forEach((node) => node.remove()));
+    }
+
+    const afterColors = await colorDiagnostics(page);
+    await saveJson(testInfo, 'settings-restored-native-colors', afterColors);
+    const afterPixels = await capture(page, testInfo, 'settings-release-restored-after-controls');
+    const restored = await audit(page, testInfo, 'settings-restored-accessibility-results');
+    expect(await page.locator('body').innerHTML()).toBe(beforeMarkup);
+    expect(afterColors).toEqual(beforeColors);
+    expect(
+      Buffer.compare(beforePixels, afterPixels),
+      'temporary controls must not alter the restored page pixels'
+    ).toBe(0);
+    const controls = negativeColors?.elements.find(
+      (item) => item.selector === '[data-forced-color-control]'
+    )?.nodes;
+    expect(controls).toHaveLength(2);
+    expect(controls?.[0]).toMatchObject({
+      color: 'rgb(120, 120, 120)',
+      backgroundColor: 'rgb(125, 125, 125)',
+      forcedColorAdjust: 'none',
+      opacity: '1',
+    });
+    expect(controls?.[1]).toMatchObject({
+      color: expectedCanvasText,
+      backgroundColor: expectedCanvas,
+      forcedColorAdjust: 'auto',
+      opacity: '0.1',
+    });
+    for (const id of ['forced-color-opt-out-low-contrast', 'forced-color-auto-low-opacity']) {
+      expect(
+        negativeResults?.violations.some(
+          (violation) =>
+            violation.id === 'color-contrast' &&
+            violation.nodes.some((node) => node.target.includes(`#${id}`))
+        ),
+        `the unchanged axe contrast rule must reject ${id}`
+      ).toBe(true);
+    }
+    expect(restored.violations).toEqual([]);
+  }
+  expect(results.violations).toEqual([]);
   const horizontalEscape = await page.evaluate(() =>
     [...document.querySelectorAll<HTMLElement>('body *')]
       .filter((node) => {
@@ -110,11 +344,3 @@ test('release profile remains readable, reachable, accessible, and visually stab
     maxDiffPixelRatio: 0.01,
   });
 });
-
-declare global {
-  interface Window {
-    axe: {
-      run: (root: Document, options?: unknown) => Promise<{ violations: Array<{ id: string }> }>;
-    };
-  }
-}

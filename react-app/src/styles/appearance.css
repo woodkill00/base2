@@ -1,5 +1,11 @@
 /* Preferences are opt-in. Comfortable/standard/full leave the approved
    Obsidian/Volcano geometry and palette untouched. */
+@media (forced-colors: active) {
+  body {
+    background-color: Canvas;
+  }
+}
+
 html[data-motion='reduced'],
 html[data-motion='reduced'] *,
 html[data-motion='reduced'] *::before,

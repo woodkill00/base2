@@ -62,3 +62,17 @@ test('standard light kicker inherits the actual page text, not an opposite-theme
   document.documentElement.dataset.colorMode = 'dark';
   expect(getComputedStyle(kicker).color).toBe('rgb(196, 180, 255)');
 });
+
+test('only forced-colors exposes the native Canvas backdrop without overriding user colors', () => {
+  const rules = [...style.sheet.cssRules];
+  const forced = rules.find((rule) => rule.conditionText === '(forced-colors: active)');
+  expect(forced, 'the body backdrop must be observable only in forced-colors mode').toBeDefined();
+  expect(forced.cssRules).toHaveLength(1);
+  const bodyRule = forced.cssRules[0];
+  expect(bodyRule.selectorText).toBe('body');
+  expect(bodyRule.style.length).toBe(1);
+  expect(bodyRule.style.getPropertyValue('background-color').toLowerCase()).toBe('canvas');
+  expect(bodyRule.style.getPropertyPriority('background-color')).toBe('');
+  expect(rules.some((rule) => rule.selectorText === 'body')).toBe(false);
+  expect(appearanceCss).not.toContain('forced-color-adjust:');
+});
