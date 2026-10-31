@@ -881,3 +881,51 @@ def test_worker_policy_read_after_lock_wait_observes_committed_policy(workspace_
                 writer.commit()
             result = future.result(timeout=5)
         assert result['version'] == version and result['require_review'] is False
+
+
+@pytest.mark.parametrize('visibility', ['public', 'authenticated'])
+def test_member_asset_detail_joins_safe_variant_and_issues_bound_grant(
+    workspace_policy_fixture, monkeypatch, visibility,
+):
+    from api.security.content_workspace import CursorCodec
+    from api.settings import settings
+
+    f = workspace_policy_fixture
+    monkeypatch.setattr(settings, 'TOKEN_PEPPER', 'synthetic-asset-detail-key-124')
+    asset, variant = uuid4(), uuid4()
+    requester = f"user:{f['creator_id']}"
+    f['execute'](
+        """INSERT INTO sitecontent_mediaasset
+        (id,site_id,storage_key,original_name,media_type,byte_size,sha256,status,
+         owner_ref,attribution,metadata,visibility,lock_version,current_object_version,authorization_epoch,
+         created_at,updated_at)
+        VALUES(%s,%s,%s,'original.png','image/png',10,%s,'ready',%s,'Credit','{}',
+               %s,1,1,1,NOW(),NOW())""",
+        (str(asset), f['site_id'], f"media/{f['site_id']}/{asset}.bin", 'a' * 64,
+         f"user:{f['reviewer_id']}", visibility),
+    )
+    f['execute'](
+        """INSERT INTO sitecontent_mediavariant
+        (id,asset_id,name,storage_key,media_type,byte_size,sha256,recipe_id,recipe_version,
+         source_sha256,processor_ref,inline_safe,created_at)
+        VALUES(%s,%s,'safe',%s,'image/webp',7,%s,'safe',1,%s,'test',true,NOW())""",
+        (str(variant), str(asset), f"variants/{f['site_id']}/{asset}-safe.bin", 'b' * 64, 'a' * 64),
+    )
+    result = f['repo'].get_asset(site_id=f['site_id'], asset_id=asset, requester_ref=requester)
+    assert (result['id'], result['filename'], result['mediaType'], result['byteSize'],
+            result['sha256'], result['status'], result['attribution']) == (
+        str(asset), 'original.png', 'image/png', 10, 'a' * 64, 'ready', 'Credit',
+    )
+    assert result['expiresIn'] == 60
+    decoded = CursorCodec(settings.TOKEN_PEPPER, ttl_seconds=60).decode(
+        result['downloadGrant'], expected_scope={
+            'site': f['site_id'], 'requester': requester, 'asset': str(asset),
+            'sha256': 'b' * 64, 'mediaType': 'image/webp', 'purpose': 'asset-download',
+        },
+    )
+    assert decoded == {'assetId': str(asset)}
+    with pytest.raises(ValueError, match='content_not_found'):
+        f['repo'].get_asset(site_id='unrelated-site', asset_id=asset, requester_ref=requester)
+    f['execute']("UPDATE sitecontent_mediaasset SET visibility='private' WHERE id=%s", (str(asset),))
+    with pytest.raises(ValueError, match='content_not_found'):
+        f['repo'].get_asset(site_id=f['site_id'], asset_id=asset, requester_ref=requester)

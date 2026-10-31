@@ -143,3 +143,26 @@ def test_fixture_and_journey_contracts_are_collected_in_api_ci_and_complete_gate
     assert all(path in gate['command'] for path in paths)
     assert {'{python-api}', 'node'} <= set(gate['requiredTools'])
     assert gate['required'] is True
+
+
+def test_runtime_worker_mounts_only_canonical_read_only_operations_catalog():
+    import json
+
+    source = '../shared/config/operations-probes-v1.json'
+    target = '/app/shared/config/operations-probes-v1.json'
+    mounts = stack()['services']['celery-worker'].get('volumes', [])
+    assert mounts == [f'{source}:{target}:ro']
+    canonical = (ROOT / 'e2e' / source).resolve()
+    assert canonical == ROOT / 'shared/config/operations-probes-v1.json'
+    catalog = json.loads(canonical.read_text())
+    assert catalog['schemaVersion'] == 1
+    probes = catalog['probes']
+    assert isinstance(probes, list) and probes
+    assert len({probe['id'] for probe in probes}) == len(probes)
+    for probe in probes:
+        assert isinstance(probe['id'], str) and probe['id']
+        assert isinstance(probe['kind'], str) and probe['kind']
+        assert isinstance(probe['freshnessSeconds'], int) and probe['freshnessSeconds'] > 0
+        assert isinstance(probe['timeoutSeconds'], int) and probe['timeoutSeconds'] > 0
+    development = yaml.safe_load((ROOT / 'development.docker.yml').read_text())
+    assert f'./shared/config/operations-probes-v1.json:{target}:ro' in development['services']['celery-worker']['volumes']

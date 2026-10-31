@@ -1640,8 +1640,9 @@ class PostgresContentWorkspaceRepository:
     def get_asset(self, *, site_id: str, asset_id: UUID, requester_ref: str):
         with db_conn(tenant_id=site_id) as conn, conn.cursor() as cur:
             cur.execute(
-                """SELECT id, original_name, media_type, byte_size, sha256, status,
-                          attribution, metadata, updated_at, variant.sha256, variant.media_type
+                """SELECT asset.id, asset.original_name, asset.media_type, asset.byte_size,
+                          asset.sha256, asset.status, asset.attribution, asset.metadata,
+                          asset.updated_at, variant.sha256, variant.media_type
                    FROM sitecontent_mediaasset asset
                    LEFT JOIN sitecontent_mediavariant variant
                      ON variant.asset_id=asset.id AND variant.name='safe'

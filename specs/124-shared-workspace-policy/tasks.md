@@ -301,3 +301,38 @@ execution of the newly wired checks in CI and the full gate remains pending.
 
 The topology/wiring regression itself is also explicitly collected by both commands;
 it is not left as a local-only guard for CI collection.
+
+### Exact-head asset-detail repair after `8d87e75`
+
+The real-service workspace journey reached viewer asset detail after successful
+public content/search checks, then received 503 `content_dependency_unavailable`.
+Both shells' retained PostgreSQL logs identify `column reference "id" is ambiguous`
+in the asset/safe-variant join. This is a production SQL projection defect, not
+an invalid fixture, scanner failure, or permission denial. Qualifying the nine
+asset-owned projection fields preserves column order, the safe-variant join,
+all ACL predicates and download-grant binding. Adjacent upload-replay and
+asset-content joins were inspected and already qualify their projection fields.
+
+The focused projection regression first failed and then passed; 21 repository
+unit tests pass. Two new restricted-role PostgreSQL cases distinguish parent
+metadata from safe-variant digest/type in the signed grant and retain cross-tenant
+and private-nonowner denial assertions. They are collected, not yet executed on
+the repaired head. Independent source review accepted the three-file backend
+repair. Original failure evidence remains under `/tmp/base2-ci-8d87e75/`;
+red/green evidence is `/tmp/124-asset-projection-{red,green}.log`.
+
+A separate Celery operations task error in the same Compose evidence comes from
+an absent read-only operations-probes JSON mount. The E2E fixture owner is
+restoring the existing development-topology mount and its topology assertion;
+this is unrelated to the asset GET failure and does not change images, scanner
+code, grants or runtime permissions. Its real-service correction also awaits CI.
+
+Asset download, exports, restrictive visibility, scheduler revocation and digest
+assertions after the failed GET were not reached on `8d87e75`; no acceptance is
+inferred for those journey stages from prior PostgreSQL or unit results.
+
+Final frozen backend validation: Ruff clean, mypy 272 files clean, and full API
+unit suite 1,649 passed, 8 skipped, 104 integration/performance cases deselected
+in 32.12 seconds. Logs and coverage are `/tmp/124-asset-final-*`. These results
+validate local source behavior; the two added PostgreSQL cases and continued
+real-service journey require execution after the approved follow-up publication.

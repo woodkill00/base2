@@ -322,6 +322,12 @@ def test_asset_metadata_exposes_a_short_grant_only_for_validated_safe_variant(mo
         requester_ref='user:00000000-0000-0000-0000-000000000001',
     )
     assert result['expiresIn'] == 60 and result['downloadGrant']
+    projection = validated.calls[0][0].split(' FROM ')[0]
+    assert projection == (
+        'SELECT asset.id, asset.original_name, asset.media_type, asset.byte_size, '
+        'asset.sha256, asset.status, asset.attribution, asset.metadata, asset.updated_at, '
+        'variant.sha256, variant.media_type'
+    )
 
     ready = Cursor(
         rows=[

@@ -277,6 +277,8 @@ services:
       WORKSPACE_DB_PASSWORD: e2e_runtime_worker_password
       WORKSPACE_WORKER_DB_USER: base2_runtime_worker_e2e
       WORKSPACE_WORKER_DB_PASSWORD: e2e_runtime_worker_password
+    volumes:
+      - ../shared/config/operations-probes-v1.json:/app/shared/config/operations-probes-v1.json:ro
     depends_on:
       redis:
         condition: service_healthy
