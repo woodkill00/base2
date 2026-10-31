@@ -336,3 +336,65 @@ unit suite 1,649 passed, 8 skipped, 104 integration/performance cases deselected
 in 32.12 seconds. Logs and coverage are `/tmp/124-asset-final-*`. These results
 validate local source behavior; the two added PostgreSQL cases and continued
 real-service journey require execution after the approved follow-up publication.
+
+The subsequent head `bb9026d` run (Actions merge checkout
+`425bf71d3f9f0caf0c6663fe98064a626dc62ca9`) passed the first four workspace
+steps in both shells. Retained `public-search-visibility` attachments show the
+exact public projection before restriction and a complete zero-item response
+immediately afterwards. Member reads, export/asset grants and the same actor's
+unexpired grants before/after fixed fixture suspension passed (approximately
+1.2–1.5 seconds elapsed against a 60-second TTL). The canonical catalog mount
+also eliminated its missing-file exception; operations collection completed four
+times per shell. A separate operations readiness permission error concerning
+`django_migrations` is not an asset or route failure and is not resolved here.
+
+The next failure was the acceptance helper's `GET /api/admin/overview` returning
+404: the real identity router and UI client require `/api/identity/admin/overview`.
+Its PATCH role route had the same missing `/identity` prefix. Only these two
+helper paths are corrected; actual password reauthentication, role payload,
+`expected_updated_at` CAS and worker-stop/revoke/denial/resume ordering remain
+unchanged. A regression executes the helper with fake HTTP, checks its emitted
+methods/paths against the production router and validates its payload against
+the production request model. All 28 topology/fixture/source tests pass, and
+Playwright collection lists five tests; neither is runtime acceptance.
+
+Original failure logs and attachments remain under
+`/tmp/base2-ci-bb9026d/{bash,pwsh}/`. Semantic-edit invalidation, stale approval 409
+and publication 422 were reached before the failing role helper. Actual reviewer
+role revocation, the resulting due-scheduler denial, and the final controlled-clock
+digest/replay/recipient-revocation step still require corrected CI execution.
+Representative-profile and full-gate execution obligations remain open.
+
+### Restricted operations migration observation after `bb9026d`
+
+With the operations catalog mounted, collection completed four times per shell
+with 16 samples, but its `migrations.state` adapter attempted API schema-ledger
+SQL through the intentionally restricted runtime-worker connection. PostgreSQL
+denied `django_migrations` reads. The adapter reported `migrations.unknown` and
+`unavailable`; successful collection did not mean this probe, or all probes, was
+healthy. The API process already has the authorized schema-ledger capability and
+exposes its bounded readiness result at the existing `/api/health` endpoint.
+
+The runtime worker now observes that endpoint without new grants, credentials,
+SQL fallbacks or routes. The schema-specific HTTP mode retains the existing
+local hostname allowlist and validates the fixed path, explicit port, absent
+userinfo/query/fragment/base path, and bounded timeout. It disables ambient
+proxies, rejects redirects before another request, reads at most 4,097 bytes and
+rejects bodies above 4 KiB. Only HTTP 200 and exact API/service/schema/overall
+boolean readiness fields produce `migrations.ready`; missing, malformed,
+oversized, non-200, unrelated unhealthy, or transport-failed observations remain
+`migrations.unknown`/`unavailable`. Generic HTTP probe behavior is not redefined.
+
+The fixture owner separately supplies the existing approved `nginx` network alias
+for the E2E frontend and `http://nginx:8080` to the runtime worker. This points the
+observer to the actual isolated proxy without widening its hostname allowlist.
+The topology and runtime observation still require next-head CI execution.
+
+Initial and security-review regressions were reproduced before their repairs;
+56 focused operations tests pass. Independent source review accepted the proxy,
+redirect, authority, size and failure checks. Final frozen validation: 1,689 API
+unit tests passed, 8 skipped, 104 integration/performance cases deselected;
+Ruff clean, mypy 273 files clean, and all 35 changed executable production lines
+covered. Evidence: `/tmp/124-probe-reviewed-final-*` and original
+`/tmp/base2-ci-bb9026d/`. Unit coverage is not live network/probe acceptance or a
+claim that every operations service is healthy.

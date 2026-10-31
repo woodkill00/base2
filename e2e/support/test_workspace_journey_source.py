@@ -137,3 +137,49 @@ def test_public_search_contract_uses_document_identity_and_exact_record_projecti
         timeout=10,
     )
     assert result.returncode == 0, result.stderr
+
+
+def test_role_helper_matches_registered_identity_routes_and_request_model():
+    """Execute only the HTTP helper with a fake API; validate production routes."""
+    import json
+    import subprocess
+
+    from api.routes.identity import MemberRoleRequest, router
+
+    function = SOURCE.read_text().split('async function role(', 1)[1].split('function intentFor(', 1)[0]
+    script = """
+const assert = require('node:assert/strict');
+const PASSWORD = 'synthetic';
+const calls = [];
+const member = {id: '11111111-1111-4111-8111-111111111111'};
+const timestamp = '2026-10-31T00:00:00Z';
+const owner = {email: 'owner@example.test', token: 'old'};
+function expect(value) { return {toBeTruthy() { assert.ok(value); }}; }
+async function api(actor, method, route, data) {
+  assert.equal(actor, owner);
+  calls.push({method, route, data});
+  if (method === 'POST') return {access_token: 'fresh'};
+  assert.equal(actor.token, 'fresh');
+  if (method === 'GET') return {members: [{id: member.id, updated_at: timestamp}]};
+  return {updated: true, role: data.role};
+}
+async function role(""" + function + """
+role(owner, member, 'viewer').then(() => process.stdout.write(JSON.stringify(calls)))
+  .catch(error => { console.error(error); process.exitCode = 1; });
+"""
+    result = subprocess.run(['node', '-e', script], capture_output=True, text=True, timeout=10)
+    assert result.returncode == 0, result.stderr
+    calls = json.loads(result.stdout)
+    assert len(calls) == 3
+    assert calls[0] == {
+        'method': 'POST', 'route': '/auth/login',
+        'data': {'email': 'owner@example.test', 'password': 'synthetic'},
+    }
+    registered = {(method, route.path) for route in router.routes for method in route.methods}
+    assert (calls[1]['method'], calls[1]['route']) in registered
+    member_id = '11111111-1111-4111-8111-111111111111'
+    assert (calls[2]['method'], calls[2]['route'].replace(member_id, '{member_id}')) in registered
+    assert set(calls[2]['data']) == set(MemberRoleRequest.model_fields)
+    payload = MemberRoleRequest.model_validate(calls[2]['data'])
+    assert payload.role == 'viewer'
+    assert payload.expected_updated_at.isoformat() == '2026-10-31T00:00:00+00:00'

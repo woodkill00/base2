@@ -166,3 +166,28 @@ def test_runtime_worker_mounts_only_canonical_read_only_operations_catalog():
         assert isinstance(probe['timeoutSeconds'], int) and probe['timeoutSeconds'] > 0
     development = yaml.safe_load((ROOT / 'development.docker.yml').read_text())
     assert f'./shared/config/operations-probes-v1.json:{target}:ro' in development['services']['celery-worker']['volumes']
+
+
+def test_runtime_operations_health_uses_existing_frontend_on_default_network():
+    from urllib.parse import urlsplit
+
+    topology = stack()
+    services = topology['services']
+    worker = services['celery-worker']
+    frontend = services['react-app']
+    target = urlsplit(worker['environment']['OPERATIONS_INTERNAL_BASE_URL'])
+    assert target.geturl() == 'http://nginx:8080'
+    assert frontend['networks'] == {'default': {'aliases': [target.hostname]}}
+    assert 'networks' not in worker  # Preserve its implicit default network.
+    assert 'networks' not in topology  # No additional/external network.
+    assert frontend['ports'] == ['127.0.0.1:${E2E_WEB_PORT:-8080}:8080']
+    assert frontend['healthcheck']['test'] == [
+        'CMD-SHELL', 'wget -q --spider http://localhost:8080/ || exit 1',
+    ]
+    nginx = (ROOT / 'react-app/nginx/default.conf').read_text()
+    assert f'listen {target.port};' in nginx
+    assert 'location /api/' in nginx
+    assert 'proxy_pass http://api:5001;' in nginx
+    assert str(services['api']['environment']['PORT']) == '5001'
+    assert all('OPERATIONS_INTERNAL_BASE_URL' not in service.get('environment', {})
+               for name, service in services.items() if name != 'celery-worker')

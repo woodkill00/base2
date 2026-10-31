@@ -161,10 +161,10 @@ async function role(owner, member, value) {
     password: PASSWORD,
   });
   owner.token = authenticated.access_token;
-  const overview = await api(owner, 'GET', '/admin/overview');
+  const overview = await api(owner, 'GET', '/identity/admin/overview');
   const current = overview.members.find((m) => m.id === member.id);
   expect(current).toBeTruthy();
-  await api(owner, 'PATCH', `/admin/members/${member.id}/role`, {
+  await api(owner, 'PATCH', `/identity/admin/members/${member.id}/role`, {
     role: value,
     expected_updated_at: current.updated_at,
   });
