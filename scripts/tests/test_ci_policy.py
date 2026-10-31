@@ -24,6 +24,24 @@ class CiPolicyTests(unittest.TestCase):
     def scan(self, body):
         return self.policy.scan_workflow("fixture.yml", body, ["gate"], "ci-policy: diagnostic-cleanup")
 
+    def test_media_sbom_uploads_have_distinct_supported_artifact_names(self):
+        root = MODULE_PATH.parents[2]
+        workflow = (root / '.github/workflows/security.yml').read_text()
+        names = set()
+        for step_name, artifact in (
+            ('Preserve default media inspector image SBOM', 'media-inspector-raw-sbom'),
+            ('Generate media inspector image SBOM', 'media-inspector-enriched-sbom'),
+        ):
+            step = workflow.split('name: ' + step_name, 1)[1].split('      - name:', 1)[0]
+            self.assertIn('uses: anchore/sbom-action@fc46e51fd3cb168ffb36c6d1915723c47db58abb', step)
+            self.assertIn('artifact-name: ' + artifact, step)
+            self.assertNotIn('upload-artifact: false', step)
+            names.add(artifact)
+        self.assertEqual(2, len(names))
+        final_upload = workflow.split('name: Upload SBOM artifact', 1)[1].split('  npm-audit:', 1)[0]
+        self.assertIn('media-inspector-sbom.raw.cdx.json', final_upload)
+        self.assertIn('media-inspector-sbom.cdx.json', final_upload)
+
     def test_accepts_pinned_blocking_required_job(self):
         body = "on:\n  pull_request:\njobs:\n  gate:\n    steps:\n      - uses: actions/checkout@" + "a" * 40 + "\n"
         self.assertEqual([], self.scan(body))

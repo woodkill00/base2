@@ -85,6 +85,7 @@ jobs:
           image: base2-media-inspector:security
           format: cyclonedx-json
           output-file: media-inspector-sbom.raw.cdx.json
+          artifact-name: media-inspector-raw-sbom
 
       - name: Generate media inspector image SBOM
         uses: anchore/sbom-action@fc46e51fd3cb168ffb36c6d1915723c47db58abb
@@ -93,6 +94,7 @@ jobs:
           config: api/media-inspector-syft.yaml
           format: cyclonedx-json
           output-file: media-inspector-sbom.cdx.json
+          artifact-name: media-inspector-enriched-sbom
 
       - name: Export executed scanner and native build provenance
         run: |

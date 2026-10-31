@@ -233,3 +233,27 @@ def test_tls12_acceptance_requires_actual_negotiated_version(version):
 def test_tls12_acceptance_rejects_false_openssl4_capability_flag():
     with patch.object(runtime.ssl, 'HAS_TLSv1_2', False), pytest.raises(AssertionError):
         runtime.TLS12MemoryBIOAcceptance().runTest()
+
+
+def test_sbom_cli_accepts_four_documents_and_binds_exact_source_bytes(tmp_path):
+    import json
+    from pathlib import Path
+    import subprocess
+    import sys
+
+    candidate, raw, provenance, lock, _ = complete_inventory()
+    paths = []
+    for name, value in zip(('enriched', 'raw', 'source', 'lock'), (candidate, raw, provenance, lock)):
+        path = tmp_path / f'{name}.json'
+        path.write_text(json.dumps(value, sort_keys=True) + '\n')
+        paths.append(str(path))
+    script = Path(__file__).with_name('media_inspector_sbom_acceptance.py')
+    command = [sys.executable, str(script), *paths]
+    success = subprocess.run(command, check=True, capture_output=True, text=True, timeout=20)
+    assert 'Verified raw inventory preservation' in success.stdout
+    # JSON-equivalent but byte-different provenance must not match the image BOM.
+    with Path(paths[2]).open('a') as source:
+        source.write('\n')
+    failure = subprocess.run(command, check=False, capture_output=True, text=True, timeout=20)
+    assert failure.returncode != 0
+    assert 'Consumed source BOM digest missing/changed' in failure.stderr

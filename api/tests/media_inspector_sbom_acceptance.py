@@ -78,5 +78,7 @@ def validate_inventory(sbom: dict, raw: dict, provenance: dict, lock: dict, prov
 if __name__ == '__main__':
     payloads = [Path(path).read_bytes() for path in sys.argv[1:]]
     assert len(payloads) == 4, 'Expected enriched SBOM, raw SBOM, source BOM and runtime lock'
-    validate_inventory(*(json.loads(data) for data in payloads), hashlib.sha256(payloads[2]).hexdigest())
+    validate_inventory(json.loads(payloads[0]), json.loads(payloads[1]),
+                       json.loads(payloads[2]), json.loads(payloads[3]),
+                       hashlib.sha256(payloads[2]).hexdigest())
     print('Verified raw inventory preservation, CPython 3.15.2, native APK closure, upstream ClamAV and locked wheels')
