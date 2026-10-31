@@ -22,8 +22,9 @@ def canonical(value: Any) -> bytes:
     return json.dumps(value, sort_keys=True, separators=(',', ':')).encode()
 
 
-# ACL NULL is preserved: it differs from an explicit empty ACL/revocation. Text
-# ACL items contain names, not cluster-local OIDs. Sorted arrays avoid dump order drift.
+# Version 2 resolves SQL NULL through the exact object-kind/owner ACL default;
+# explicit empty ACLs remain empty (column defaults are independently empty).
+# ACL items retain names/grantors/options; sorted arrays avoid dump order drift.
 SECURITY_CATALOG_SQL = r"""
 SET search_path = pg_catalog;
 WITH namespaces AS (
@@ -32,17 +33,17 @@ WITH namespaces AS (
 ), objects AS (
  SELECT jsonb_build_object('kind','schema','name',n.nspname,
  'owner',pg_get_userbyid(n.nspowner),'acl',
- CASE WHEN n.nspacl IS NULL THEN NULL ELSE COALESCE((SELECT jsonb_agg(a::text ORDER BY a::text) FROM unnest(n.nspacl) a),'[]') END) value
+ COALESCE((SELECT jsonb_agg(a::text ORDER BY a::text) FROM unnest(COALESCE(n.nspacl, acldefault('n', n.nspowner))) a),'[]')) value
  FROM pg_namespace n JOIN namespaces x USING(oid)
  UNION ALL
  SELECT jsonb_build_object('kind','relation','name',format('%I.%I',n.nspname,c.relname),
  'type',c.relkind,'owner',pg_get_userbyid(c.relowner),
- 'acl',CASE WHEN c.relacl IS NULL THEN NULL ELSE COALESCE((SELECT jsonb_agg(a::text ORDER BY a::text) FROM unnest(c.relacl) a),'[]') END,
+ 'acl',CASE WHEN c.relkind NOT IN ('r','p','v','m','f','S') AND c.relacl IS NULL THEN NULL ELSE COALESCE((SELECT jsonb_agg(a::text ORDER BY a::text) FROM unnest(COALESCE(c.relacl, acldefault(CASE WHEN c.relkind='S' THEN 's'::"char" ELSE 'r'::"char" END, c.relowner))) a),'[]') END,
  'rls',c.relrowsecurity,'forceRls',c.relforcerowsecurity)
  FROM pg_class c JOIN namespaces n ON n.oid=c.relnamespace
  UNION ALL
  SELECT jsonb_build_object('kind','column','name',format('%I.%I.%I',n.nspname,c.relname,a.attname),
- 'acl',CASE WHEN a.attacl IS NULL THEN NULL ELSE COALESCE((SELECT jsonb_agg(v::text ORDER BY v::text) FROM unnest(a.attacl) v),'[]') END)
+ 'acl',COALESCE((SELECT jsonb_agg(v::text ORDER BY v::text) FROM unnest(COALESCE(a.attacl, acldefault('c', c.relowner))) v),'[]'))
  FROM pg_attribute a JOIN pg_class c ON c.oid=a.attrelid
  JOIN namespaces n ON n.oid=c.relnamespace WHERE a.attnum>0 AND NOT a.attisdropped
  UNION ALL
@@ -52,7 +53,7 @@ WITH namespaces AS (
  'definitionDigest',CASE WHEN p.prokind <> 'a' THEN encode(sha256(convert_to(pg_get_functiondef(p.oid),'UTF8')),'hex') ELSE NULL END,
  'volatility',p.provolatile,'leakproof',p.proleakproof,'parallel',p.proparallel,
  'config',p.proconfig,'acl',
- CASE WHEN p.proacl IS NULL THEN NULL ELSE COALESCE((SELECT jsonb_agg(a::text ORDER BY a::text) FROM unnest(p.proacl) a),'[]') END)
+ COALESCE((SELECT jsonb_agg(a::text ORDER BY a::text) FROM unnest(COALESCE(p.proacl, acldefault('f', p.proowner))) a),'[]'))
  FROM pg_proc p JOIN namespaces n ON n.oid=p.pronamespace
  UNION ALL
  SELECT jsonb_build_object('kind','default','name',jsonb_build_array(pg_get_userbyid(d.defaclrole),n.nspname,d.defaclobjtype),
@@ -62,7 +63,7 @@ WITH namespaces AS (
  UNION ALL
  SELECT jsonb_build_object('kind','type','name',format('%I.%I',n.nspname,t.typname),
  'owner',pg_get_userbyid(t.typowner),'acl',
- CASE WHEN t.typacl IS NULL THEN NULL ELSE COALESCE((SELECT jsonb_agg(a::text ORDER BY a::text) FROM unnest(t.typacl) a),'[]') END)
+ COALESCE((SELECT jsonb_agg(a::text ORDER BY a::text) FROM unnest(COALESCE(t.typacl, acldefault('T', t.typowner))) a),'[]'))
  FROM pg_type t JOIN namespaces n ON n.oid=t.typnamespace
  UNION ALL
  SELECT jsonb_build_object('kind','trigger','name',format('%I.%I.%I',n.nspname,c.relname,t.tgname),
@@ -131,7 +132,7 @@ SELECT jsonb_build_object(
  'icuRules',to_jsonb(d)->'daticurules','collationVersion',to_jsonb(d)->'datcollversion')
  FROM pg_database d WHERE d.datname=current_database()),
  'databaseOwner',(SELECT pg_get_userbyid(datdba) FROM pg_database WHERE datname=current_database()),
- 'databaseAcl',(SELECT CASE WHEN datacl IS NULL THEN NULL ELSE COALESCE((SELECT jsonb_agg(a::text ORDER BY a::text) FROM unnest(datacl) a),'[]') END FROM pg_database WHERE datname=current_database()),
+ 'databaseAcl',(SELECT COALESCE((SELECT jsonb_agg(a::text ORDER BY a::text) FROM unnest(COALESCE(datacl, acldefault('d', datdba))) a),'[]') FROM pg_database WHERE datname=current_database()),
  'roles',COALESCE((SELECT jsonb_agg(value ORDER BY value::text) FROM roles),'[]'),
  'memberships',COALESCE((SELECT jsonb_agg(value ORDER BY value::text) FROM memberships),'[]'),
  'authority',COALESCE((SELECT jsonb_agg(value ORDER BY value::text) FROM authority),'[]'),
@@ -158,6 +159,147 @@ def _catalog_failure_reason(result):
     return 'client_error'
 
 
+def _security_expression_tokens(value):
+    """Lex only enough to keep literals, identifiers and comments opaque.
+
+    No SQL is evaluated. Malformed/escape-ambiguous input is left untouched.
+    Token offsets allow preservation of every byte outside a recognized span.
+    """
+    tokens = []
+    index = 0
+    while index < len(value):
+        start = index
+        # PostgreSQL identifiers can contain non-ASCII characters (including
+        # characters Python considers whitespace). Do not approximate their lexing.
+        if ord(value[index]) >= 128:
+            return None
+        if value[index].isspace():
+            index += 1
+            continue
+        if value.startswith('--', index):
+            end = value.find('\n', index)
+            index = len(value) if end < 0 else end
+            tokens.append(('opaque', value[start:index], start, index))
+            continue
+        if value.startswith('/*', index):
+            depth = 1
+            index += 2
+            while index < len(value) and depth:
+                if value.startswith('/*', index):
+                    depth += 1
+                    index += 2
+                elif value.startswith('*/', index):
+                    depth -= 1
+                    index += 2
+                else:
+                    index += 1
+            if depth:
+                return None
+            tokens.append(('opaque', value[start:index], start, index))
+            continue
+        dollar = re.match(r'\$(?:[A-Za-z_][A-Za-z0-9_]*)?\$', value[index:])
+        if dollar:
+            delimiter = dollar.group()
+            end = value.find(delimiter, index + len(delimiter))
+            if end < 0:
+                return None
+            index = end + len(delimiter)
+            tokens.append(('opaque', value[start:index], start, index))
+            continue
+        prefix = re.match(r"(?:[eEnNbBxX]|[uU]&)'", value[index:])
+        if value[index] in "'\"" or prefix:
+            quote = "'" if prefix else value[index]
+            index += len(prefix.group()) if prefix else 1
+            while index < len(value):
+                if value[index] == '\\':
+                    # Do not infer standard_conforming_strings/escape semantics.
+                    return None
+                if value[index] == quote:
+                    if index + 1 < len(value) and value[index + 1] == quote:
+                        index += 2
+                        continue
+                    index += 1
+                    break
+                index += 1
+            else:
+                return None
+            kind = 'literal' if quote == "'" and not prefix else 'opaque'
+            tokens.append((kind, value[start:index], start, index))
+            continue
+        word = re.match(r'[A-Za-z_][A-Za-z0-9_$]*', value[index:])
+        if word:
+            index += len(word.group())
+            tokens.append(('word', value[start:index], start, index))
+            continue
+        index += 2 if value.startswith('::', index) else 1
+        tokens.append(('symbol', value[start:index], start, index))
+    return tokens
+
+
+def canonicalize_security_expression(value):
+    """Canonicalize only proven literal varchar[] -> text[] cast spelling.
+
+    PostgreSQL 16 §4.2.12 defines array-constructor casts as per-element casts.
+    No expression outside this closed grammar is rewritten or evaluated.
+    """
+    if not isinstance(value, str):
+        return value
+    tokens = _security_expression_tokens(value)
+    if tokens is None:
+        return value
+    output = []
+    cursor = index = 0
+    while index < len(tokens):
+        start = index
+        previous = tokens[index - 1] if index else None
+        # A function-call argument delimiter is not a grouping parenthesis.
+        if previous and (previous[0] == 'opaque' or previous[1] in (')', ']')
+                         or previous[0] == 'word' and previous[1] not in ('AND', 'OR', 'NOT')):
+            index += 1
+            continue
+        if [token[1] for token in tokens[index:index + 3]] != ['(', 'ARRAY', '[']:
+            index += 1
+            continue
+        position = index + 3
+        literals = []
+        while position + 3 < len(tokens):
+            token = tokens[position]
+            if token[0] != 'literal' or [t[1] for t in tokens[position + 1:position + 4]] != ['::', 'character', 'varying']:
+                literals = []
+                break
+            literals.append(token[1])
+            position += 4
+            if position < len(tokens) and tokens[position][1] == ',':
+                position += 1
+                continue
+            break
+        suffix = [t[1] for t in tokens[position:position + 6]]
+        end = position + 6
+        following = tokens[end][1].upper() if end < len(tokens) else None
+        if (not literals or suffix != [']', ')', '::', 'text', '[', ']']
+                or following in ('COLLATE', '::', '[')
+                or end < len(tokens) and tokens[end][0] == 'opaque'):
+            index += 1
+            continue
+        output.append(value[cursor:tokens[start][2]])
+        output.append('ARRAY[' + ', '.join(f'({literal}::character varying)::text' for literal in literals) + ']')
+        cursor = tokens[end - 1][3]
+        index = end
+    output.append(value[cursor:])
+    return ''.join(output)
+
+
+def _canonicalize_catalog_expressions(catalog):
+    for obj in catalog.get('objects', []):
+        if obj.get('kind') == 'constraint' and 'definition' in obj:
+            obj['definition'] = canonicalize_security_expression(obj['definition'])
+    for policy in catalog.get('policies', []):
+        for field in ('using', 'check'):
+            if field in policy:
+                policy[field] = canonicalize_security_expression(policy[field])
+    return catalog
+
+
 def capture_security_catalog(runner, *, pg_service, environment, snapshot_id=None):
     sql = SECURITY_CATALOG_SQL
     if snapshot_id is not None:
@@ -172,7 +314,7 @@ def capture_security_catalog(runner, *, pg_service, environment, snapshot_id=Non
         value = json.loads(result.stdout)
         if result.returncode != 0 or not isinstance(value, dict):
             raise ValueError
-        return value
+        return _canonicalize_catalog_expressions(value)
     except (ValueError, TypeError):
         # Neither raw stderr nor a chained JSON decoder exception belongs in
         # recovery logs: both can contain private database/service information.
@@ -229,7 +371,7 @@ def build_security_manifest(catalog, *, database_dump_sha256, role_map, runtime_
     _validate(catalog, role_map, runtime_roles, trusted_owner)
     if not re.fullmatch('[0-9a-f]{64}', database_dump_sha256) or len(key) < 32:
         raise SecurityManifestError('security:binding_invalid')
-    body = {'schemaVersion': 1, 'databaseDumpSha256': database_dump_sha256,
+    body = {'schemaVersion': 2, 'databaseDumpSha256': database_dump_sha256,
             'roleMap': role_map, 'runtimeRoles': runtime_roles, 'trustedOwner': trusted_owner,
             'catalog': catalog}
     return {**body, 'hmac': hmac.new(key, canonical(body), hashlib.sha256).hexdigest()}

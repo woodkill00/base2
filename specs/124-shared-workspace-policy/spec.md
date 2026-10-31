@@ -31,8 +31,9 @@ notification choices affect only the current user on the current site.
   Mandatory families cannot be disabled or bypassed by omitting rows.
 - **AC2 Review policy:** Administrators can require review before publishing workspace
   content. The author cannot approve their own submitted revision. Approval concerns
-  exactly the reviewed version; semantic edits, restores, imports, relationship/media changes or policy changes
-  invalidate it; state-only schedule/publish transitions do not change the reviewed content. Direct publish,
+  the reviewed semantic content; edits, restores, imports or relationship/media changes
+  invalidate it when that content changes, and policy changes invalidate it;
+  state-only schedule/publish transitions do not change the reviewed content. Direct publish,
   scheduling and due publication enforce the same rule. Revoked reviewer permission
   cannot authorize a later scheduled publication. Already published content is not
   silently unpublished solely by enabling review; a subsequent content edit under
@@ -156,7 +157,9 @@ current state, review, membership and site-visibility gates.
 
 Save values and public copy atomically under the existing version precondition and
 lock order. Public-copy edits participate in current semantic approval invalidation;
-no new roles, grants, metadata authoring, automatic private-field projection or generic
+restoring identical semantic content preserves existing approval/state, whereas
+changed restored values or public copy invalidate approval through the same guard.
+No new roles, grants, metadata authoring, automatic private-field projection or generic
 renderer is permitted. Canonical native validation precedes the mirrored API path.
 
 New revision snapshots use the collision-safe `snapshotFormat: workspace-record-v1`
@@ -170,3 +173,24 @@ Expose history restore coverage and actual restoration result so the UI can expl
 legacy partial restoration before the user confirms it. Existing identity-history
 pseudonymization, legal holds and record retention boundaries remain intact; this
 feature does not claim generic erasure of free-form personal content.
+
+## Restore evidence representation repair
+
+Actual native restore evidence identified 73 raw ACL representation differences and
+six expression deparse/reparse differences. Match privileges by a version-2 catalog
+representation using PostgreSQL's `acldefault` only for NULL ACLs of supported
+object kinds and their actual owners. Preserve explicit empty ACLs, grantors,
+grantees, grant options and PUBLIC; unsupported/non-ACL objects retain raw evidence.
+Default ACL rows remain explicit. No grants, roles or restored data are repaired.
+Version-1 security manifests cannot authorize database restoration under version2;
+retain extract-only access and document fresh authenticated backup requirements.
+
+Canonicalize only the proven literal varchar-array-to-text-array equivalence in
+constraint definitions and policy expressions. A token-aware scanner must treat
+quoted identifiers, strings, dollar quotes and comments as opaque, recognize only
+the exact supported plain-literal cast grammar and preserve every surrounding byte,
+clause, literal and ordering. Unsupported casts, typmods, collation clauses, escape
+ambiguities and nonliteral expressions remain unchanged and fail parity if different.
+Never ignore object names, clauses, SQL whitespace generally or unknown catalog data.
+Exact catalog parity after this representation remains mandatory before restored
+runtime use. Unit negative cases and real PostgreSQL restoration are both required.

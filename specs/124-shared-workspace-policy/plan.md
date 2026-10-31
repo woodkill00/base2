@@ -477,3 +477,15 @@ Keep existing design and text-only rendering, including Unicode-limit equivalenc
 no arbitrary HTML or metadata controls. Extend the representative journey to author
 explicit public copy (including one actual UI edit), retain distinct private values,
 and prove rendered/search text without private-value leakage before restriction.
+
+### Native restore representation repair
+
+All 79 changed objects/expressions are identified against public migration source.
+The 73 ACL arrays equal documented built-in defaults; NULL after pg_restore therefore
+needs precise kind/owner-aware effective ACL capture, not omission of ACL checking.
+All twelve expected/actual expression hashes match six array-cast deparse variants.
+Implement security evidence v2 with conservative token-aware literal-array canonical
+form, preserve all surrounding policy/constraint clauses and unsupported differences,
+and reject v1 for database restoration. Regression-first exact-hash fixtures, hostile
+literal/altered clause/privilege negatives, independent review and real native restore
+must precede acceptance. No custom media runtime repair, grant repair or role creation.

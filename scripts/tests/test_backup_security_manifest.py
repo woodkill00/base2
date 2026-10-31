@@ -96,8 +96,9 @@ def test_manifest_dump_and_configuration_binding():
 
 def test_catalog_query_preserves_explicit_empty_acls_and_sensitive_boundaries():
     from scripts.python.backup_security_manifest import SECURITY_CATALOG_SQL
-    for acl in ['n.nspacl', 'c.relacl', 'a.attacl', 'p.proacl', 'd.defaclacl', 't.typacl', 'datacl']:
-        assert f'{acl} IS NULL THEN NULL ELSE COALESCE' in SECURITY_CATALOG_SQL
+    for acl in ['n.nspacl', 'c.relacl', 'a.attacl', 'p.proacl', 't.typacl', 'datacl']:
+        assert f'COALESCE({acl}, acldefault(' in SECURITY_CATALOG_SQL
+    assert 'd.defaclacl IS NULL THEN NULL ELSE COALESCE' in SECURITY_CATALOG_SQL
     for boundary in ['relforcerowsecurity', 'polwithcheck', 'polqual', 'prosecdef',
                      'proconfig', 'inherit_option', 'set_option', 'admin_option',
                      'pg_db_role_setting', 'pg_event_trigger', "t.tgisinternal AND t.tgenabled <> 'O'"]:
@@ -410,3 +411,180 @@ def test_expanded_diagnostics_enforce_byte_budget_without_starving_category():
     assert len(canonical(diagnostic)) <= 60000
     assert all(item['entries'] for item in diagnostic['categories'])
     assert validate_catalog_diagnostic(diagnostic)
+
+
+# Exact public-migration expression candidates matching every retained native
+# expected/actual scalar digest from a0ef808. No private database SQL is stored.
+def expression_pairs():
+    def array(values, restored):
+        if restored:
+            return 'ARRAY[' + ', '.join(f"('{v}'::character varying)::text" for v in values) + ']'
+        return '(ARRAY[' + ', '.join(f"'{v}'::character varying" for v in values) + '])::text[]'
+    choices = [
+        ('public_access', ['public_allowed', 'members_only'],
+         'c264e2e71e334cf4bab2b147452d81ab74ace7561cb3016d7ad1a2fffdb80974',
+         'b15e3c5b0b4cc752d8b7cdf8e29fd430abb07c18eaf3bd7bcf6ddbb911f3d081'),
+        ('provenance', ['default', 'migrated', 'explicit'],
+         '67c512585b658a53e7d7f5285d15d423d59a03e355fbc4322d75a0c787bc143d',
+         '2305247aa1436af7f00ad8f369ccde9ef5c6d04f055a74efcf049f9292908cf7'),
+        ('status', ['open', 'closed', 'delivered', 'failed'],
+         '1172882a3e36220cc571713572c9a60f0b5a470f912e59d3a424b937ae3e75e6',
+         'c319133f0192be88b622bf14e47c65f0128b3625fd65c68a9be0f949dd7d8418'),
+        ('status', ['pending', 'digest', 'delivered', 'suppressed', 'failed'],
+         'b1b0f91bd3c27b6ec787622dcf5f0bc9f2a4ae219e50b7bab067b1276e6a95e4',
+         'c29a24f785d72a0e6fb28b1c5624504bb1272c2ba1ec9fbaf3c50e4c51b9837c'),
+    ]
+    for field, values, expected_hash, actual_hash in choices:
+        yield (f'CHECK ((({field})::text = ANY ({array(values, False)})))',
+               f'CHECK ((({field})::text = ANY ({array(values, True)})))', expected_hash, actual_hash)
+    values = ['verified', 'active']
+    def domain(restored):
+        return (f'CHECK (((NOT ((state)::text = ANY ({array(values, restored)}))) OR '
+                "((verified_at IS NOT NULL) AND (NOT ((evidence_digest)::text = ''::text)))))")
+    yield domain(False), domain(True), '6bf31639f1c321f2a1b37b98921648f543599449ee6ad2297bc65d58575c227d', '72841e0583a6efbcaf51bf94e076c055041c339d535b30dbcba918337cf3ed81'
+    def policy(restored):
+        return ("(((site_id)::text = current_setting('app.tenant_id'::text, true)) AND "
+                f"((status)::text = ANY ({array(['validated', 'ready'], restored)})) AND "
+                "((visibility)::text = 'public'::text) AND (deleted_at IS NULL) AND (archived_at IS NULL))")
+    yield policy(False), policy(True), '7635f21818960f45be67ca17b0fa34125c7483c88ce2c5818a49f1a55f8a5162', 'ef2136a7a872cf1c9916b7795b81e16537f375a53d92f1eaa17751364e217769'
+
+
+@pytest.mark.parametrize(('source', 'restored', 'source_hash', 'restored_hash'), list(expression_pairs()))
+def test_all_native_expression_differences_have_exact_hash_proof(source, restored, source_hash, restored_hash):
+    import hashlib
+
+    from scripts.python.backup_security_manifest import canonical, canonicalize_security_expression
+    assert hashlib.sha256(canonical(source)).hexdigest() == source_hash
+    assert hashlib.sha256(canonical(restored)).hexdigest() == restored_hash
+    assert canonicalize_security_expression(source) == restored
+    assert canonicalize_security_expression(restored) == restored
+
+
+@pytest.mark.parametrize('expression', [
+    "some_function(ARRAY['x'::character varying])::text[]",
+    "(ARRAY['x'::character varying(1)])::text[]",
+    "(ARRAY['x'::character varying COLLATE \"C\"])::text[]",
+    "(ARRAY['x'::character varying])::text[] COLLATE \"C\"",
+    "(ARRAY['x'::character varying])::text[]::varchar[]",
+    "(ARRAY['x'::character varying])::text[][1]",
+    "(ARRAY[E'\\x'::character varying])::text[]",
+    "(ARRAY[U&'x'::character varying])::text[]",
+    "(ARRAY['x\\y'::character varying])::text[]",
+    "(ARRAY[variable::character varying])::text[]",
+    "(ARRAY[NULL::character varying])::text[]",
+    "(ARRAY[ARRAY['x'::character varying]])::text[]",
+    "(ARRAY['x'::character varying /* comment */])::text[]",
+    "'(ARRAY[''x''::character varying])::text[]'",
+    '"(ARRAY[\'x\'::character varying])::text[]"',
+    "$$ (ARRAY['x'::character varying])::text[] $$",
+    "$tag$ (ARRAY['x'::character varying])::text[] $tag$",
+    "-- (ARRAY['x'::character varying])::text[]\ntrue",
+    "/* nested /* comment */ (ARRAY['x'::character varying])::text[] */ true",
+])
+def test_unsupported_or_quoted_forms_are_never_rewritten(expression):
+    from scripts.python.backup_security_manifest import canonicalize_security_expression
+    assert canonicalize_security_expression(expression) == expression
+
+
+def test_canonicalization_preserves_every_surrounding_clause_and_literal():
+    from scripts.python.backup_security_manifest import canonicalize_security_expression
+    source, restored, *_ = list(expression_pairs())[-1]
+    for changed in [source + ' OR true', source.replace('app.tenant_id', 'app.other_id'),
+                    source.replace('deleted_at IS NULL', 'deleted_at IS NOT NULL'),
+                    source.replace("'validated'", "'different'")]:
+        assert canonicalize_security_expression(changed) != restored
+    raw = "  tenant AND (ARRAY['it''s'::character varying])::text[] = other\n"
+    assert canonicalize_security_expression(raw) == "  tenant AND ARRAY[('it''s'::character varying)::text] = other\n"
+
+
+def test_version_one_security_evidence_cannot_be_reinterpreted_as_version_two():
+    manifest = build_security_manifest(catalog(), **options())
+    assert manifest['schemaVersion'] == 2
+    manifest['schemaVersion'] = 1
+    with pytest.raises(SecurityManifestError):
+        verify_security_manifest(manifest, **options())
+
+
+@pytest.mark.parametrize('expression', [
+    "(ARRAY[])::text[]", "(ARRAY['x'::character varying,])::text[]",
+    "(ARRAY['x'::pg_catalog.varchar])::text[]", "(ARRAY['x'::\"character varying\"])::text[]",
+    "(ARRAY[B'01'::character varying])::text[]", "(ARRAY[X'ab'::character varying])::text[]",
+    "(ARRAY['x'::character varying])::pg_catalog.text[]", "(ARRAY['x'::character varying])::text[2]",
+    "(ARRAY['x'::character varying])::text[][]", "(ARRAY['x'::character varying])::\"text\"[]",
+    "'(ARRAY['x'", '"unclosed', '$tag$ unclosed', '/* unclosed',
+])
+def test_additional_unsupported_cast_and_malformed_forms_remain_unchanged(expression):
+    from scripts.python.backup_security_manifest import canonicalize_security_expression
+    assert canonicalize_security_expression(expression) == expression
+
+
+def test_reordered_literals_and_real_security_changes_still_fail_exact_parity():
+    from scripts.python.backup_security_manifest import canonicalize_security_expression
+    source, restored, *_ = list(expression_pairs())[0]
+    reversed_values = source.replace("'public_allowed'", "'TEMP'").replace("'members_only'", "'public_allowed'").replace("'TEMP'", "'members_only'")
+    assert canonicalize_security_expression(reversed_values) != restored
+    for acl in [[], ['=X/owner', 'owner=X/owner'], ['runtime=X*/owner'], ['runtime=X/other']]:
+        before, after = catalog(), catalog()
+        before['objects'][0]['acl'] = ['runtime=X/owner']
+        after['objects'][0]['acl'] = acl
+        with pytest.raises(SecurityManifestError):
+            verify_catalog_parity(before, after)
+
+
+def test_capture_canonicalizes_only_constraint_and_policy_fields():
+    import json
+    import subprocess
+
+    from scripts.python.backup_security_manifest import capture_security_catalog
+    source, restored, *_ = list(expression_pairs())[0]
+    value = catalog()
+    value['objects'] = [
+        {'kind': 'constraint', 'definition': source},
+        {'kind': 'function', 'definition': source},
+    ]
+    value['policies'] = [{'using': source, 'check': None}]
+    def runner(command, **kwargs):
+        return subprocess.CompletedProcess(command, 0, json.dumps(value), '')
+    captured = capture_security_catalog(runner, pg_service='test', environment={})
+    assert captured['objects'][0]['definition'] == restored
+    assert captured['objects'][1]['definition'] == source
+    assert captured['policies'] == [{'using': restored, 'check': None}]
+
+
+def test_acl_defaults_use_precise_server_object_type_and_owner():
+    from scripts.python.backup_security_manifest import SECURITY_CATALOG_SQL
+    for mapping in ["COALESCE(n.nspacl, acldefault('n', n.nspowner))",
+                    "COALESCE(p.proacl, acldefault('f', p.proowner))",
+                    "COALESCE(t.typacl, acldefault('T', t.typowner))",
+                    "COALESCE(datacl, acldefault('d', datdba))",
+                    "COALESCE(a.attacl, acldefault('c', c.relowner))"]:
+        assert mapping in SECURITY_CATALOG_SQL
+    assert "WHEN c.relkind='S' THEN 's'::\"char\" ELSE 'r'::\"char\" END, c.relowner" in SECURITY_CATALOG_SQL
+    assert "c.relkind NOT IN ('r','p','v','m','f','S') AND c.relacl IS NULL THEN NULL" in SECURITY_CATALOG_SQL
+    assert 'NULLIF' not in SECURITY_CATALOG_SQL  # Explicit {} is never treated as SQL NULL.
+
+
+@pytest.mark.parametrize('expression', [
+    "fµ(ARRAY['a'::character varying])::text[]",
+    "f\u00a0(ARRAY['a'::character varying])::text[]",
+    "函数(ARRAY['a'::character varying])::text[]",
+    "schéma.fn(ARRAY['a'::character varying])::text[]",
+    "(ARRAY['a'::character varying])::text[] /*comment*/ COLLATE \"C\"",
+    "(ARRAY['a'::character varying])::text[] /*comment*/ ::varchar[]",
+])
+def test_nonascii_identifier_and_opaque_postfix_boundaries_are_unsupported(expression):
+    from scripts.python.backup_security_manifest import canonicalize_security_expression
+    assert canonicalize_security_expression(expression) == expression
+
+
+def test_authenticated_version_one_manifest_is_rejected_not_upgraded():
+    import hashlib
+    import hmac
+
+    from scripts.python.backup_security_manifest import canonical
+    old = build_security_manifest(catalog(), **options())
+    old['schemaVersion'] = 1
+    old.pop('hmac')
+    old['hmac'] = hmac.new(options()['key'], canonical(old), hashlib.sha256).hexdigest()
+    with pytest.raises(SecurityManifestError):
+        verify_security_manifest(old, **options())

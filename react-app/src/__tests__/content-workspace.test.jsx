@@ -8,6 +8,15 @@ import { siteManifest } from '../config/siteRuntime';
 
 expect.extend(toHaveNoViolations);
 
+vi.mock('../contexts/AuthContext', () => ({
+  useAuth: () => ({
+    user: {
+      id: 'workspace-user',
+      permissions: ['content-workspace.read', 'content-workspace.write'],
+    },
+  }),
+}));
+
 vi.mock('../services/contentWorkspace', () => ({
   normalizeWorkspaceError: (error) => ({
     status: error?.response?.status ?? null,
@@ -75,7 +84,8 @@ describe('content workspace', () => {
         { fieldKey: 'summary', label: 'Summary', fieldKind: 'long_text', required: false },
       ],
     });
-    contentWorkspaceAPI.record.mockResolvedValue({
+    const recordDetail = {
+      publicContent: { excerpt: '', body: '' },
       siteId: siteManifest.siteId,
       typeKey: 'article',
       schemaVersion: 1,
@@ -95,7 +105,19 @@ describe('content workspace', () => {
       state: 'draft',
       version: 2,
       values: { title: 'Hello', summary: 'Safe synthetic summary' },
-    });
+    };
+    contentWorkspaceAPI.record.mockImplementation(async (_type, id) =>
+      id === 'record-2'
+        ? {
+            ...recordDetail,
+            id,
+            title: 'Second',
+            slug: 'second',
+            version: 1,
+            values: { title: 'Second', summary: 'New safe summary' },
+          }
+        : recordDetail
+    );
     contentWorkspaceAPI.versions.mockResolvedValue({ items: [] });
     contentWorkspaceAPI.createRecord.mockResolvedValue({
       id: 'record-2',
@@ -104,6 +126,7 @@ describe('content workspace', () => {
       state: 'draft',
       version: 1,
       values: { title: 'Second', summary: 'New safe summary' },
+      publicContent: { excerpt: '', body: '' },
     });
     contentWorkspaceAPI.views.mockResolvedValue({ items: [] });
     contentWorkspaceAPI.createView.mockResolvedValue({
@@ -214,6 +237,7 @@ describe('content workspace', () => {
     });
     await act(async () => {
       resolveDetail({
+        publicContent: { excerpt: '', body: '' },
         siteId: siteManifest.siteId,
         typeKey: 'article',
         schemaVersion: 1,
@@ -281,6 +305,7 @@ describe('content workspace', () => {
       expect(contentWorkspaceAPI.createRecord).toHaveBeenCalledWith('article', {
         title: 'Second',
         slug: 'second',
+        publicContent: { excerpt: '', body: '' },
         values: { title: 'Second', summary: 'New safe summary' },
       })
     );
@@ -355,6 +380,7 @@ describe('content workspace', () => {
     async (action) => {
       const user = userEvent.setup();
       const old = {
+        publicContent: { excerpt: '', body: '' },
         siteId: siteManifest.siteId,
         typeKey: 'article',
         schemaVersion: 1,

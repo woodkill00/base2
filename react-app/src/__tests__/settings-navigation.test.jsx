@@ -62,7 +62,10 @@ test('Stay preserves link destination history, draft and focus; categories retai
   expect(router.state.location.hash).toBe('#notification-product-email');
   expect(screen.getByLabelText('Draft')).toHaveValue('unsaved');
   await user.click(outside);
-  await user.dblClick(screen.getByRole('button', { name: 'Discard and leave' }));
+  // Router blocking renders asynchronously on every opening, including after Stay.
+  // Await the real modal rather than assuming user.click flushed the router commit.
+  expect(await screen.findByRole('alertdialog')).toBeInTheDocument();
+  await user.dblClick(await screen.findByRole('button', { name: 'Discard and leave' }));
   expect(router.state.location.pathname).toBe('/outside');
   expect(router.state.location.search).toBe('?from=settings');
   expect(router.state.location.hash).toBe('#result');
@@ -188,4 +191,43 @@ test('clicking the modal backdrop keeps focus inside and cannot trigger shell sh
   } finally {
     window.removeEventListener('keydown', shortcut);
   }
+});
+
+const blockWorkspaceNavigation = () => false;
+function WorkspaceGuardFixture() {
+  const [menu, setMenu] = useState(true);
+  return (
+    <div className="app-shell-root">
+      <SettingsDraftGuard
+        dirty
+        locale="en"
+        title="Leave content workspace?"
+        fallbackFocusId="workspace-detail"
+        allowInternalNavigation={blockWorkspaceNavigation}
+      />
+      <section id="workspace-detail" tabIndex={-1} aria-label="Workspace details" />
+      {menu && (
+        <Link to="/outside" onClick={() => setMenu(false)}>
+          Closing workspace item
+        </Link>
+      )}
+    </div>
+  );
+}
+test('workspace reuse restores focus to its own detail section when the opener unmounts', async () => {
+  const user = userEvent.setup();
+  const router = createMemoryRouter(
+    [
+      { path: '/workspace', element: <WorkspaceGuardFixture /> },
+      { path: '*', element: <p>Outside page</p> },
+    ],
+    { initialEntries: ['/workspace'] }
+  );
+  render(<RouterProvider router={router} />);
+  await user.click(screen.getByRole('link', { name: 'Closing workspace item' }));
+  expect(await screen.findByRole('alertdialog')).toHaveAccessibleName('Leave content workspace?');
+  expect(screen.queryByRole('link', { name: 'Closing workspace item' })).not.toBeInTheDocument();
+  await user.click(screen.getByRole('button', { name: 'Stay' }));
+  expect(screen.getByRole('region', { name: 'Workspace details' })).toHaveFocus();
+  expect(router.state.location.pathname).toBe('/workspace');
 });

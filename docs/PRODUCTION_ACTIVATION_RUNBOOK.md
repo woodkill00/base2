@@ -176,3 +176,27 @@ require separate reviewed support; never clear legitimate settings or privileges
 force acceptance. Database encoding, locale/provider, ICU rules and collation version
 must match exactly, and internal constraint triggers must retain ordinary enabled
 execution. Connection-local test/service settings are not transported as role settings.
+
+#### Security manifest version 2
+
+Database-restore acceptance now requires security-manifest version 2. Version 1
+security manifests, like archives with no security manifest, remain extract-only;
+they are never silently reinterpreted or upgraded. Create a fresh backup from the
+verified source for this recovery path. The outer backup configuration and encryption
+format are unchanged.
+
+Version 2 records effective ACLs using PostgreSQL's `acldefault` for the precise
+object kind and owner only when the catalog ACL is SQL NULL. Explicit empty ACLs
+never trigger that fallback. Grantor, grantee, grant options and PUBLIC privileges
+remain significant; function PUBLIC EXECUTE revocations cannot become default
+EXECUTE permission. Column defaults are separately empty because table privileges
+are recorded on their relation, not duplicated as column grants. Explicit default-
+privilege rows and non-ACL-bearing relation kinds retain their existing boundaries.
+
+PostgreSQL may restore a literal `character varying` array cast to `text[]` using
+individual text casts on each element. Only this proven plain-literal spelling is
+canonicalized in constraint definitions and policy expressions. String contents,
+all surrounding clauses, values/order, owners and other security state must still
+match. Escape-prefixed/backslash-ambiguous literals, typmods, collations, nested or
+nonliteral arrays and other casts are not generalized. No database functions are
+evaluated, no grants repaired, and unknown differences still deny acceptance.

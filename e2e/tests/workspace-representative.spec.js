@@ -79,6 +79,42 @@ async function savePolicy(page, category, id, value) {
   return response.json();
 }
 
+async function capturePublicAuthoring(page, testInfo, stage, publicContent, scope, saveLabel) {
+  const originalViewport = page.viewportSize();
+  expect(originalViewport).not.toBeNull();
+  try {
+    for (const width of [1440, 390]) {
+      await page.setViewportSize({ width, height: 900 });
+      await expect(scope.getByLabel('Public excerpt', { exact: true })).toHaveValue(
+        publicContent.excerpt
+      );
+      await expect(scope.getByLabel('Public body', { exact: true })).toHaveValue(
+        publicContent.body
+      );
+      await expect
+        .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth))
+        .toBe(true);
+      for (const label of ['Public excerpt', 'Public body']) {
+        const field = scope.getByLabel(label, { exact: true });
+        await field.scrollIntoViewIfNeeded();
+        await expect(field).toBeInViewport();
+        await expect(field).toBeEditable();
+      }
+      const save = scope.getByRole('button', { name: saveLabel, exact: true });
+      await save.scrollIntoViewIfNeeded();
+      await expect(save).toBeInViewport();
+      await expect(save).toBeEnabled();
+      await save.click({ trial: true }); // Check reachability without submitting the filled draft.
+      await testInfo.attach(`representative-public-authoring-${stage}-${width}`, {
+        body: await page.screenshot({ fullPage: true }),
+        contentType: 'image/png',
+      });
+    }
+  } finally {
+    await page.setViewportSize(originalViewport);
+  }
+}
+
 async function initializePolicyThroughUI(owner, evidence) {
   const initial = await api(owner, 'GET', '/settings/workspace-policy');
   // Fresh post-migration fixture has no policy row: retain conservative defaults.
@@ -198,8 +234,80 @@ test.describe('Representative generated profile: real supported public families'
           const route = `/content/v1/types/${family.type}/records`;
           const slug = `${QUERY}-${family.type}`;
           const title = `Representative ${QUERY} ${family.type}`;
-          const summary = `Verified integrated ${family.type} content`;
-          const draft = await api(editor, 'POST', route, { title, slug, values: { summary } }, 201);
+          const privateSummary = `Private internal ${family.type} note never for publication`;
+          const excerpt = `Public ${family.type} excerpt`;
+          const body = `Verified integrated ${family.type} public body`;
+          let publicContent = { excerpt, body };
+          let draft;
+          if (family.type === 'blog-post') {
+            // First definition is the only choice: prove normal create and edit UI writes.
+            await editor.page.goto(`${BASE}/workspace`);
+            await editor.page.getByRole('button', { name: 'New record', exact: true }).click();
+            await editor.page.getByLabel('Title', { exact: true }).fill(title);
+            await editor.page.getByLabel('Slug', { exact: true }).fill(slug);
+            await editor.page.getByLabel('Summary', { exact: true }).fill(privateSummary);
+            await editor.page.getByLabel('Public excerpt', { exact: true }).fill(excerpt);
+            await editor.page.getByLabel('Public body', { exact: true }).fill(body);
+            await capturePublicAuthoring(
+              editor.page,
+              testInfo,
+              'create',
+              publicContent,
+              editor.page,
+              'Create draft'
+            );
+            const creating = editor.page.waitForResponse(
+              (r) => r.url().endsWith(`/api${route}`) && r.request().method() === 'POST'
+            );
+            await editor.page.getByRole('button', { name: 'Create draft', exact: true }).click();
+            const created = await creating;
+            expect(created.status()).toBe(201);
+            draft = await created.json();
+            expect(draft.publicContent).toEqual(publicContent);
+            const inspector = editor.page.locator('[aria-label="Record details"]');
+            await inspector.getByRole('button', { name: 'Edit fields', exact: true }).click();
+            publicContent = { excerpt, body: `${body} edited through the workspace UI` };
+            await inspector.getByLabel('Public body', { exact: true }).fill(publicContent.body);
+            await capturePublicAuthoring(
+              editor.page,
+              testInfo,
+              'edit',
+              publicContent,
+              inspector,
+              'Save changes'
+            );
+            const saving = editor.page.waitForResponse(
+              (r) =>
+                r.url().endsWith(`/api${route}/${draft.id}`) && r.request().method() === 'PATCH'
+            );
+            await inspector.getByRole('button', { name: 'Save changes', exact: true }).click();
+            const saved = await saving;
+            expect(saved.status()).toBe(200);
+            const updated = await saved.json();
+            expect(updated.version).toBe(draft.version + 1);
+            draft = updated;
+            await expect(
+              inspector.getByRole('button', { name: 'Edit fields', exact: true })
+            ).toBeVisible();
+            await expect(inspector).toContainText(publicContent.body);
+          } else {
+            draft = await api(
+              editor,
+              'POST',
+              route,
+              {
+                title,
+                slug,
+                values: { summary: privateSummary },
+                publicContent: { excerpt, body },
+              },
+              201
+            );
+          }
+          const persisted = await api(editor, 'GET', `${route}/${draft.id}`);
+          expect(persisted.publicContent).toEqual(publicContent);
+          expect(persisted.values).toEqual({ summary: privateSummary });
+          expect(persisted.version).toBe(draft.version);
           const submitted = await api(
             editor,
             'POST',
@@ -228,7 +336,8 @@ test.describe('Representative generated profile: real supported public families'
             ...family,
             ...published,
             title,
-            summary,
+            privateSummary,
+            publicContent,
             route,
             urlPath: `${family.prefix}/${slug}`,
           });
@@ -258,6 +367,9 @@ test.describe('Representative generated profile: real supported public families'
           .toBe(true);
         expect(before.items).toHaveLength(3);
         for (const record of records) {
+          expect(before.items.find((item) => item.urlPath === record.urlPath)?.excerpt).toBe(
+            record.publicContent.excerpt
+          );
           const response = await publicGet(`/content/${record.type}/${record.slug}`);
           expect(response.status()).toBe(200);
           const detail = await response.json();
@@ -265,7 +377,11 @@ test.describe('Representative generated profile: real supported public families'
             id: record.id,
             contentType: record.type,
             title: record.title,
+            excerpt: record.publicContent.excerpt,
+            body: record.publicContent.body,
           });
+          expect(JSON.stringify(detail)).not.toContain(record.privateSummary);
+          expect(JSON.stringify(before)).not.toContain(record.privateSummary);
           await publicPage.goto(`${BASE}/search`);
           await publicPage.getByLabel('Search this site', { exact: true }).fill(QUERY);
           await publicPage
@@ -279,7 +395,8 @@ test.describe('Representative generated profile: real supported public families'
           await expect(
             publicPage.getByRole('heading', { name: record.title, exact: true })
           ).toBeVisible();
-          await expect(publicPage.locator('article')).toContainText(record.summary);
+          await expect(publicPage.locator('article')).toContainText(record.publicContent.body);
+          await expect(publicPage.locator('body')).not.toContainText(record.privateSummary);
           await testInfo.attach(`representative-public-${record.type}`, {
             body: await publicPage.screenshot({ fullPage: true }),
             contentType: 'image/png',
@@ -317,7 +434,8 @@ test.describe('Representative generated profile: real supported public families'
           expect(member).toMatchObject({
             id: record.id,
             state: 'published',
-            values: { summary: record.summary },
+            values: { summary: record.privateSummary },
+            publicContent: record.publicContent,
           });
           const pending = publicPage.waitForResponse((r) =>
             r.url().includes(`/api/content/${record.type}/${record.slug}`)

@@ -21,11 +21,15 @@ from django.utils import timezone
 
 from common.models import (
     CONTENT_TYPE_KEY_PATTERN,
+    WORKSPACE_SNAPSHOT_CONTEXT,
     content_identifier_validator,
     content_type_key_validator,
     operations_identifier_validator,
+    read_workspace_snapshot,
     validate_closed_mapping,
     validate_operations_dimensions,
+    validate_public_content,
+    workspace_record_snapshot,
 )
 from common.models import (
     ReviewApproval as CanonicalReviewApproval,
@@ -609,8 +613,26 @@ class ContentRecord(SiteOwnedModel):
         State.ARCHIVED: {State.DRAFT},
     }
 
+    def clean_fields(self, exclude=None):
+        # TextField.to_python would otherwise silently coerce native integers.
+        if self.definition_id:
+            validate_public_content({"excerpt": self.excerpt, "body": self.body})
+        super().clean_fields(exclude=exclude)
+
+    def workspace_snapshot(self):
+        return workspace_record_snapshot({
+            column: getattr(self, column)
+            for column in {*WORKSPACE_SNAPSHOT_CONTEXT.values(), "values", "excerpt", "body"}
+        })
+
+    def version_snapshot(self):
+        # Static/unmanaged callers retain their pre-workspace values-only history.
+        return self.workspace_snapshot() if self.definition_id else self.values
+
     def clean(self) -> None:  # noqa: C901 - canonical record invariant aggregation
         super().clean()
+        if self.definition_id:
+            validate_public_content({"excerpt": self.excerpt, "body": self.body})
         if self.definition_id:
             if (
                 self.definition.site_id != self.site_id
@@ -653,17 +675,12 @@ class ContentRecord(SiteOwnedModel):
         revision = (
             self.revisions.order_by("-revision").values_list("revision", flat=True).first() or 0
         ) + 1
-        snapshot = {
-            "title": self.title,
-            "excerpt": self.excerpt,
-            "body": self.body,
-            "metadata": self.metadata,
-            "values": self.values,
-            "state": self.state,
+        snapshot = self.workspace_snapshot() if self.definition_id else {
+            "title": self.title, "excerpt": self.excerpt, "body": self.body,
+            "metadata": self.metadata, "values": self.values, "state": self.state,
             "publishAt": self.publish_at.isoformat() if self.publish_at else None,
             "scheduleTimezone": self.schedule_timezone or None,
-            "sitemapInclude": self.sitemap_include,
-            "searchVisible": self.search_visible,
+            "sitemapInclude": self.sitemap_include, "searchVisible": self.search_visible,
             "version": self.version,
         }
         return ContentRevision.objects.create(
@@ -708,9 +725,12 @@ class ContentRecord(SiteOwnedModel):
             )
             return revision
 
-    def update_values(self, values: dict, *, expected_version: int, actor_ref: str = "") -> None:
+    def update_values(self, values: dict, *, expected_version: int, actor_ref: str = "",
+                      public_content: dict | None = None) -> None:
         if not isinstance(values, dict) or len(values) > 128:
             raise ValidationError({"values": "record_values_invalid"})
+        if public_content is not None:
+            validate_public_content(public_content)
         with transaction.atomic():
             begin_workspace_policy_effect()
             current = type(self).objects.select_for_update().get(pk=self.pk)
@@ -720,16 +740,23 @@ class ContentRecord(SiteOwnedModel):
                 record=current,
                 version=current.version,
                 schema_version=current.schema_version,
-                snapshot=current.values,
-                snapshot_sha256=_snapshot_digest(current.values),
+                snapshot=current.version_snapshot(),
+                snapshot_sha256=_snapshot_digest(current.version_snapshot()),
                 actor_ref=actor_ref,
                 action="update",
             )
             current.values = values
+            if public_content is not None:
+                current.excerpt = public_content["excerpt"]
+                current.body = public_content["body"]
             current.version += 1
             current.full_clean()
-            current.save(update_fields=["values", "version", "updated_at"])
+            current.save(update_fields=["values", "excerpt", "body", "version", "updated_at"])
+            current.refresh_from_db()  # Include PostgreSQL policy-trigger state changes.
+            self.state, self.publish_at = current.state, current.publish_at
+            self.schedule_timezone = current.schedule_timezone
             self.values = current.values
+            self.excerpt, self.body = current.excerpt, current.body
             self.version = current.version
 
     def transition_action(
@@ -771,8 +798,8 @@ class ContentRecord(SiteOwnedModel):
                 record=current,
                 version=current.version,
                 schema_version=current.schema_version,
-                snapshot=current.values,
-                snapshot_sha256=_snapshot_digest(current.values),
+                snapshot=current.version_snapshot(),
+                snapshot_sha256=_snapshot_digest(current.version_snapshot()),
                 actor_ref=actor_ref,
                 action=action,
             )
@@ -838,8 +865,8 @@ class ContentRecord(SiteOwnedModel):
                 record=source,
                 version=source.version,
                 schema_version=source.schema_version,
-                snapshot=source.values,
-                snapshot_sha256=_snapshot_digest(source.values),
+                snapshot=source.version_snapshot(),
+                snapshot_sha256=_snapshot_digest(source.version_snapshot()),
                 actor_ref=actor_ref,
                 action="cascade_delete",
             )
@@ -873,18 +900,29 @@ class ContentRecord(SiteOwnedModel):
                 record=current,
                 version=current.version,
                 schema_version=current.schema_version,
-                snapshot=current.values,
-                snapshot_sha256=_snapshot_digest(current.values),
+                snapshot=current.version_snapshot(),
+                snapshot_sha256=_snapshot_digest(current.version_snapshot()),
                 actor_ref=actor_ref,
                 action="restore",
                 restored_from_version=version,
             )
-            snapshot = restored.snapshot
-            current.values = snapshot.get("values", snapshot)
+            if current.definition_id:
+                current.values, public_content, _mode = read_workspace_snapshot(restored.snapshot)
+            else:
+                # Unmanaged native history has never restored publication text.
+                current.values = restored.snapshot.get("values", restored.snapshot)
+                public_content = None
+            if public_content is not None:
+                current.excerpt = public_content["excerpt"]
+                current.body = public_content["body"]
             current.version += 1
             current.full_clean()
-            current.save(update_fields=["values", "version", "updated_at"])
+            current.save(update_fields=["values", "excerpt", "body", "version", "updated_at"])
+            current.refresh_from_db()  # Include PostgreSQL policy-trigger state changes.
+            self.state, self.publish_at = current.state, current.publish_at
+            self.schedule_timezone = current.schedule_timezone
             self.values = current.values
+            self.excerpt, self.body = current.excerpt, current.body
             self.version = current.version
             return self
 
@@ -938,7 +976,11 @@ class ContentRevision(models.Model):
         return super().save(*args, **kwargs)
 
     def diff_values(self, other: dict) -> dict[str, list[str]]:
-        current = self.snapshot.get("values", self.snapshot)
+        current = (
+            read_workspace_snapshot(self.snapshot)[0]
+            if self.content.definition_id
+            else self.snapshot.get("values", self.snapshot)
+        )
         if (
             not isinstance(current, dict)
             or not isinstance(other, dict)

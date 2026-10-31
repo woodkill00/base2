@@ -594,3 +594,80 @@ diagnostics and retain strict comparison; no guessed normalization or privilege 
 An API-only source guard also imported an unavailable Playwright package; evaluate
 its actual config logic with only the decorator supplied in the source-test harness,
 while real Playwright validation remains native collection/execution evidence.
+
+
+### Public-authoring and restore diagnostics checkpoint
+
+Public-authoring canonical/API source has independent review acceptance, with 216
+focused API checks and 73 canonical checks passing. Unmanaged/static history retains
+its prior values-only behavior and unrestricted public text; managed history remains
+strict. Seven new PostgreSQL cases are collected, not yet executed. UI implementation
+and focused checks exist, but final stale-response review, broad frontend checks and
+native representative authoring/rendering proof remain pending. T35 is not complete.
+
+At e387465 the restore executes pg_restore but fails exact parity on 78 catalog
+objects and one policy. The first twelve emitted differences are explicit owner-only
+ACL arrays versus NULL. PostgreSQL documents default-ACL representation differences,
+but the omitted object/policy differences are not yet established. Diagnostics-only
+commit a0ef808 expands closed hashed evidence to 96 entries with per-category
+reservation and bounded size, without normalizing catalogs or relaxing acceptance.
+The complete 134-check release gate remains unrun. No merge or deployment occurred.
+
+
+Final local public-authoring API validation passes 1,787 tests with eight skips,
+86.16% suite coverage, Ruff and mypy; changed executable source coverage is 82/82.
+The native-CI-shaped Django run initially found a sibling API import unavailable
+from django/; a test-only resolved-file import fixes that parity test without path
+pollution. The rerun passes all 256 Django tests with 76.60% coverage; migration
+check reports no changes. Existing pinned Ruff passes Django; the local Django
+venv itself lacks Ruff despite the declared development requirement.
+
+Independent UI source review accepted atomic copy/value save, permission/legacy
+restore behavior and dirty/late-response protection after repairing stale
+post-mutation detail acceptance. Full frontend checks remain pending. Root review
+of the representative journey confirms explicit public creation/editing, persisted
+copy checks, distinct private-value absence and unchanged three-family restrictions.
+The native journey and seven new PostgreSQL cases still await publication/execution.
+Recovery/journey contracts pass 141 checks locally.
+
+Expanded a0ef808 restore evidence has no omissions: 71 relation ACL differences,
+two function ACL differences, five constraint-definition differences and one policy
+USING-expression difference. Their meaning is under investigation; no normalization
+or restored-runtime success has been accepted.
+
+
+Final frozen frontend suite passes 738 tests across 109 files plus 27 tooling
+tests. Lines85.70%, statements83.78%, branches77.42%, functions82.56%; existing
+floors unchanged. Lint has zero errors (30 existing declaration warnings), typecheck
+and build pass. This is unit/static evidence, not native browser acceptance.
+
+- [ ] T36 Repair restore evidence representation with security manifest v2: precise
+      PostgreSQL default ACL expansion and token-aware proven literal-array cast
+      equivalence. Preserve strict semantic authority, reject incompatible v1 restore,
+      test exact native hashes and malicious/non-equivalent differences, independently
+      review, then establish actual restored runtime and success receipt. Not complete.
+
+The final five test-only gap closures pass: frontend743/743 plus27tooling; all156
+added executable UI lines covered. Final coverage lines85.84%, statements83.92%,
+branches77.59%, functions82.77%. No production changes followed reviewed UI source.
+
+Restore-v2 source passed independent adversarial review after closing a Unicode
+function-identifier lexer boundary defect and unsupported opaque-postfix handling.
+All 179 direct recovery/backup contracts pass, with 297/297 module statements covered;
+signed v1 evidence is explicitly rejected. Actual native restore/runtime proof is
+still pending, so T36 remains open.
+
+Opt-in exact-head hosted complete-gate workflow is implemented and source-reviewed,
+with 81 focused CI/policy/runner checks. It is label-event-only, same-repository,
+read-only, source-bound and has no publication-triggered execution. Separate existing
+pinned environments avoid the combined pytest-cov requirement conflict; setup and
+runtime dependency closure remain unverified on a fresh hosted runner. Actual
+repetition evidence and the unchanged 134-check gate run sequentially; private
+allowlisted evidence is validated and archived with modes preserved. No label has
+been applied and the full gate has not run. Restoration and media-security remain
+separate release obligations.
+
+Combined recovery/gate contracts pass238 checks locally. The representative journey
+now captures actual filled public-copy create/edit forms at1440 and390 widths,
+checks overflow/control reachability and restores viewport without reload;49 source
+contracts and five-case collection pass. Screenshots and native writes remain pending.

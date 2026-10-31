@@ -15,7 +15,12 @@ DEFINITION_ID = UUID(int=2104)
 RECORD_ID = UUID(int=3104)
 VIEW_ID = UUID(int=4104)
 FIELDS: list[tuple[Any, ...]] = [("title", "short_text", True, False, None, {})]
-RECORD = (RECORD_ID, "site-a", "article", "safe", "Safe", {"title": "Safe"}, "draft", 1, 2, NOW)
+RECORD = (RECORD_ID, "site-a", "article", "safe", "Safe", {"title": "Safe"}, "draft", 1, 2, NOW, "", "")
+
+SOURCE = {"title": "Safe", "slug": "safe", "content_type": "article", "schema_version": 1,
+          "version": 2, "metadata": {}, "state": "draft", "publish_at": None,
+          "schedule_timezone": "", "published_at": None, "sitemap_include": True,
+          "search_visible": True, "excerpt": "", "body": "", "values": {"title": "Safe"}}
 
 
 class QueueCursor:
@@ -252,8 +257,8 @@ def test_record_create_read_update_transition_history_and_restore(monkeypatch):
     with pytest.raises(ValueError, match="content_not_found"):
         repo.get_record(site_id="site-a", type_key="article", record_id=RECORD_ID)
 
-    existing = (RECORD_ID, 2, 1, {"title": "Safe"})
-    updated_row = (*RECORD[:5], {"title": "Changed"}, *RECORD[6:8], 3, NOW)
+    existing = (RECORD_ID, 2, 1, {"title": "Safe"}, SOURCE)
+    updated_row = (*RECORD[:5], {"title": "Changed"}, *RECORD[6:8], 3, NOW, "", "")
     cursor = QueueCursor(ones=[existing, (DEFINITION_ID, 1), updated_row], alls=[FIELDS])
     connection = bind(monkeypatch, cursor)
     updated = repo.update_record(
@@ -274,9 +279,9 @@ def test_record_create_read_update_transition_history_and_restore(monkeypatch):
             "permission": "content.write",
         }
     ]
-    transitioned_row = (*RECORD[:6], "in_review", *RECORD[7:8], 3, NOW)
+    transitioned_row = (*RECORD[:6], "in_review", *RECORD[7:8], 3, NOW, "", "")
     cursor = QueueCursor(
-        ones=[(RECORD_ID, 2, 1, {"title": "Safe"}, "draft", transitions), transitioned_row]
+        ones=[(RECORD_ID, 2, 1, {"title": "Safe"}, "draft", transitions, SOURCE), transitioned_row]
     )
     connection = bind(monkeypatch, cursor)
     transitioned = repo.transition_record(
@@ -291,14 +296,14 @@ def test_record_create_read_update_transition_history_and_restore(monkeypatch):
     )
     assert transitioned["state"] == "in_review" and connection.commits == 1
 
-    cursor = QueueCursor(alls=[[(1, 1, "a" * 64, "update", None, NOW)]])
+    cursor = QueueCursor(alls=[[(1, 1, "a" * 64, "update", None, NOW, {"title": "Earlier"})]])
     bind(monkeypatch, cursor)
     history = repo.list_versions(site_id="site-a", type_key="article", record_id=RECORD_ID)
     assert history["items"][0]["createdAt"] == NOW.isoformat()
 
-    restored_row = (*RECORD[:5], {"title": "Earlier"}, *RECORD[6:8], 3, NOW)
+    restored_row = (*RECORD[:5], {"title": "Earlier"}, *RECORD[6:8], 3, NOW, "", "")
     cursor = QueueCursor(
-        ones=[existing, ({"values": {"title": "Earlier"}},), (DEFINITION_ID, 1), restored_row],
+        ones=[existing, ({"title": "Earlier"},), (DEFINITION_ID, 1), restored_row],
         alls=[FIELDS],
     )
     connection = bind(monkeypatch, cursor)

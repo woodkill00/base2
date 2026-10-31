@@ -13,6 +13,20 @@ const actions = new Set([
   'adopt_review_subject',
 ]);
 
+const validPublicText = (value, limit) =>
+  typeof value === 'string' &&
+  Array.from(value).length <= limit &&
+  !Array.from(value).some((character) => {
+    const code = character.codePointAt(0);
+    return code === 0 || (code >= 0xd800 && code <= 0xdfff);
+  });
+
+export const validPublicContent = (value) =>
+  object(value) &&
+  Object.keys(value).length === 2 &&
+  validPublicText(value.excerpt, 2000) &&
+  validPublicText(value.body, 20000);
+
 export const validWorkspaceReview = (review) =>
   object(review) &&
   ['authorship_unknown', 'approved', 'pending', 'not_requested'].includes(review.status) &&
@@ -43,6 +57,7 @@ export const readWorkspaceRecord = (value, { recordId, typeKey, siteId, minimumV
     typeof value.title !== 'string' ||
     typeof value.slug !== 'string' ||
     !object(value.values) ||
+    !validPublicContent(value.publicContent) ||
     !states.has(value.state) ||
     !integer(value.schemaVersion) ||
     !integer(value.version) ||
@@ -56,6 +71,7 @@ export const readWorkspaceRecord = (value, { recordId, typeKey, siteId, minimumV
   return {
     ...value,
     values: { ...value.values },
+    publicContent: { ...value.publicContent },
     review: { ...value.review },
     allowedActions: [...value.allowedActions],
   };

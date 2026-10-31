@@ -11,6 +11,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from fastapi import APIRouter, Header, HTTPException, Path, Query, Request, Response, status
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from api.content_public_authoring import validate_public_content
 from api.middleware.tenant import require_tenant
 from api.repositories.content_workspace import PostgresContentWorkspaceRepository
 from api.security.request_auth import require_authenticated_principal
@@ -162,10 +163,28 @@ class DefinitionCreate(ContractModel):
         return value
 
 
+class PublicContent(ContractModel):
+    excerpt: str = Field(strict=True, max_length=2_000)
+    body: str = Field(strict=True, max_length=20_000)
+
+    @model_validator(mode='before')
+    @classmethod
+    def strict_public_text(cls, value):
+        validate_public_content(value)
+        return value
+
+
 class RecordCreate(ContractModel):
     slug: str = Field(pattern=r'^[a-z0-9]+(?:-[a-z0-9]+)*$', min_length=1, max_length=160)
     title: str = Field(min_length=1, max_length=240)
     values: dict = Field(default_factory=dict)
+    public_content: PublicContent | None = None
+
+    @field_validator("public_content", mode="before")
+    @classmethod
+    def nonnull_public_content(cls, value):
+        validate_public_content(value)
+        return value
 
     @field_validator('values')
     @classmethod
@@ -176,6 +195,14 @@ class RecordCreate(ContractModel):
 
 
 class RecordUpdate(ContractModel):
+    public_content: PublicContent | None = None
+
+    @field_validator("public_content", mode="before")
+    @classmethod
+    def nonnull_public_content(cls, value):
+        validate_public_content(value)
+        return value
+
     values: dict
     expected_version: int | None = Field(default=None, ge=1)
 
@@ -666,6 +693,7 @@ def update_record(
             expected_version=expected,
             actor_ref=f'user:{principal.user_id}',
             values=payload.values,
+            public_content=payload.public_content.model_dump() if payload.public_content is not None else None,
         )
     except ValueError as exc:
         code = str(exc)

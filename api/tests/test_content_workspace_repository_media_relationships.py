@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from contextlib import contextmanager
 from datetime import UTC, datetime
 from uuid import UUID
@@ -7,6 +8,7 @@ from uuid import UUID
 import pytest
 
 from api.repositories import content_workspace as repository
+from api.tests.test_content_workspace_repository_lifecycle import SOURCE
 
 
 NOW = datetime(2026, 9, 2, 21, 0, tzinfo=UTC)
@@ -15,7 +17,8 @@ TARGET_ID = UUID(int=3204)
 DEFINITION_ID = UUID(int=2104)
 ASSET_ID = UUID(int=7104)
 RELATIONSHIP_ID = UUID(int=8104)
-RECORD = (RECORD_ID, 2, 1, {"title": "Safe"}, DEFINITION_ID)
+RECORD = (RECORD_ID, 2, 1, {"title": "Safe"}, DEFINITION_ID,
+          {**SOURCE, "excerpt": "Public summary", "body": "Public body"})
 
 
 class QueueCursor:
@@ -247,6 +250,10 @@ def test_record_lock_and_bump_enforce_presence_and_version():
     )
     assert version == 3
     assert "sitecontent_contentrevision" in cursor.calls[0][0]
+    snapshot = json.loads(cursor.calls[0][1][3])
+    assert snapshot["publicContent"] == {"excerpt": "Public summary", "body": "Public body"}
+    assert snapshot["context"]["version"] == 2
+    assert snapshot["context"]["state"] == "draft"
 
 
 def test_asset_binding_and_unbinding_are_versioned_transactions(monkeypatch):

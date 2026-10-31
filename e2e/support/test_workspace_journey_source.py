@@ -278,7 +278,7 @@ def test_representative_journey_uses_exact_supported_families_and_real_route_bou
     for prohibited in ['page.route(', '.fulfill(', 'test.skip(', 'test.fixme(', 'addCookies(', 'storageState:']:
         assert prohibited not in source
     assert "await link.click()" in source
-    assert "toContainText(record.summary)" in source
+    assert "toContainText(record.publicContent.body)" in source
     assert "const after = await search()" in source
     assert "expect(after.items).toEqual([])" in source
     assert "'members_only'" in source
@@ -381,3 +381,36 @@ def test_profile_gate_wrapper_uses_fixed_native_argv_and_overrides_only_profile(
         with pytest.raises(SystemExit) as error:
             module.main(args)
         assert error.value.code == 2 and len(calls) == count
+
+
+def test_representative_authors_explicit_public_copy_without_private_value_promotion():
+    source = SOURCE.with_name('workspace-representative.spec.js').read_text()
+    for label in ('New record', 'Public excerpt', 'Public body', 'Create draft', 'Edit fields', 'Save changes'):
+        assert f"'{label}'" in source
+    assert "r.request().method() === 'PATCH'" in source
+    assert 'publicContent: { excerpt, body }' in source
+    assert 'values: { summary: privateSummary }' in source
+    assert 'expect(persisted.publicContent).toEqual(publicContent)' in source
+    assert 'excerpt: record.publicContent.excerpt' in source
+    assert 'body: record.publicContent.body' in source
+    assert 'JSON.stringify(detail)).not.toContain(record.privateSummary)' in source
+    assert 'JSON.stringify(before)).not.toContain(record.privateSummary)' in source
+    assert 'toContainText(record.privateSummary)' in source
+
+
+def test_public_authoring_captures_filled_desktop_and_mobile_without_reloading():
+    source = SOURCE.with_name('workspace-representative.spec.js').read_text()
+    helper = source.split('async function capturePublicAuthoring(', 1)[1].split('\nasync function ', 1)[0]
+    assert '[1440, 390]' in helper
+    assert 'page.viewportSize()' in helper
+    assert 'finally' in helper and 'page.setViewportSize(originalViewport)' in helper
+    assert 'document.documentElement.scrollWidth <= window.innerWidth' in helper
+    assert 'scrollIntoViewIfNeeded()' in helper and 'toBeInViewport()' in helper
+    assert 'click({ trial: true })' in helper
+    assert 'toHaveValue(publicContent.body)' in re.sub(r'\s+', '', helper)
+    assert '`representative-public-authoring-${stage}-${width}`' in helper
+    assert 'fullPage: true' in helper
+    assert '.goto(' not in helper and '.reload(' not in helper
+    compact = re.sub(r'\s+', '', source)
+    assert compact.index("'create',publicContent") < compact.index('constcreating=')
+    assert compact.index("'edit',publicContent") < compact.index('constsaving=')

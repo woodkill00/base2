@@ -24,7 +24,16 @@ const copy = {
   },
 };
 
-function RouterDraftGuard({ dirty, locale, onDiscard }) {
+const settingsNavigation = (nextLocation) => /^\/settings(?:\/|$)/.test(nextLocation.pathname);
+
+function RouterDraftGuard({
+  dirty,
+  locale,
+  onDiscard,
+  title,
+  fallbackFocusId = 'settings-detail',
+  allowInternalNavigation = settingsNavigation,
+}) {
   const focus = useRef(null);
   const overlay = useRef(null);
   const restoreFocus = useRef(false);
@@ -36,14 +45,14 @@ function RouterDraftGuard({ dirty, locale, onDiscard }) {
     ({ nextLocation }) => {
       // Categories share the same mounted drafts. Authentication recovery must never
       // be held hostage by an obsolete form after revocation/session expiry.
-      const internal = /^\/settings(?:\/|$)/.test(nextLocation.pathname);
+      const internal = allowInternalNavigation(nextLocation);
       const authentication = /^\/(?:login|logout|auth)(?:\/|$)/.test(nextLocation.pathname);
       if (!dirty || internal || authentication) return false;
       if (!pending.current) focus.current = document.activeElement;
       pending.current = true;
       return true;
     },
-    [dirty]
+    [dirty, allowInternalNavigation]
   );
   const blocker = useBlocker(shouldBlock);
   const open = blocker.state === 'blocked';
@@ -98,13 +107,13 @@ function RouterDraftGuard({ dirty, locale, onDiscard }) {
         };
         const target = [
           focus.current,
-          document.getElementById('settings-detail'),
+          document.getElementById(fallbackFocusId),
           document.getElementById('main-content'),
         ].find(available);
         target?.focus({ preventScroll: true });
       }
     };
-  }, [open]);
+  }, [open, fallbackFocusId]);
   const stay = () => {
     if (decided.current) return;
     decided.current = true;
@@ -150,7 +159,7 @@ function RouterDraftGuard({ dirty, locale, onDiscard }) {
         }}
       >
         <h2 id="settings-leave-title" className="font-semibold">
-          {text.title}
+          {title || text.title}
         </h2>
         <p id="settings-leave-description" className="my-4">
           {text.body}

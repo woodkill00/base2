@@ -7,6 +7,7 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID, uuid4
 
+from api.content_public_authoring import workspace_record_snapshot
 from api.db import workspace_worker_db_conn as db_conn
 from api.repositories.content_workspace import _validate_values
 from api.repositories import workspace_policy as policy_repo
@@ -107,7 +108,7 @@ def publish_scheduled_record(*, site_id: str, record_id: UUID) -> str:
                 policy_repo.begin_effect(cur)
                 policy = policy_repo.read_policy(cur, site_id=site_id, lock=True)
                 cur.execute(
-                    """SELECT id, version, schema_version, values, state, publish_at
+                    """SELECT id, version, schema_version, values, state, publish_at, to_jsonb(sitecontent_contentrecord)
                        FROM sitecontent_contentrecord
                        WHERE id=%s AND site_id=%s FOR UPDATE""",
                     (str(record_id), site_id),
@@ -135,7 +136,7 @@ def publish_scheduled_record(*, site_id: str, record_id: UUID) -> str:
                     )
                     conn.commit()
                     return 'authorization_required'
-                snapshot = json.dumps(row[3], sort_keys=True, separators=(',', ':'))
+                snapshot = json.dumps(workspace_record_snapshot(row[6]), sort_keys=True, separators=(',', ':'), ensure_ascii=False)
                 cur.execute(
                     """INSERT INTO sitecontent_contentrevision
                        (id, content_id, revision, snapshot, actor_ref, created_at,
@@ -1389,7 +1390,7 @@ def process_import_commit(*, site_id: str, job_id: UUID, artifact_store) -> str:
                         if exact_match_id is None:
                             raise ValueError('content_integrity_failed')
                         cur.execute(
-                            """SELECT id, version, schema_version, values
+                            """SELECT id, version, schema_version, values, to_jsonb(sitecontent_contentrecord)
                                FROM sitecontent_contentrecord
                                WHERE id=%s AND site_id=%s AND content_type=%s
                                  AND deleted_at IS NULL FOR UPDATE""",
@@ -1399,7 +1400,7 @@ def process_import_commit(*, site_id: str, job_id: UUID, artifact_store) -> str:
                         if not existing:
                             raise ValueError('content_integrity_failed')
                         snapshot = json.dumps(
-                            existing[3], sort_keys=True, separators=(',', ':'), ensure_ascii=False
+                            workspace_record_snapshot(existing[4]), sort_keys=True, separators=(',', ':'), ensure_ascii=False
                         )
                         cur.execute(
                             """INSERT INTO sitecontent_contentrevision

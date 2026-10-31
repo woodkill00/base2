@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from contextlib import contextmanager
 from uuid import UUID
 from datetime import UTC, datetime
@@ -104,7 +105,10 @@ def test_worker_health_summary_is_bounded_deterministic_and_redacted(monkeypatch
 
 def test_publication_is_tenant_bound_transactional_and_replay_safe(monkeypatch):
     record_id = UUID(int=104)
-    cursor = Cursor([(record_id, 3, 1, {'title': 'Safe'}, 'scheduled', 'future'), (True,)])
+    from api.tests.test_content_workspace_repository_lifecycle import SOURCE
+    source = {**SOURCE, 'state': 'scheduled', 'version': 3, 'publish_at': 'future',
+              'excerpt': 'Public summary', 'body': 'Public body'}
+    cursor = Cursor([(record_id, 3, 1, {'title': 'Safe'}, 'scheduled', 'future', source), (True,)])
     connection = Connection(cursor)
     scopes = bind(monkeypatch, connection)
     assert worker.publish_scheduled_record(site_id='site-a', record_id=record_id) == 'published'
@@ -112,6 +116,10 @@ def test_publication_is_tenant_bound_transactional_and_replay_safe(monkeypatch):
     sql = ' '.join(statement for statement, _ in cursor.calls)
     assert 'FOR UPDATE' in sql and 'sitecontent_contentrevision' in sql
     assert 'sitecontent_workspaceauditevent' in sql
+    revision = next(params for statement, params in cursor.calls if 'INSERT INTO sitecontent_contentrevision' in statement)
+    snapshot = json.loads(revision[3])
+    assert snapshot['context']['state'] == 'scheduled' and snapshot['context']['version'] == 3
+    assert snapshot['publicContent']['body'] == 'Public body'
 
     replay_cursor = Cursor([(record_id, 4, 1, {}, 'published', None)])
     replay = Connection(replay_cursor)

@@ -46,16 +46,18 @@ const record = {
     recoveryReason: null,
   },
   version: 2,
+  publicContent: { excerpt: '', body: '' },
   values: { title: 'Safe title', summary: 'Original', featured: false },
   history: [
     { version: 2, action: 'update', schemaVersion: 1 },
-    { version: 1, action: 'create', schemaVersion: 1 },
+    { version: 1, action: 'create', schemaVersion: 1, publicContentRestoreMode: 'snapshot' },
   ],
 };
 
 const renderInspector = (overrides = {}) => {
   const props = {
     typeKey: 'article',
+    canEdit: true,
     schema,
     record: { ...record, ...overrides },
     onChanged: vi.fn(),
@@ -93,7 +95,8 @@ describe('record workspace inspector', () => {
         'article',
         'record-1',
         2,
-        expect.objectContaining({ summary: 'Changed', featured: false })
+        expect.objectContaining({ summary: 'Changed', featured: false }),
+        { publicContent: record.publicContent }
       )
     );
     expect(props.onChanged).toHaveBeenCalledWith(
@@ -121,7 +124,11 @@ describe('record workspace inspector', () => {
   test('restores an immutable historical revision only as a new version', async () => {
     const user = userEvent.setup();
     const { props } = renderInspector();
-    contentWorkspaceAPI.restore.mockResolvedValue({ ...record, version: 3 });
+    contentWorkspaceAPI.restore.mockResolvedValue({
+      ...record,
+      version: 3,
+      restoration: { sourceVersion: 1, publicContent: 'restored' },
+    });
     await act(async () => user.click(screen.getByRole('button', { name: 'Restore' })));
     expect(screen.getByRole('alertdialog')).toHaveTextContent('Current history remains retained');
     await act(async () => user.click(screen.getByRole('button', { name: 'Confirm restore' })));
@@ -247,6 +254,7 @@ test('review denial retains the pending confirmation without claiming approval',
 test.each(['de', 'ar'])('new review controls and consequences are translated in %s', (locale) => {
   render(
     <RecordInspector
+      canEdit
       typeKey="article"
       schema={schema}
       record={{ ...record, allowedActions: ['approve_review'] }}
@@ -301,6 +309,7 @@ test.each(['pending', 'not_requested'])(
     render(
       <MemoryRouter>
         <RecordInspector
+          canEdit
           typeKey="article"
           schema={schema}
           record={{
@@ -337,6 +346,7 @@ test('submission rejected after reviewer revocation exposes recovery but never r
   render(
     <MemoryRouter>
       <RecordInspector
+        canEdit
         typeKey="article"
         schema={schema}
         record={{ ...record, review: { ...record.review, requiresReview: true } }}
@@ -365,6 +375,7 @@ test('administration recovery navigation is unavailable while record edits are d
   render(
     <MemoryRouter>
       <RecordInspector
+        canEdit
         typeKey="article"
         schema={schema}
         record={{

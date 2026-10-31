@@ -290,6 +290,7 @@ def test_workspace_runner_collects_public_pack_key_regressions():
     policy_check = source.split('policy_check = media_check[:-1] + [', 1)[1].split('run(policy_check)', 1)[0]
     assert '"api/tests/test_workspace_type_keys_postgres.py"' in policy_check
     assert '"api/tests/test_public_pack_search_postgres.py"' in policy_check
+    assert '"api/tests/test_content_public_authoring_postgres.py"' in policy_check
     assert '"api/tests/test_workspace_policy_postgres.py"' in policy_check
     assert '"WORKSPACE_POLICY_DISPOSABLE=1"' in policy_check
     assert 'test_workspace_policy_restore_postgres.py' not in policy_check

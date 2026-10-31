@@ -6,8 +6,10 @@ import {
   readWorkspaceRecord,
   validWorkspaceReview,
   validWorkspaceActions,
+  validPublicContent,
 } from '../../services/workspaceRecord';
 import { siteManifest } from '../../config/siteRuntime';
+import PublicContentFields from './PublicContentFields';
 import RecordStructuredFields from './RecordStructuredFields';
 import { workspaceReviewCopy } from './workspaceReviewCopy';
 
@@ -22,7 +24,7 @@ const LABELS = {
   delete: 'Delete record',
 };
 
-const FieldInput = ({ field, value, onChange }) => {
+const FieldInput = ({ field, value, onChange, disabled }) => {
   const id = `record-field-${field.fieldKey}`;
   const structuredKinds = new Set([
     'rich_text',
@@ -50,6 +52,7 @@ const FieldInput = ({ field, value, onChange }) => {
         <input
           id={id}
           type="checkbox"
+          disabled={disabled}
           checked={value === true}
           onChange={(event) => onChange(event.target.checked)}
         />
@@ -64,6 +67,7 @@ const FieldInput = ({ field, value, onChange }) => {
         <select
           id={id}
           required={field.required}
+          disabled={disabled}
           value={value ?? ''}
           onChange={(event) => onChange(event.target.value)}
           className="min-h-11 w-full rounded-xl border border-white/20 bg-slate-950/80 px-3"
@@ -91,6 +95,7 @@ const FieldInput = ({ field, value, onChange }) => {
             : 'text';
   const common = {
     id,
+    disabled,
     required: field.required,
     value: value ?? '',
     onChange: (event) =>
@@ -116,6 +121,9 @@ export default function RecordInspector({
   onChanged,
   onError,
   locale = 'en',
+  canEdit = false,
+  scopeKey = '',
+  onDraftStateChange,
 }) {
   const copy = workspaceReviewCopy[String(locale).split('-')[0]] || workspaceReviewCopy.en;
   const labels = { ...LABELS, approve_review: copy.approve, adopt_review_subject: copy.adopt };
@@ -137,7 +145,7 @@ export default function RecordInspector({
           : copy.unavailable;
   const [editing, setEditing] = useState(false);
   const [blocked, setBlocked] = useState(false);
-  const recordIdentity = `${typeKey}:${record.id}:${record.version}`;
+  const recordIdentity = `${scopeKey}:${typeKey}:${record.id}:${record.version}`;
   const operation = useRef({ epoch: 0, busy: false, alive: false, identity: recordIdentity });
   operation.current.identity = recordIdentity;
   useEffect(() => {
@@ -151,27 +159,56 @@ export default function RecordInspector({
       current.epoch += 1;
       current.alive = false;
     };
-  }, [typeKey, record.id, record.version]);
+  }, [scopeKey, typeKey, record.id, record.version]);
   const actions =
     review && validWorkspaceActions(record.allowedActions)
       ? record.allowedActions.filter((action) => Object.hasOwn(LABELS, action))
       : [];
 
-  const [values, setValues] = useState(record.values || {});
+  const [draft, setDraft] = useState(() => ({
+    values: record.values || {},
+    publicContent: record.publicContent,
+  }));
+  const values = draft.values;
+  const setValues = (update) =>
+    setDraft((current) => ({
+      ...current,
+      values: typeof update === 'function' ? update(current.values) : update,
+    }));
+  const [restorationNotice, setRestorationNotice] = useState('');
+  const publicContentAvailable = validPublicContent(record.publicContent);
+  const publicContentValid = validPublicContent(draft.publicContent);
+  const canWrite = canEdit && publicContentAvailable;
   const [busy, setBusy] = useState(false);
   const [pendingAction, setPendingAction] = useState('');
   const [pendingRestore, setPendingRestore] = useState(null);
   const dirty = useMemo(
-    () => editing && JSON.stringify(values) !== JSON.stringify(record.values || {}),
-    [editing, record.values, values]
+    () =>
+      editing &&
+      (JSON.stringify(draft.values) !== JSON.stringify(record.values || {}) ||
+        JSON.stringify(draft.publicContent) !== JSON.stringify(record.publicContent)),
+    [editing, record.values, record.publicContent, draft]
   );
+
+  const draftProtection = useRef(false);
+  draftProtection.current = dirty || blocked;
+  useEffect(() => {
+    setRestorationNotice('');
+  }, [scopeKey, typeKey, record.id]);
 
   useEffect(() => {
     setEditing(false);
-    setValues(record.values || {});
+    setDraft({ values: record.values || {}, publicContent: record.publicContent });
     setPendingAction('');
     setPendingRestore(null);
-  }, [record.id, record.version, record.values]);
+    // Same-version parent re-renders must not overwrite an unsaved local snapshot.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scopeKey, typeKey, record.id, record.version]);
+
+  useEffect(() => {
+    onDraftStateChange?.(dirty || busy || blocked);
+  }, [dirty, busy, blocked, onDraftStateChange]);
+  useEffect(() => () => onDraftStateChange?.(false), [onDraftStateChange]);
 
   useEffect(() => {
     if (!dirty) return undefined;
@@ -183,7 +220,12 @@ export default function RecordInspector({
     return () => globalThis.removeEventListener('beforeunload', protect);
   }, [dirty]);
 
-  const finishMutation = async (mutate, reload = false) => {
+  const finishMutation = async (
+    mutate,
+    reload = false,
+    restoreVersion = null,
+    minimumVersion = record.version
+  ) => {
     if (operation.current.busy || (blocked && !reload)) return;
     const epoch = operation.current.epoch;
     operation.current.busy = true;
@@ -191,8 +233,15 @@ export default function RecordInspector({
     onError('');
     let refreshing = reload;
     try {
-      if (mutate) await mutate();
+      const result = mutate ? await mutate() : null;
       refreshing = true;
+      if (
+        restoreVersion !== null &&
+        (result?.restoration?.sourceVersion !== restoreVersion ||
+          !['restored', 'preserved_current'].includes(result?.restoration?.publicContent))
+      ) {
+        throw new Error('content_restore_result_invalid');
+      }
       if (epoch !== operation.current.epoch) return;
       // Mutation responses are not authoritative detail envelopes. Always reload
       // current review provenance/actions before enabling another transition.
@@ -205,13 +254,23 @@ export default function RecordInspector({
         recordId: record.id,
         typeKey,
         siteId: siteManifest.siteId,
-        minimumVersion: record.version,
+        // A pre-write snapshot must never clear a committed but unconfirmed draft.
+        minimumVersion: Number.isSafeInteger(result?.version)
+          ? Math.max(minimumVersion, result.version)
+          : minimumVersion,
       });
       onChanged({ ...detail, history: Array.isArray(versions?.items) ? versions.items : [] });
       setPendingAction('');
       setPendingRestore(null);
+      setDraft({ values: detail.values, publicContent: detail.publicContent });
       setEditing(false);
       setBlocked(false);
+      if (restoreVersion !== null)
+        setRestorationNotice(
+          result.restoration.publicContent === 'restored'
+            ? 'Historical public text was restored.'
+            : 'Current public text was preserved.'
+        );
     } catch (error) {
       if (epoch !== operation.current.epoch) return;
       const status = error?.response?.status ?? error?.status;
@@ -229,26 +288,46 @@ export default function RecordInspector({
 
   const save = (event) => {
     event.preventDefault();
-    finishMutation(() =>
-      contentWorkspaceAPI.updateRecord(typeKey, record.id, record.version, values)
+    if (!canWrite || !publicContentValid || !dirty) return;
+    finishMutation(
+      () =>
+        contentWorkspaceAPI.updateRecord(typeKey, record.id, record.version, values, {
+          publicContent: draft.publicContent,
+        }),
+      false,
+      null,
+      record.version + 1
     );
   };
 
   const confirmAction = () => {
-    if (!actions.includes(pendingAction)) return;
-    return finishMutation(() =>
-      pendingAction === 'approve_review'
-        ? contentWorkspaceAPI.approveReview(typeKey, record.id, record.version)
-        : pendingAction === 'adopt_review_subject'
-          ? contentWorkspaceAPI.adoptReviewSubject(typeKey, record.id, record.version)
-          : contentWorkspaceAPI.transition(typeKey, record.id, pendingAction, record.version)
+    if (dirty || !actions.includes(pendingAction)) return;
+    return finishMutation(
+      () =>
+        pendingAction === 'approve_review'
+          ? contentWorkspaceAPI.approveReview(typeKey, record.id, record.version)
+          : pendingAction === 'adopt_review_subject'
+            ? contentWorkspaceAPI.adoptReviewSubject(typeKey, record.id, record.version)
+            : contentWorkspaceAPI.transition(typeKey, record.id, pendingAction, record.version),
+      false,
+      null,
+      ['approve_review', 'adopt_review_subject'].includes(pendingAction)
+        ? record.version
+        : record.version + 1
     );
   };
 
-  const confirmRestore = () =>
-    finishMutation(() =>
-      contentWorkspaceAPI.restore(typeKey, record.id, pendingRestore.version, record.version)
+  const restoreSupported = (version) =>
+    ['snapshot', 'preserve_current'].includes(version?.publicContentRestoreMode);
+  const confirmRestore = () => {
+    if (dirty || !canWrite || !restoreSupported(pendingRestore)) return;
+    finishMutation(
+      () => contentWorkspaceAPI.restore(typeKey, record.id, pendingRestore.version, record.version),
+      false,
+      pendingRestore.version,
+      record.version + 1
     );
+  };
 
   return (
     <div className="space-y-5">
@@ -260,6 +339,10 @@ export default function RecordInspector({
         <p className="text-sm opacity-65">/{record.slug}</p>
       </div>
 
+      {restorationNotice && <p role="status">{restorationNotice}</p>}
+      {!publicContentAvailable && (
+        <p role="alert">Public text is unavailable. Reload the record before editing.</p>
+      )}
       {blocked && (
         <div role="alert" className="space-y-3 rounded-xl border border-amber-300/30 p-4">
           <p>{copy.uncertain}</p>
@@ -274,14 +357,24 @@ export default function RecordInspector({
             <FieldInput
               key={field.fieldKey}
               field={field}
+              disabled={busy || blocked || !canWrite}
               value={values[field.fieldKey]}
               onChange={(value) =>
                 setValues((current) => ({ ...current, [field.fieldKey]: value }))
               }
             />
           ))}
+          <PublicContentFields
+            value={draft.publicContent}
+            disabled={busy || blocked || !canWrite}
+            onChange={(publicContent) => setDraft((current) => ({ ...current, publicContent }))}
+          />
           <div className="flex flex-wrap gap-2">
-            <GlassButton type="submit" variant="primary" disabled={busy || blocked || !dirty}>
+            <GlassButton
+              type="submit"
+              variant="primary"
+              disabled={busy || blocked || !dirty || !canWrite || !publicContentValid}
+            >
               Save changes
             </GlassButton>
             <GlassButton
@@ -289,7 +382,7 @@ export default function RecordInspector({
               variant="ghost"
               disabled={busy || blocked}
               onClick={() => {
-                setValues(record.values || {});
+                setDraft({ values: record.values || {}, publicContent: record.publicContent });
                 setEditing(false);
               }}
             >
@@ -316,20 +409,53 @@ export default function RecordInspector({
               </div>
             ))}
           </dl>
-          <GlassButton type="button" disabled={busy || blocked} onClick={() => setEditing(true)}>
-            Edit fields
-          </GlassButton>
+          {publicContentAvailable && (
+            <dl className="space-y-3">
+              <div>
+                <dt className="text-sm font-medium">Public excerpt</dt>
+                <dd className="whitespace-pre-wrap break-words text-sm">
+                  {record.publicContent.excerpt || 'No public excerpt'}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-sm font-medium">Public body</dt>
+                <dd className="whitespace-pre-wrap break-words text-sm">
+                  {record.publicContent.body || 'No public body'}
+                </dd>
+              </div>
+            </dl>
+          )}
+          {canWrite && (
+            <GlassButton
+              type="button"
+              disabled={busy || blocked}
+              onClick={() => {
+                setPendingAction('');
+                setPendingRestore(null);
+                setEditing(true);
+              }}
+            >
+              Edit fields
+            </GlassButton>
+          )}
         </>
       )}
 
-      <fieldset disabled={busy || blocked || editing}>
+      <fieldset disabled={busy || blocked || editing || !canWrite}>
         <RecordStructuredFields
           typeKey={typeKey}
           schema={schema}
           record={record}
           onChanged={(updated) => {
-            if (operation.current.alive && operation.current.identity === recordIdentity)
-              onChanged(updated);
+            if (!operation.current.alive || operation.current.identity !== recordIdentity) return;
+            // A dedicated-field write may have started before this editor opened.
+            // Reconcile explicitly rather than replacing a newer local draft.
+            if (draftProtection.current || operation.current.busy) {
+              setBlocked(true);
+              onError(new Error('content_record_changed_during_edit'));
+              return;
+            }
+            onChanged(updated);
           }}
           onError={(error) => {
             if (operation.current.alive && operation.current.identity === recordIdentity)
@@ -399,7 +525,7 @@ export default function RecordInspector({
                 type="button"
                 variant="primary"
                 onClick={confirmAction}
-                disabled={busy || blocked}
+                disabled={busy || blocked || dirty}
               >
                 Confirm action
               </GlassButton>
@@ -432,12 +558,18 @@ export default function RecordInspector({
               >
                 <span>
                   Version {version.version} · {version.action} · schema {version.schemaVersion}
+                  {' · '}
+                  {version.publicContentRestoreMode === 'snapshot'
+                    ? 'Public text recorded'
+                    : version.publicContentRestoreMode === 'preserve_current'
+                      ? 'Current public text will be preserved'
+                      : 'Restoration unavailable'}
                 </span>
-                {version.version !== record.version ? (
+                {canWrite && version.version !== record.version ? (
                   <GlassButton
                     type="button"
                     variant="ghost"
-                    disabled={busy || blocked || dirty}
+                    disabled={busy || blocked || dirty || !restoreSupported(version)}
                     onClick={() => setPendingRestore(version)}
                   >
                     Restore
@@ -457,14 +589,19 @@ export default function RecordInspector({
           >
             <p id="record-restore-confirm">
               Restore version {pendingRestore.version} as a new version? Current history remains
-              retained.
+              retained.{' '}
+              {pendingRestore.publicContentRestoreMode === 'preserve_current'
+                ? 'This legacy version has no public text snapshot. Current public text will be preserved.'
+                : 'Public text will be restored from this snapshot.'}
             </p>
             <div className="mt-3 flex gap-2">
               <GlassButton
                 type="button"
                 variant="primary"
                 onClick={confirmRestore}
-                disabled={busy || blocked}
+                disabled={
+                  busy || blocked || dirty || !canWrite || !restoreSupported(pendingRestore)
+                }
               >
                 Confirm restore
               </GlassButton>

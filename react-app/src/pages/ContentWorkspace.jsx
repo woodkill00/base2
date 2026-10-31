@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import AppShell from '../components/glass/AppShell';
 import GlassButton from '../components/glass/GlassButton';
@@ -8,7 +8,10 @@ import { ExportWorkspace, ImportWorkspace } from '../components/content/Workspac
 import RecordInspector from '../components/content/RecordInspector';
 import SchemaBuilder from '../components/content/SchemaBuilder';
 import { contentWorkspaceAPI, normalizeWorkspaceError } from '../services/contentWorkspace';
-import { readWorkspaceRecord } from '../services/workspaceRecord';
+import { readWorkspaceRecord, validPublicContent } from '../services/workspaceRecord';
+import { useAuth } from '../contexts/AuthContext';
+import SettingsDraftGuard from '../components/SettingsDraftGuard';
+import PublicContentFields from '../components/content/PublicContentFields';
 import { siteManifest } from '../config/siteRuntime';
 
 const TABS = ['Records', 'Schemas', 'Imports', 'Exports'];
@@ -39,7 +42,23 @@ const messageFor = (error) => {
   return 'The content workspace is temporarily unavailable; the request could not be confirmed. Refresh before retrying; a change may have completed.';
 };
 
-export default function ContentWorkspace({ locale = 'en' }) {
+const emptyDraft = () => ({
+  title: '',
+  slug: '',
+  values: {},
+  publicContent: { excerpt: '', body: '' },
+});
+const noInternalDraftNavigation = () => false;
+
+export default function ContentWorkspace(props) {
+  const { user } = useAuth();
+  const scopeKey = `${siteManifest.siteId}:${user?.id || 'anonymous'}`;
+  const canEdit =
+    Array.isArray(user?.permissions) && user.permissions.includes('content-workspace.write');
+  return <WorkspaceContent {...props} key={scopeKey} scopeKey={scopeKey} canEdit={canEdit} />;
+}
+
+function WorkspaceContent({ locale = 'en', scopeKey, canEdit }) {
   const location = useLocation();
   const recordEpoch = useRef(0);
   useEffect(
@@ -60,8 +79,37 @@ export default function ContentWorkspace({ locale = 'en' }) {
   const [schema, setSchema] = useState(null);
   const [activeRecord, setActiveRecord] = useState(null);
   const [creating, setCreating] = useState(false);
-  const [draft, setDraft] = useState({ title: '', slug: '', values: {} });
+  const [draft, setDraft] = useState(emptyDraft);
   const [saving, setSaving] = useState(false);
+  const createOperation = useRef({ busy: false, createdId: null });
+  const [createBlocked, setCreateBlocked] = useState(false);
+  const [recordDraftActive, setRecordDraftActive] = useState(false);
+  const reportRecordDraftState = useCallback((active) => {
+    // Editing or a mutation supersedes any older in-flight detail read immediately.
+    if (active) recordEpoch.current += 1;
+    setRecordDraftActive(active);
+  }, []);
+  const createDirty = creating && JSON.stringify(draft) !== JSON.stringify(emptyDraft());
+  const protectDraft = createDirty || recordDraftActive || saving || createBlocked;
+  useEffect(() => {
+    if (!protectDraft) return undefined;
+    const protect = (event) => {
+      event.preventDefault();
+      event.returnValue = '';
+    };
+    globalThis.addEventListener('beforeunload', protect);
+    return () => globalThis.removeEventListener('beforeunload', protect);
+  }, [protectDraft]);
+  const discardDrafts = useCallback(() => {
+    recordEpoch.current += 1;
+    setDraft(emptyDraft());
+    setCreating(false);
+    setActiveRecord(null);
+    setRecordDraftActive(false);
+    setCreateBlocked(false);
+    setSaving(false);
+    createOperation.current = { busy: false, createdId: null };
+  }, []);
   const [searchDraft, setSearchDraft] = useState(activeSearch);
   const [views, setViews] = useState([]);
   const [showViewEditor, setShowViewEditor] = useState(false);
@@ -171,6 +219,9 @@ export default function ContentWorkspace({ locale = 'en' }) {
   }, [selectedType]);
 
   const openRecord = async (record) => {
+    if (protectDraft) return;
+    setCreating(false);
+    if (activeRecord?.id !== record.id) setActiveRecord(null);
     const epoch = ++recordEpoch.current;
     setError('');
     try {
@@ -203,6 +254,13 @@ export default function ContentWorkspace({ locale = 'en' }) {
 
   const createRecord = async (event) => {
     event.preventDefault();
+    if (
+      !canEdit ||
+      createOperation.current.busy ||
+      createBlocked ||
+      !validPublicContent(draft.publicContent)
+    )
+      return;
     const values = {};
     for (const field of schema?.fields || []) {
       const value =
@@ -221,27 +279,88 @@ export default function ContentWorkspace({ locale = 'en' }) {
       setError('Title and slug are required.');
       return;
     }
+    const epoch = recordEpoch.current;
+    createOperation.current.busy = true;
     setSaving(true);
     setError('');
+    let committed = false;
     try {
       const created = await contentWorkspaceAPI.createRecord(selectedType, {
         title: draft.title.trim(),
         slug: draft.slug.trim(),
         values,
+        publicContent: draft.publicContent,
       });
-      setRecords((current) => [created, ...current.filter((item) => item.id !== created.id)]);
-      setActiveRecord({ ...created, history: [] });
-      setDraft({ title: '', slug: '', values: {} });
+      committed = true;
+      if (epoch !== recordEpoch.current) return;
+      if (typeof created?.id !== 'string' || !created.id)
+        throw new Error('content_record_detail_invalid');
+      createOperation.current.createdId = created.id;
+      const updated = await contentWorkspaceAPI.record(selectedType, created.id);
+      if (epoch !== recordEpoch.current) return;
+      const detail = readWorkspaceRecord(updated, {
+        recordId: created.id,
+        typeKey: selectedType,
+        siteId: siteManifest.siteId,
+        minimumVersion: created.version,
+      });
+      setRecords((current) => [detail, ...current.filter((item) => item.id !== detail.id)]);
+      setActiveRecord({ ...detail, history: [] });
+      setDraft(emptyDraft());
       setCreating(false);
+      createOperation.current.createdId = null;
     } catch (caught) {
+      if (epoch !== recordEpoch.current) return;
+      const status = caught?.response?.status;
+      if (committed || !status || status === 409 || status >= 500) setCreateBlocked(true);
       setError(messageFor(caught));
     } finally {
-      setSaving(false);
+      if (epoch === recordEpoch.current) {
+        createOperation.current.busy = false;
+        setSaving(false);
+      }
+    }
+  };
+
+  const reloadCreation = async () => {
+    if (createOperation.current.busy) return;
+    const epoch = recordEpoch.current;
+    createOperation.current.busy = true;
+    setSaving(true);
+    try {
+      const id = createOperation.current.createdId;
+      let detail = null;
+      if (id) {
+        const result = await contentWorkspaceAPI.record(selectedType, id);
+        detail = readWorkspaceRecord(result, {
+          recordId: id,
+          typeKey: selectedType,
+          siteId: siteManifest.siteId,
+        });
+      }
+      const result = await contentWorkspaceAPI.records(selectedType);
+      if (epoch !== recordEpoch.current) return;
+      if (!Array.isArray(result?.items)) throw new Error('content_record_list_invalid');
+      setRecords(result.items);
+      setActiveRecord(detail ? { ...detail, history: [] } : null);
+      setDraft(emptyDraft());
+      setCreating(false);
+      setCreateBlocked(false);
+      setError('');
+      createOperation.current.createdId = null;
+    } catch (caught) {
+      if (epoch === recordEpoch.current) setError(messageFor(caught));
+    } finally {
+      if (epoch === recordEpoch.current) {
+        createOperation.current.busy = false;
+        setSaving(false);
+      }
     }
   };
 
   const submitSearch = (event) => {
     event.preventDefault();
+    if (protectDraft) return;
     const next = new URLSearchParams(searchParams);
     const value = searchDraft.trim();
     if (value) next.set('workspace_q', value);
@@ -284,7 +403,7 @@ export default function ContentWorkspace({ locale = 'en' }) {
   };
 
   const executeView = async (viewId) => {
-    if (!viewId) return;
+    if (!viewId || protectDraft) return;
     setRecordsLoading(true);
     setError('');
     try {
@@ -303,11 +422,13 @@ export default function ContentWorkspace({ locale = 'en' }) {
     [definitions, selectedType]
   );
   const reportJobError = (value) => setError(typeof value === 'string' ? value : messageFor(value));
-  const selectTab = (item) =>
+  const selectTab = (item) => {
+    if (protectDraft) return;
     navigate(
       { pathname: location.pathname, search: location.search, hash: item.toLowerCase() },
       { replace: true }
     );
+  };
   const moveTabFocus = (event, index) => {
     const keys = { ArrowRight: 1, ArrowLeft: -1, Home: -index, End: TABS.length - 1 - index };
     if (!(event.key in keys)) return;
@@ -324,6 +445,14 @@ export default function ContentWorkspace({ locale = 'en' }) {
       sidebarItems={TABS}
       sidebarActivePath={`${location.pathname}${canonicalTabHash}`}
     >
+      <SettingsDraftGuard
+        dirty={protectDraft}
+        locale={locale}
+        title="Leave content workspace?"
+        fallbackFocusId="workspace-detail"
+        allowInternalNavigation={noInternalDraftNavigation}
+        onDiscard={discardDrafts}
+      />
       <div className="base2-workspace mx-auto max-w-7xl space-y-6 px-4 py-8">
         <Navigation />
         <header className="space-y-2">
@@ -350,6 +479,7 @@ export default function ContentWorkspace({ locale = 'en' }) {
               aria-controls="workspace-tab-panel"
               tabIndex={tab === item ? 0 : -1}
               variant={tab === item ? 'primary' : 'ghost'}
+              disabled={protectDraft}
               onClick={() => selectTab(item)}
               onKeyDown={(event) => moveTabFocus(event, index)}
             >
@@ -390,6 +520,7 @@ export default function ContentWorkspace({ locale = 'en' }) {
                   <select
                     id="workspace-type"
                     value={selectedType}
+                    disabled={protectDraft}
                     onChange={(event) => {
                       setSchema(null);
                       setSelectedType(event.target.value);
@@ -407,6 +538,8 @@ export default function ContentWorkspace({ locale = 'en' }) {
               </GlassCard>
               <GlassCard>
                 <section
+                  id="workspace-detail"
+                  tabIndex={-1}
                   aria-labelledby="workspace-panel-title"
                   aria-busy={recordsLoading}
                   className="min-h-64 p-6"
@@ -423,11 +556,16 @@ export default function ContentWorkspace({ locale = 'en' }) {
                           : 'Tenant-scoped · version protected'}
                       </p>
                     </div>
-                    {tab === 'Records' ? (
+                    {tab === 'Records' && canEdit ? (
                       <GlassButton
                         variant="primary"
-                        disabled={!schema || saving}
-                        onClick={() => setCreating(true)}
+                        disabled={!schema || protectDraft}
+                        onClick={() => {
+                          recordEpoch.current += 1;
+                          setActiveRecord(null);
+                          setDraft(emptyDraft());
+                          setCreating(true);
+                        }}
                       >
                         New record
                       </GlassButton>
@@ -435,6 +573,11 @@ export default function ContentWorkspace({ locale = 'en' }) {
                   </div>
                   {tab === 'Records' ? (
                     <>
+                      {protectDraft && (
+                        <p role="status" className="mt-3 text-sm text-amber-200">
+                          Finish or explicitly discard record drafts before switching content.
+                        </p>
+                      )}
                       <form
                         role="search"
                         aria-label="Search records"
@@ -475,6 +618,7 @@ export default function ContentWorkspace({ locale = 'en' }) {
                         <label className="flex-1 space-y-1 text-sm font-medium">
                           <span>Saved views</span>
                           <select
+                            disabled={protectDraft}
                             defaultValue=""
                             onChange={(event) => executeView(event.target.value)}
                             className="min-h-11 w-full rounded-xl border border-white/20 bg-slate-950/80 px-3"
@@ -534,7 +678,10 @@ export default function ContentWorkspace({ locale = 'en' }) {
                               The draft remains private until its workflow explicitly publishes it.
                             </p>
                           </div>
-                          <div className="grid gap-4 md:grid-cols-2">
+                          <fieldset
+                            disabled={saving || createBlocked || !canEdit}
+                            className="grid gap-4 md:grid-cols-2"
+                          >
                             <label className="space-y-1 text-sm font-medium">
                               <span>Title</span>
                               <input
@@ -630,16 +777,46 @@ export default function ContentWorkspace({ locale = 'en' }) {
                                   )}
                                 </label>
                               ))}
-                          </div>
+                          </fieldset>
+                          <PublicContentFields
+                            value={draft.publicContent}
+                            disabled={saving || createBlocked || !canEdit}
+                            onChange={(publicContent) =>
+                              setDraft((current) => ({ ...current, publicContent }))
+                            }
+                          />
+                          {createBlocked && (
+                            <div role="alert">
+                              <p>
+                                This creation could not be confirmed. Keep your draft until you
+                                explicitly reload; do not create it again blindly.
+                              </p>
+                              <GlassButton type="button" disabled={saving} onClick={reloadCreation}>
+                                Discard draft and reload records
+                              </GlassButton>
+                            </div>
+                          )}
                           <div className="flex flex-wrap gap-3">
-                            <GlassButton type="submit" variant="primary" disabled={saving}>
+                            <GlassButton
+                              type="submit"
+                              variant="primary"
+                              disabled={
+                                saving ||
+                                createBlocked ||
+                                !canEdit ||
+                                !validPublicContent(draft.publicContent)
+                              }
+                            >
                               {saving ? 'Creating…' : 'Create draft'}
                             </GlassButton>
                             <GlassButton
                               type="button"
                               variant="ghost"
-                              disabled={saving}
-                              onClick={() => setCreating(false)}
+                              disabled={saving || createBlocked}
+                              onClick={() => {
+                                setDraft(emptyDraft());
+                                setCreating(false);
+                              }}
                             >
                               Cancel
                             </GlassButton>
@@ -659,6 +836,7 @@ export default function ContentWorkspace({ locale = 'en' }) {
                                   type="button"
                                   aria-label={`Open ${record.title}`}
                                   aria-current={activeRecord?.id === record.id ? 'true' : undefined}
+                                  disabled={protectDraft}
                                   onClick={() => openRecord(record)}
                                   className="min-h-11 w-full rounded-xl p-2 text-left hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300"
                                 >
@@ -679,6 +857,9 @@ export default function ContentWorkspace({ locale = 'en' }) {
                               <RecordInspector
                                 key={`${selectedType}:${activeRecord.id}`}
                                 locale={locale}
+                                canEdit={canEdit}
+                                scopeKey={scopeKey}
+                                onDraftStateChange={reportRecordDraftState}
                                 typeKey={selectedType}
                                 schema={schema}
                                 record={activeRecord}
