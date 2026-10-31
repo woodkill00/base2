@@ -27,6 +27,24 @@ function compose(...args) {
     stdio: ['ignore', 'pipe', 'pipe'],
   });
 }
+function resumeService(service) {
+  if (!['celery-content-worker', 'celery-beat'].includes(service)) {
+    throw new Error('Only existing acceptance workers may be resumed');
+  }
+  // `start` traverses completed dependencies and would rerun the one-shot seed.
+  // Compose up supports no-deps; do not invent a start --no-deps option.
+  return compose(
+    'up',
+    '-d',
+    '--no-deps',
+    '--no-build',
+    '--no-recreate',
+    '--pull',
+    'never',
+    service
+  );
+}
+
 function control(command, now) {
   const args = [
     ...(detachedControl ? ['run', '--rm', '--no-deps', '-T'] : ['exec', '-T']),
@@ -187,7 +205,11 @@ test.describe('Feature124 real browser/API/PostgreSQL workspace acceptance', () 
         await first.getByLabel(label, { exact: true }).selectOption('immediate');
         await second.getByLabel(label, { exact: true }).selectOption('digest');
         await first.getByRole('button', { name: 'Save notifications', exact: true }).click();
-        await expect(first.getByRole('status')).toContainText('Notification preferences saved');
+        await expect(
+          first
+            .locator('div[role="status"]')
+            .filter({ hasText: /^Notification preferences saved\.$/ })
+        ).toBeVisible();
         const conflict = second.waitForResponse(
           (r) => r.url().endsWith('/api/settings/notifications') && r.request().method() === 'PUT'
         );
@@ -209,7 +231,209 @@ test.describe('Feature124 real browser/API/PostgreSQL workspace acceptance', () 
         expect(isolated.version).toBe(0);
       });
 
-      await policy(owner, true, 'public_allowed');
+      await test.step('cross-category shared-policy UI preserves drafts, confirms isolated writes and reconciles real admin conflict', async () => {
+        const baseline = await policy(owner, false, 'public_allowed');
+        const writes = [];
+        const observe = (request) => {
+          if (
+            request.url().endsWith('/api/settings/workspace-policy') &&
+            request.method() === 'PUT'
+          ) {
+            writes.push(request.postDataJSON());
+          }
+        };
+        owner.page.on('request', observe);
+        reviewer.page.on('request', observe);
+        const policyForm = async (page, id) => {
+          const control = page.locator(`#${id}`);
+          // Exit animations may retain an outgoing card briefly. Never select a
+          // hidden/detached duplicate or substitute first() for readiness.
+          await expect(control).toHaveCount(1);
+          await expect(control).toBeVisible();
+          const form = page.locator('form').filter({ has: control });
+          await expect(form).toHaveCount(1);
+          return { control, form };
+        };
+        const category = async (page, name, id) => {
+          const nav = page.getByRole('navigation', { name: 'Settings categories', exact: true });
+          const link = nav.locator(`a[href="/settings/${name}"]`);
+          await expect(link).toHaveCount(1);
+          await link.click();
+          return policyForm(page, id);
+        };
+        const confirm = async (page, form, expectedStatus = 200) => {
+          await form.getByRole('button', { name: 'Save policy', exact: true }).click();
+          const dialog = form.getByRole('alertdialog', {
+            name: 'Confirm policy change',
+            exact: true,
+          });
+          await expect(dialog).toBeVisible();
+          const response = page.waitForResponse(
+            (r) =>
+              r.url().endsWith('/api/settings/workspace-policy') && r.request().method() === 'PUT'
+          );
+          await dialog.getByRole('button', { name: 'Confirm policy change', exact: true }).click();
+          const saved = await response;
+          expect(saved.status()).toBe(expectedStatus);
+          return saved.json();
+        };
+        const persisted = async (expected) =>
+          expect(await api(owner, 'GET', '/settings/workspace-policy')).toMatchObject(expected);
+        try {
+          await owner.page.goto(`${BASE}/settings/organization#workspace-publishing-review`);
+          let review = await policyForm(owner.page, 'workspace-publishing-review');
+          await expect(review.control).toHaveValue('optional');
+          await review.control.selectOption('required');
+          let visibility = await category(
+            owner.page,
+            'site-capabilities',
+            'workspace-content-visibility'
+          );
+          await visibility.control.selectOption('members_only');
+          await visibility.form.getByRole('button', { name: 'Save policy', exact: true }).click();
+          const dialog = visibility.form.getByRole('alertdialog', {
+            name: 'Confirm policy change',
+            exact: true,
+          });
+          await expect(dialog).toContainText('Previously downloaded copies cannot be recalled.');
+          await dialog.getByRole('button', { name: 'Keep editing', exact: true }).click();
+          await expect(dialog).toHaveCount(0);
+          await expect(visibility.control).toHaveValue('members_only');
+          await persisted({
+            version: baseline.version,
+            require_review: false,
+            public_access: 'public_allowed',
+          });
+          expect(writes).toHaveLength(0);
+          const siteSaved = await confirm(owner.page, visibility.form);
+          expect(writes).toEqual([
+            {
+              expected_version: baseline.version,
+              require_review: false,
+              public_access: 'members_only',
+            },
+          ]);
+          expect(siteSaved.version).toBe(baseline.version + 1);
+          await persisted({
+            version: siteSaved.version,
+            require_review: false,
+            public_access: 'members_only',
+          });
+          review = await category(owner.page, 'organization', 'workspace-publishing-review');
+          await expect(review.control).toHaveValue('required');
+          await expect(review.form).toContainText('Effective saved value: Review not required');
+          await review.form.getByRole('button', { name: 'Cancel', exact: true }).click();
+          await expect(review.control).toHaveValue('optional');
+          await persisted({
+            version: siteSaved.version,
+            require_review: false,
+            public_access: 'members_only',
+          });
+          expect(writes).toHaveLength(1);
+
+          // Reverse the dirty categories: Organization must not save Site's draft.
+          visibility = await category(
+            owner.page,
+            'site-capabilities',
+            'workspace-content-visibility'
+          );
+          await visibility.control.selectOption('public_allowed');
+          review = await category(owner.page, 'organization', 'workspace-publishing-review');
+          await review.control.selectOption('required');
+          const organizationSaved = await confirm(owner.page, review.form);
+          expect(writes[1]).toEqual({
+            expected_version: siteSaved.version,
+            require_review: true,
+            public_access: 'members_only',
+          });
+          expect(organizationSaved.version).toBe(siteSaved.version + 1);
+          await persisted({
+            version: organizationSaved.version,
+            require_review: true,
+            public_access: 'members_only',
+          });
+          visibility = await category(
+            owner.page,
+            'site-capabilities',
+            'workspace-content-visibility'
+          );
+          await expect(visibility.control).toHaveValue('public_allowed');
+          await expect(visibility.form).toContainText(
+            'Effective saved value: Active site members only'
+          );
+          await visibility.form.getByRole('button', { name: 'Cancel', exact: true }).click();
+          await expect(visibility.control).toHaveValue('members_only');
+          await persisted({
+            version: organizationSaved.version,
+            require_review: true,
+            public_access: 'members_only',
+          });
+          expect(writes).toHaveLength(2);
+
+          // Two actual administrators hold the same policy version. The newer
+          // Site save must win; stale Organization confirmation cannot overwrite it.
+          review = await category(owner.page, 'organization', 'workspace-publishing-review');
+          await review.control.selectOption('optional');
+          await reviewer.page.goto(
+            `${BASE}/settings/site-capabilities#workspace-content-visibility`
+          );
+          const otherSite = await policyForm(reviewer.page, 'workspace-content-visibility');
+          await expect(otherSite.control).toHaveValue('members_only');
+          await otherSite.control.selectOption('public_allowed');
+          const concurrent = await confirm(reviewer.page, otherSite.form);
+          expect(concurrent.version).toBe(organizationSaved.version + 1);
+          expect(writes[2]).toEqual({
+            expected_version: organizationSaved.version,
+            require_review: true,
+            public_access: 'public_allowed',
+          });
+          await confirm(owner.page, review.form, 409);
+          expect(writes[3]).toEqual({
+            expected_version: organizationSaved.version,
+            require_review: false,
+            public_access: 'members_only',
+          });
+          await expect(review.control).toHaveValue('optional');
+          await expect(review.control).toBeDisabled();
+          await expect(
+            review.form.getByRole('button', { name: 'Save policy', exact: true })
+          ).toBeDisabled();
+          const reloaded = owner.page.waitForResponse(
+            (r) =>
+              r.url().endsWith('/api/settings/workspace-policy') && r.request().method() === 'GET'
+          );
+          await review.form
+            .getByRole('button', { name: 'Discard policy drafts and reload', exact: true })
+            .click();
+          expect((await reloaded).status()).toBe(200);
+          await expect(review.control).toBeEnabled();
+          await expect(review.control).toHaveValue('required');
+          await owner.page.reload();
+          review = await policyForm(owner.page, 'workspace-publishing-review');
+          await expect(review.control).toHaveValue('required');
+          await persisted({
+            version: concurrent.version,
+            require_review: true,
+            public_access: 'public_allowed',
+          });
+          expect(writes).toHaveLength(4);
+          await testInfo.attach('real-shared-policy-ui', {
+            body: JSON.stringify({
+              initialVersion: baseline.version,
+              finalVersion: concurrent.version,
+              writes,
+            }),
+            contentType: 'application/json',
+          });
+        } finally {
+          owner.page.off('request', observe);
+          reviewer.page.off('request', observe);
+        }
+      });
+      expect(await api(owner, 'GET', '/settings/workspace-policy')).toMatchObject({
+        require_review: true,
+        public_access: 'public_allowed',
+      });
       await preference(owner, 'disabled');
       const definition = await api(
         editor,
@@ -263,7 +487,7 @@ test.describe('Feature124 real browser/API/PostgreSQL workspace acceptance', () 
             })
           ).detail
         ).toBe('content_review_required');
-        compose('start', 'celery-content-worker');
+        resumeService('celery-content-worker');
         await expect
           .poll(() => intentFor(snapshot(), submitted, reviewer)?.status, {
             timeout: 120_000,
@@ -453,7 +677,7 @@ test.describe('Feature124 real browser/API/PostgreSQL workspace acceptance', () 
         });
         await role(owner, reviewer, 'viewer');
         await approve(reviewer, pending, 404);
-        compose('start', 'celery-content-worker');
+        resumeService('celery-content-worker');
         await expect
           .poll(
             () =>
@@ -533,7 +757,7 @@ test.describe('Feature124 real browser/API/PostgreSQL workspace acceptance', () 
       const recoveryErrors = [];
       for (const service of [...(beatStopped ? ['celery-beat'] : []), 'celery-content-worker']) {
         try {
-          compose('start', service);
+          resumeService(service);
         } catch (error) {
           recoveryErrors.push(String(error));
         }

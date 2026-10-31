@@ -221,3 +221,37 @@ role-grant bypass or HTTP fixture-control endpoint is introduced. Other authenti
 journeys use the existing API after login, not mocked responses. The local sink is
 not a mail provider, the pre-ready PNG is not scanning proof, and no live preview or
 TLS bypass is part of this batch.
+
+## First real-service browser execution and bounded repair
+
+At PR head `0e3156f`, the repaired backend real-PostgreSQL jobs passed. Both isolated
+Bash and PowerShell E2E stacks became healthy, including the one-shot fixture, and
+each ran five tests with four auth passes and one workspace failure. Actions tested
+merge checkout `991e82…`; retained artifact metadata binds that checkout to PR head
+`0e3156f`. Do not relabel the merge checkout as the feature-head source commit.
+
+The first workspace failure was test selection, not a demonstrated notification
+persistence defect: unscoped `getByRole('status')` matched both the route-announcement
+output and the saved-notification div. The assertion now selects the exact saved
+announcement without changing its required content. An adjacent cleanup failure
+was also preserved: `docker compose start celery-content-worker` traversed completed
+dependencies and reran the one-shot fixture, which correctly rejected the nonempty
+auth database. All service resume paths now use a fixed worker/beat allowlist with
+`up -d --no-deps --no-build --no-recreate --pull never`; the seed guard remains
+unchanged. Final runner cleanup removed containers, network and volume in both
+failed runs. First-failure JSON, traces and Compose logs remain in
+`/tmp/base2-ci-0e3156f/{bash,pwsh}/` in the current evidence workspace.
+
+The bounded next run also adds actual shared-policy UI interactions: Keep editing
+and category Cancel produce no write; Site and Organization save only their own
+field while preserving the other category's draft; two authenticated administrators
+produce a real 409, preserve the stale draft and explicitly reload without mutation
+replay. Final policy is read/asserted as review-required/public-allowed, not silently
+reset by an API setup write. Other content/review/export/asset flows remain
+API-context journeys after real login, as documented above.
+
+Independent source review accepted this correction for CI execution. Four focused
+source/pure-command guardrails and 15 fixture guards pass, along with Node syntax
+and five-test Playwright collection. No local Docker/browser retry was attempted.
+Corrected runtime acceptance, later workspace assertions and the full release gate
+remain pending; healthy startup and passing auth do not establish those results.
