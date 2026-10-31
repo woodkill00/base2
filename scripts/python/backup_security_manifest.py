@@ -290,8 +290,8 @@ def catalog_difference(expected_catalog, actual_catalog):
     """
     result: dict[str, Any] = {'schemaVersion': 1, 'categories': [], 'unknownCategories': bool(
         (set(expected_catalog) | set(actual_catalog)) - set(_DIAGNOSTIC_CATEGORIES))}
-    budget = 12
-    for category in _DIAGNOSTIC_CATEGORIES:
+    budget = 96
+    for position, category in enumerate(_DIAGNOSTIC_CATEGORIES):
         before, after = expected_catalog.get(category), actual_catalog.get(category)
         if before == after and (category in expected_catalog) == (category in actual_catalog):
             continue
@@ -310,7 +310,13 @@ def catalog_difference(expected_catalog, actual_catalog):
             item['ambiguousIdentity'] = len(left) != len(before) or len(right) != len(after)
             changed = [key for key in sorted(set(left) | set(right)) if left.get(key) != right.get(key)]
             entries = []
-            for key in changed[:budget]:
+            # Keep at least one slot for every later changed entry category.
+            reserved = sum(
+                later in _DIAGNOSTIC_IDENTITIES
+                and expected_catalog.get(later) != actual_catalog.get(later)
+                for later in _DIAGNOSTIC_CATEGORIES[position + 1:]
+            )
+            for key in changed[:max(0, budget - reserved)]:
                 old, new = left.get(key), right.get(key)
                 row = old if old is not None else new
                 raw_kind = row.get('kind')
@@ -334,6 +340,12 @@ def catalog_difference(expected_catalog, actual_catalog):
             item['entries'] = entries
             item['omittedEntries'] = len(changed) - len(entries)
         result['categories'].append(item)
+    # Leave room inside the 64 KiB failure envelope for run/source metadata.
+    # Drop only additional entries, never a category's first diagnostic entry.
+    while len(canonical(result)) > 60000:
+        largest = max(result['categories'], key=lambda item: len(item.get('entries', [])))
+        largest['entries'].pop()
+        largest['omittedEntries'] += 1
     return result
 
 
@@ -403,7 +415,7 @@ def validate_catalog_diagnostic(value) -> bool:
                     or not isinstance(category['entries'], list)):
                 return False
             total_entries += len(category['entries'])
-            if total_entries > 12:
+            if total_entries > 96:
                 return False
             identities = set()
             for entry in category['entries']:

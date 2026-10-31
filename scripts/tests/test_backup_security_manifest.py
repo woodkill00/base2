@@ -282,16 +282,16 @@ def test_catalog_diagnostic_bounds_unknown_values_and_reports_missing_entries():
 
     from scripts.python.backup_security_manifest import catalog_difference
     source, target = catalog(), catalog()
-    source['objects'] = [{'kind': 'function', 'name': f'secret{i}', 'acl': None} for i in range(30)]
-    target['objects'] = [{'kind': 'function', 'name': f'secret{i}', 'acl': []} for i in range(15, 45)]
+    source['objects'] = [{'kind': 'function', 'name': f'secret{i}', 'acl': None} for i in range(130)]
+    target['objects'] = [{'kind': 'function', 'name': f'secret{i}', 'acl': []} for i in range(65, 195)]
     target['private-category'] = 'private-value'
     diagnostic = catalog_difference(source, target)
     category = diagnostic['categories'][0]
-    assert len(category['entries']) <= 12
+    assert len(category['entries']) <= 96
     assert category['omittedEntries'] > 0
     assert diagnostic['unknownCategories'] is True
     assert 'private' not in json.dumps(diagnostic) and 'secret' not in json.dumps(diagnostic)
-    assert len(json.dumps(diagnostic)) < 32768
+    assert len(json.dumps(diagnostic)) < 65536
 
 
 def test_catalog_diagnostic_scalars_and_identical_state():
@@ -328,7 +328,7 @@ def test_diagnostic_validator_accepts_generated_evidence_and_denies_mutations():
         lambda v: v['categories'][0]['entries'][0].update(kind='private'),
         lambda v: v['categories'][0]['entries'][0].update(identitySha256='private'),
         lambda v: v['categories'][0]['entries'][0]['fields'][0].update(field='private'),
-        lambda v: v['categories'][0].update(entries=v['categories'][0]['entries'] * 13),
+        lambda v: v['categories'][0].update(entries=v['categories'][0]['entries'] * 97),
         lambda v: v.update(categories=v['categories'] * 12),
     ]:
         malformed = copy.deepcopy(valid)
@@ -365,3 +365,48 @@ def test_diagnostic_validator_covers_added_removed_scalar_and_malformed_detail()
         value = copy.deepcopy(valid)
         mutate(value)
         assert validate_catalog_diagnostic(value) is False
+
+
+def test_diagnostics_retain_all_observed_79_changes_and_reserve_policy_entry():
+    from scripts.python.backup_security_manifest import (
+        canonical,
+        catalog_difference,
+        validate_catalog_diagnostic,
+    )
+    source, target = catalog(), catalog()
+    source['objects'] = [{'kind': 'relation', 'name': f'private{i}', 'acl': ['owner=arwdDxt/owner']} for i in range(78)]
+    target['objects'] = [{**row, 'acl': None} for row in source['objects']]
+    source['policies'] = [{'name': 'private-policy', 'using': 'private-source-expression'}]
+    target['policies'] = [{'name': 'private-policy', 'using': 'private-target-expression'}]
+    diagnostic = catalog_difference(source, target)
+    categories = {item['category']: item for item in diagnostic['categories']}
+    assert len(categories['objects']['entries']) == 78
+    assert len(categories['policies']['entries']) == 1
+    assert all(item['omittedEntries'] == 0 for item in diagnostic['categories'])
+    assert validate_catalog_diagnostic(diagnostic)
+    assert len(canonical(diagnostic)) < 60000
+    source['objects'] = [{'kind': 'relation', 'name': f'private{i}', 'acl': []} for i in range(200)]
+    target['objects'] = [{**row, 'acl': None} for row in source['objects']]
+    diagnostic = catalog_difference(source, target)
+    categories = {item['category']: item for item in diagnostic['categories']}
+    assert sum(len(item['entries']) for item in diagnostic['categories']) <= 96
+    assert len(categories['policies']['entries']) == 1
+    assert categories['objects']['omittedEntries'] > 0
+
+
+def test_expanded_diagnostics_enforce_byte_budget_without_starving_category():
+    from scripts.python.backup_security_manifest import (
+        canonical,
+        catalog_difference,
+        validate_catalog_diagnostic,
+    )
+    source, target = catalog(), catalog()
+    fields = ['acl', 'owner', 'type', 'rls', 'forceRls', 'config', 'definition', 'enabled']
+    source['objects'] = [{'kind': 'relation', 'name': f'private{i}', **dict.fromkeys(fields, None)} for i in range(200)]
+    target['objects'] = [{**row, **dict.fromkeys(fields, 'private-value')} for row in source['objects']]
+    source['policies'] = [{'name': 'policy', 'using': 'before'}]
+    target['policies'] = [{'name': 'policy', 'using': 'after'}]
+    diagnostic = catalog_difference(source, target)
+    assert len(canonical(diagnostic)) <= 60000
+    assert all(item['entries'] for item in diagnostic['categories'])
+    assert validate_catalog_diagnostic(diagnostic)
