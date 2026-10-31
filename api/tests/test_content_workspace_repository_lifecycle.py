@@ -240,6 +240,9 @@ def test_record_create_read_update_transition_history_and_restore(monkeypatch):
         payload={"slug": "safe", "title": "Safe", "values": {"title": "Safe"}},
     )
     assert created["id"] == str(RECORD_ID) and connection.commits == 1
+    insert = next(sql for sql, _ in cursor.calls if 'INSERT INTO sitecontent_contentrecord' in sql)
+    assert 'schedule_timezone, created_at, updated_at)' in insert
+    assert "NULL,'',NOW(),NOW())" in insert
 
     cursor = QueueCursor(ones=[RECORD])
     bind(monkeypatch, cursor)

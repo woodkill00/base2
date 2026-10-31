@@ -1328,10 +1328,10 @@ def process_import_commit(*, site_id: str, job_id: UUID, artifact_store) -> str:
                             """INSERT INTO sitecontent_contentrecord
                                (id, site_id, content_type, slug, title, excerpt, body, metadata,
                                 state, publish_at, published_at, sitemap_include, search_visible,
-                                version, definition_id, schema_version, values, deleted_at,
+                                version, definition_id, schema_version, values, deleted_at, schedule_timezone,
                                 created_at, updated_at)
                                VALUES (%s,%s,%s,%s,%s,'','',%s::jsonb,'draft',NULL,NULL,TRUE,TRUE,
-                                       1,%s,%s,%s::jsonb,NULL,NOW(),NOW())""",
+                                       1,%s,%s,%s::jsonb,NULL,'',NOW(),NOW())""",
                             (
                                 str(result_id),
                                 site_id,

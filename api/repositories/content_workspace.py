@@ -847,10 +847,10 @@ class PostgresContentWorkspaceRepository:
                         """INSERT INTO sitecontent_contentrecord
                            (id, site_id, content_type, slug, title, excerpt, body, metadata,
                             state, publish_at, published_at, sitemap_include, search_visible,
-                            version, definition_id, schema_version, values, deleted_at,
+                            version, definition_id, schema_version, values, deleted_at, schedule_timezone,
                             created_at, updated_at)
                            VALUES (%s,%s,%s,%s,%s,'','',%s::jsonb,'draft',NULL,NULL,TRUE,TRUE,
-                                   1,%s,%s,%s::jsonb,NULL,NOW(),NOW())
+                                   1,%s,%s,%s::jsonb,NULL,'',NOW(),NOW())
                            RETURNING id, site_id, content_type, slug, title, values, state,
                                      schema_version, version, updated_at""",
                         (

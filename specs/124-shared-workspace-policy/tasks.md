@@ -117,3 +117,38 @@ merge, deployment, provider activation or complete-gate pass is claimed here.
       a sole owner. Required review remains fail-closed for unknown authorship or no
       independent reviewer. Verify both delivery-policy transition directions, truthful
       zero-recipient status and no automatic audience backfill.
+
+## First draft CI repair batch
+
+At `81226ff5f51a819a6860b0ed811973a0041647a9`, real PostgreSQL applied migrations
+0036–0040 successfully. This does not establish runtime/RLS correctness: 73 new
+integration cases stopped in fixture setup before their assertions because the
+production interactive record INSERT omitted required `schedule_timezone`.
+The import-create path had the same omission; both now supply the canonical empty
+unscheduled value. Community creation already supplied it. Two failing regressions
+were retained before the correction; schema constraints were not weakened.
+
+The isolated identity/settings job passed three assertions but two fixture teardowns
+attempted to hard-delete synthetic users. Audit foreign-key nullification correctly
+failed against immutable history. Fixture retirement now deactivates only the exact
+synthetic users and leaves audit rows for disposable-database teardown, matching the
+production pseudonymization/deactivation boundary. Audit triggers and grants remain
+unchanged. Focused repair checks pass; a fresh PostgreSQL run is still required.
+
+The environment-sync workflow did not run because its old PR-base filter excluded
+stacked feature branches. Its pull-request trigger now covers all bases, with a
+regression retaining the original fail-on-drift rule. This is expanded verification,
+not a passing result for the previously skipped workflow.
+
+Frontend CI at the same head passed 660 tests and failed one shared-policy reload
+unit test before any build/browser stage. The retained result alone does not prove
+a production reload defect. A controlled category-transition reproduction showed
+that the old test could select an enabled but detached outgoing card button, issue
+no second read, and fail its unchanged reconciliation assertion. The test now waits
+for the unique destination control, scopes the enabled button to that live form and
+asserts the second GET. A pending-read regression also verifies no repeated reload.
+There is no production change, timeout increase or weakened success assertion.
+Native browser evidence remains unrun for that setup-blocked head.
+
+The inherited media-image release blocker remains separate from these repairs;
+no stopped runtime repair is resumed by this feature.

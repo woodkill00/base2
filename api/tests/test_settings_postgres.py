@@ -1,7 +1,8 @@
 """Real PostgreSQL persistence, distinct from the restricted-runtime RLS drill.
 
 Run against an isolated migrated test database. Every fixture has a random owner
-and cleanup targets only those exact owners. This does not prove runtime-role RLS.
+and retirement targets only those exact owners. Audited synthetic rows remain until
+the owned disposable database is destroyed. This does not prove runtime-role RLS.
 """
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
@@ -32,7 +33,12 @@ def owners():
     finally:
         with db_conn() as conn, conn.cursor() as cur:
             for user_id in ids:
-                cur.execute('DELETE FROM api_auth_users WHERE id=%s', (str(user_id),))
+                # Hard deletion would rewrite immutable audit actor FKs via SET NULL.
+                # Retain that history for the lifetime of this disposable database.
+                cur.execute(
+                    'UPDATE api_auth_users SET is_active=FALSE WHERE id=%s',
+                    (str(user_id),),
+                )
             conn.commit()
 
 

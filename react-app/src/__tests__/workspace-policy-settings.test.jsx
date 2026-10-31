@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import Settings from '../pages/SettingsCenter';
@@ -155,11 +155,24 @@ test.each([409, 503])(
     expect(await screen.findByLabelText('Publishing review')).toHaveValue('required');
     expect(screen.getByRole('button', { name: 'Save policy' })).toBeDisabled();
     await user.click(screen.getByRole('link', { name: 'Site capabilities', exact: true }));
-    expect(screen.getByRole('button', { name: 'Save policy' })).toBeDisabled();
+    // Both category cards have the same button names. Wait for the destination
+    // control before selecting a button: MemoryRouter may still show the outgoing
+    // card after userEvent resolves, and its detached button cannot dispatch a click.
+    const visibility = await screen.findByLabelText('Workspace content visibility');
+    expect(visibility).toBeDisabled();
+    const siteForm = within(visibility.closest('form'));
+    expect(siteForm.getByRole('button', { name: 'Save policy' })).toBeDisabled();
     await waitFor(() =>
-      expect(screen.getByRole('button', { name: 'Discard policy drafts and reload' })).toBeEnabled()
+      expect(
+        siteForm.getByRole('button', { name: 'Discard policy drafts and reload' })
+      ).toBeEnabled()
     );
-    await user.click(screen.getByRole('button', { name: 'Discard policy drafts and reload' }));
+    await user.click(siteForm.getByRole('button', { name: 'Discard policy drafts and reload' }));
+    await waitFor(() =>
+      expect(
+        apiClient.get.mock.calls.filter(([path]) => path === '/settings/workspace-policy')
+      ).toHaveLength(2)
+    );
     await waitFor(() =>
       expect(
         screen.queryByRole('button', { name: 'Discard policy drafts and reload' })
@@ -292,4 +305,49 @@ test('failed explicit reload retains the conflicting policy draft', async () => 
   expect(screen.getByLabelText('Publishing review')).toHaveValue('required');
   expect(screen.getByRole('button', { name: 'Save policy' })).toBeDisabled();
   expect(apiClient.put).toHaveBeenCalledTimes(1);
+});
+
+test('reconciliation targets the committed category and issues only one read while pending', async () => {
+  const user = userEvent.setup();
+  apiClient.put.mockRejectedValue({
+    response: { status: 409, data: { detail: 'settings_version_conflict' } },
+  });
+  renderSettings();
+  await ready();
+  await user.selectOptions(screen.getByLabelText('Publishing review'), 'required');
+  await user.click(screen.getByRole('button', { name: 'Save policy' }));
+  await user.click(screen.getByRole('button', { name: 'Confirm policy change' }));
+  const outgoing = await screen.findByRole('button', { name: 'Discard policy drafts and reload' });
+  await waitFor(() => expect(outgoing).toBeEnabled());
+  await user.click(screen.getByRole('link', { name: 'Site capabilities', exact: true }));
+  const visibility = await screen.findByLabelText('Workspace content visibility');
+  expect(outgoing).not.toBeInTheDocument();
+  const reload = within(visibility.closest('form')).getByRole('button', {
+    name: 'Discard policy drafts and reload',
+  });
+  expect(reload).not.toBe(outgoing);
+  await waitFor(() => expect(reload).toBeEnabled());
+  let completeReload;
+  const base = apiClient.get.getMockImplementation();
+  apiClient.get.mockImplementation((path) =>
+    path === '/settings/workspace-policy'
+      ? new Promise((resolve) => {
+          completeReload = resolve;
+        })
+      : base(path)
+  );
+  await user.click(reload);
+  await waitFor(() => expect(reload).toBeDisabled());
+  await user.click(reload);
+  expect(
+    apiClient.get.mock.calls.filter(([path]) => path === '/settings/workspace-policy')
+  ).toHaveLength(2);
+  expect(apiClient.put).toHaveBeenCalledTimes(1);
+  await act(async () => completeReload({ data: policy }));
+  await waitFor(() =>
+    expect(
+      screen.queryByRole('button', { name: 'Discard policy drafts and reload' })
+    ).not.toBeInTheDocument()
+  );
+  expect(screen.getByLabelText('Workspace content visibility')).toBeEnabled();
 });

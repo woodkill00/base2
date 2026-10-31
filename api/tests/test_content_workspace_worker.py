@@ -833,6 +833,9 @@ def test_import_commit_revalidates_source_and_applies_all_rows_atomically(monkey
     assert scopes == ['site-a', 'site-a'] and connection.commits == 1
     statements = ' '.join(sql for sql, _ in cursor.calls)
     assert 'INSERT INTO sitecontent_contentrecord' in statements
+    insert = next(sql for sql, _ in cursor.calls if 'INSERT INTO sitecontent_contentrecord' in sql)
+    assert 'schedule_timezone, created_at, updated_at)' in insert
+    assert "NULL,'',NOW(),NOW())" in insert
     assert "'draft'" in statements
     assert 'sitecontent_importrowoutcome' in statements
     assert 'sitecontent_workspaceauditevent' in statements

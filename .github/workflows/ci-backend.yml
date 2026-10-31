@@ -82,7 +82,7 @@ jobs:
 
       - name: Frontend change-selection security regressions
         if: matrix.service == 'api'
-        run: python -m pytest -q scripts/tests/test_frontend_ci_scope.py scripts/tests/test_settings_foundation_ci.py
+        run: python -m pytest -q scripts/tests/test_frontend_ci_scope.py scripts/tests/test_settings_foundation_ci.py scripts/tests/test_stacked_pr_ci.py
 
       - name: Mypy (typecheck)
         run: |
