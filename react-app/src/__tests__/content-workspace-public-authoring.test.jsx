@@ -64,6 +64,35 @@ beforeEach(() => {
   contentWorkspaceAPI.versions.mockResolvedValue({ items: [] });
 });
 
+test('Tab reaches a populated Arabic multiline field by its exact accessible name', async () => {
+  const user = userEvent.setup();
+  const label = 'وصف طويل للاختبار المرئي';
+  setup({ values: { title: 'draft record', summary: 'Private synthetic editorial note.' } }, {
+    schema: { fields: [
+      { fieldKey: 'title', label: 'short text field', fieldKind: 'short_text' },
+      { fieldKey: 'summary', label, fieldKind: 'long_text' },
+    ] },
+  });
+  await user.click(screen.getByRole('button', { name: 'Edit fields', exact: true }));
+  const title = screen.getByRole('textbox', { name: 'short text field', exact: true });
+  const note = screen.getByRole('textbox', { name: label, exact: true });
+  expect(note).toHaveValue('Private synthetic editorial note.');
+  expect(note).toHaveAccessibleName(label);
+  // The wrapping label's raw text includes the textarea's initial text node.
+  // Native getByLabel exact text is therefore unsuitable for this populated field.
+  expect(note.closest('label').textContent).toContain('Private synthetic editorial note.');
+  title.focus();
+  await user.tab();
+  expect(note).toHaveFocus();
+  await user.type(note, ' Updated.');
+  await user.click(screen.getByRole('button', { name: 'Discard changes', exact: true }));
+  await user.click(screen.getByRole('button', { name: 'Edit fields', exact: true }));
+  expect(screen.getByRole('textbox', { name: label, exact: true })).toHaveValue(
+    'Private synthetic editorial note.'
+  );
+  expect(contentWorkspaceAPI.updateRecord).not.toHaveBeenCalled();
+});
+
 test('saves explicit public copy and private values together in one CAS request without trimming', async () => {
   const user = userEvent.setup();
   setup();

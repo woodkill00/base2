@@ -463,7 +463,11 @@ function WorkspaceContent({ locale = 'en', scopeKey, canEdit }) {
           .base2-workspace { container: workspace / inline-size; }
           .workspace-panels { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.25rem; }
           @container workspace (min-width: 54rem) {
-            .workspace-panels { grid-template-columns: minmax(17rem, 0.32fr) minmax(0, 1fr); }
+            .workspace-panels { grid-template-columns: minmax(21rem, 0.32fr) minmax(0, 1fr); }
+          }
+          .workspace-detail-card { container: workspace-detail-card / inline-size; }
+          @container workspace-detail-card (max-width: 24rem) {
+            .workspace-panel[data-tab="Imports"] { padding-inline: 0; }
           }
           .workspace-records-grid {
             display: grid;
@@ -554,13 +558,14 @@ function WorkspaceContent({ locale = 'en', scopeKey, canEdit }) {
                   </select>
                 </div>
               </GlassCard>
-              <GlassCard className="min-w-0">
+              <GlassCard className="min-w-0 workspace-detail-card">
                 <section
                   id="workspace-detail"
+                  data-tab={tab}
                   tabIndex={-1}
                   aria-labelledby="workspace-panel-title"
                   aria-busy={recordsLoading}
-                  className={`min-h-64 ${compactAuthoring ? 'min-w-0 p-0 sm:p-6' : 'p-6'}`}
+                  className={`workspace-panel min-h-64 ${compactAuthoring ? 'min-w-0 p-0 sm:p-6' : 'p-6'}`}
                 >
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>

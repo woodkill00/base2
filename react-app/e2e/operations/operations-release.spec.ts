@@ -432,7 +432,7 @@ test('operations center is accessible responsive and visually stable', async ({
   await replay.focus();
   await replay.press('Enter');
   await replayRequest;
-  const cancel = page.getByRole('button', { name: label.cancel });
+  const cancel = page.getByRole('button', { name: label.cancel, exact: true });
   await expect(cancel).toBeEnabled();
   await cancel.focus();
   await cancel.press('Enter');

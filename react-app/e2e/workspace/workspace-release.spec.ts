@@ -539,7 +539,7 @@ test('selected record editing stays contained and saves or discards explicitly',
   await title.focus();
   await expect(title).toBeFocused();
   await page.keyboard.press('Tab');
-  await expect(form.getByLabel('وصف طويل للاختبار المرئي', { exact: true })).toBeFocused();
+  await expect(form.getByRole('textbox', { name: 'وصف طويل للاختبار المرئي', exact: true })).toBeFocused();
   await title.fill('Discarded synthetic title');
   await form.getByRole('button', { name: 'Discard changes', exact: true }).click();
   await expect(form).toHaveCount(0);

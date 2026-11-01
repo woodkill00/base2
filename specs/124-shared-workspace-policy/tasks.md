@@ -1290,3 +1290,26 @@ captures prove their observed fallback states, not populated content readiness.
       Lock counts do not constitute nested-modal keyboard/focus arbitration.
       Current cancellation settlement keeps its existing return-focus policy;
       deliberate user focus changes during the request are not separately tracked.
+
+- [ ] T94 Keep the background Cancel locator exact while the cancellation dialog
+      is open. Native run 41351046458 on 33b2d5d3 failed all 14 main cases at the
+      programmatic background-focus probe because partial names also matched the
+      dialog action (English, Arabic and German). Preserve that first failure,
+      the focus attempt, and the assertion that the inert shell cannot own focus.
+      The narrow selector correction requires fresh native lifecycle evidence;
+      static uniqueness does not establish browser inertness or cancellation success.
+      Separate current-run blockers remain: workspace policy/type label fit,
+      selected-edit field locator, and WebKit body timeout. No references renewed.
+
+- [ ] T95 Correct selected-edit lookup to the exact textbox accessible name;
+      preserve actual Tab, discard, save, reload and stale-version assertions.
+      The populated textarea is nested inside its label, so raw exact label text
+      also includes the initial value. Original three native locator failures are
+      retained; no edit/save checkpoint was reached in run 41351017132.
+- [ ] T96 Reserve enough width for Content type after the card's authored padding
+      and remove redundant horizontal Imports-panel padding only in narrow detail
+      containers. Native failures measured 143/150px available versus 153.76px
+      required for Content type, and 59.4px versus 78.79px for Commit policy.
+      Keep the full-label and enclosure assertions unchanged; fresh native pixels
+      must establish readability. WebKit's 60-second body timeout remains open;
+      current checkpoint receipts require inspection before a causal repair.
