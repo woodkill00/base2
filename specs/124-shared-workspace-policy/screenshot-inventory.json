@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "scope": "Explicit screenshot call sites plus automatic failure-screenshot configurations. Helpers are listed alongside suites; no claim that pending suites are retained.",
+  "scope": "Direct screenshot call sites plus automatic failure-screenshot configurations; delegated helpers are recorded separately with exact dependency identities. No claim that pending suites are retained or natively validated.",
   "explicitCaptureSources": [
     {
       "path": "e2e/tests/workspace-representative.spec.js",
@@ -17,10 +17,6 @@
     {
       "path": "react-app/e2e/account/settings-release.spec.ts",
       "collection": "pending-bounded-adapter"
-    },
-    {
-      "path": "react-app/e2e/continuous-scroll.ts",
-      "collection": "bounded-continuous-nested-scrollports-and-explicit-dialogs-pending-native-validation"
     },
     {
       "path": "react-app/e2e/experience/shared-experience.spec.ts",
@@ -99,10 +95,6 @@
       "collection": "pending-bounded-adapter"
     },
     {
-      "path": "react-app/e2e/scroll-target.ts",
-      "collection": "bounded-media-operations; other consumers pending bounded adapter"
-    },
-    {
       "path": "react-app/e2e/visual/hermetic-visual.spec.ts",
       "collection": "pending-bounded-adapter"
     },
@@ -113,6 +105,11 @@
     {
       "path": "react-app/e2e/visual/obsidian-restoration.spec.ts",
       "collection": "pending-bounded-adapter"
+    },
+    {
+      "path": "react-app/e2e/workspace-capture-ownership.ts",
+      "sha256": "2aa0ebd40919b3791c81a9a4f8ebd3c83233dea93bd7cec1961d4badac5b5cbf",
+      "collection": "bounded-owned-screenshots-and-partial-frame-receipts-pending-native-workspace-validation"
     },
     {
       "path": "react-app/e2e/workspace/workspace-release.spec.ts",
@@ -159,6 +156,18 @@
     {
       "path": "react-app/playwright.workspace-release.config.mjs",
       "collection": "pending-failure-screenshot-adapter"
+    }
+  ],
+  "delegatedCaptureSources": [
+    {
+      "path": "react-app/e2e/continuous-scroll.ts",
+      "sha256": "96c387caa81f53a135312e54bfb7f568fc99fe9a84997e449b832775f36fb009",
+      "via": "react-app/e2e/workspace-capture-ownership.ts"
+    },
+    {
+      "path": "react-app/e2e/scroll-target.ts",
+      "sha256": "7aae26d91854f5ba15abf7099be575cea569eef42c743676176d788ed88b1178",
+      "via": "react-app/e2e/workspace-capture-ownership.ts"
     }
   ]
 }

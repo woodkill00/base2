@@ -677,3 +677,40 @@ def test_batch_review_rejects_all_before_writing_any(sample):
     with pytest.raises(ValueError):
         archive.append_events(repo, [event, invalid])
     assert not (repo / "evidence/visual/events").exists()
+
+
+def test_owned_capture_inventory_binds_delegates_and_render_dependency():
+    import hashlib
+    import subprocess
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[2]
+    inventory = json.loads(
+        (root / "specs/124-shared-workspace-policy/screenshot-inventory.json").read_text()
+    )
+    helper = "react-app/e2e/workspace-capture-ownership.ts"
+    direct = [item for item in inventory["explicitCaptureSources"] if item["path"] == helper]
+    assert len(direct) == 1
+    assert direct[0]["sha256"] == hashlib.sha256((root / helper).read_bytes()).hexdigest()
+    delegates = inventory["delegatedCaptureSources"]
+    assert {item["path"] for item in delegates} == {
+        "react-app/e2e/continuous-scroll.ts", "react-app/e2e/scroll-target.ts"
+    }
+    for item in delegates:
+        source = (root / item["path"]).read_bytes()
+        assert item["via"] == helper
+        assert item["sha256"] == hashlib.sha256(source).hexdigest()
+        assert b"ownedScreenshot(" in source
+        assert b"from './workspace-capture-ownership'" in source
+    # sequenceDependencies fingerprints all tracked e2e inputs, including this
+    # direct producer; helper changes therefore invalidate sequence bindings.
+    dependencies = subprocess.check_output(
+        ["git", "ls-files", "-z", "e2e"], cwd=root / "react-app"
+    ).decode().split("\0")
+    assert "e2e/workspace-capture-ownership.ts" in dependencies
+    fingerprint = (root / "react-app/e2e/sequence-reference.ts").read_text().split(
+        "export function sequenceDependencies()", 1
+    )[1].split("let fontsHash", 1)[0]
+    assert "'e2e'" in fingerprint
+    assert "safeRead(p, 32 * 1024 * 1024)" in fingerprint
+    assert "p + ':' + digest(raw)" in fingerprint

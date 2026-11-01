@@ -1332,3 +1332,18 @@ captures prove their observed fallback states, not populated content readiness.
       (14rem preferred, bounded by full available width). Extend native containment
       to all nested structured sections, fieldsets, forms and controls. No clipping
       concealment; media sections retain their original styling.
+
+
+- [ ] T98 Repair the standard gates exposed by native head 237298: preserve the
+      original 919-pass/1-fail unit result and 401-pass/4-fail backend contracts.
+      Edit entry sets inspector state before its passive onEditingChange effect
+      reconciles parent spacing; require both form readiness and parent editing
+      presentation before asserting pristine width, without sleeps or weakening
+      the disabled Save assertion. Update source contracts to require ownershipStep
+      around the same capability, divider, keyboard and forced-color operations.
+      Inventory the direct ownership screenshot producer and hash-bound delegated
+      callers; verify it remains in sequence dependency fingerprints. Run the full
+      standard unit command and exact backend CI contract selection. Selected Save,
+      native heading/containment and ownership quiescence remain unproven because
+      the original standard browser suites were setup-blocked. No reference,
+      timeout, acceptance or security changes; publication held for review.

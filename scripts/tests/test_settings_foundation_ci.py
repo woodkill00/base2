@@ -239,12 +239,12 @@ def test_workspace_authoring_fixture_has_write_permission_and_distinct_public_co
 
 def test_workspace_author_capability_is_asserted_before_visual_evidence():
     source = (ROOT / 'react-app/e2e/workspace/workspace-release.spec.ts').read_text()
-    start = source.index("await page.goto('/workspace')")
-    visible = source.index("await expect(newRecord).toBeVisible()", start)
-    enabled = source.index("await expect(newRecord).toBeEnabled()", start)
+    start = source.index("await ownershipStep(() => page.goto('/workspace'))")
+    visible = source.index("await ownershipStep(() => expect(newRecord).toBeVisible())", start)
+    enabled = source.index("await ownershipStep(() => expect(newRecord).toBeEnabled())", start)
     assert source.index("getByRole('button', { name: 'New record', exact: true })", start) < visible
-    assert visible < enabled < source.index("await page.keyboard.press('Tab')", start)
-    assert enabled < source.index('await prepareStableFullPageCapture(page)', start)
+    assert visible < enabled < source.index("await ownershipStep(() => page.keyboard.press('Tab'))", start)
+    assert enabled < source.index('await ownershipStep(() => prepareStableFullPageCapture(page))', start)
 
 
 def test_related_workspace_browser_fixtures_preserve_public_copy_and_denials():
@@ -295,7 +295,7 @@ def test_workspace_divider_asserts_computed_paint_and_real_nonlast_border():
     assert 'toBeGreaterThanOrEqual(254)' in helper
     assert 'toBeGreaterThanOrEqual(25)' in helper
     assert 'toBeLessThanOrEqual(26)' in helper
-    assert source.index('await assertRecordDivider(page)') < source.index("await page.keyboard.press('Tab')")
+    assert source.index('await ownershipStep(() => assertRecordDivider(page))') < source.index("await ownershipStep(() => page.keyboard.press('Tab'))")
 
 
 def test_workspace_divider_keeps_forced_color_accessibility_override():
@@ -322,7 +322,7 @@ def test_workspace_forced_colors_is_a_real_context_option_and_observed_state():
     assert "matchMedia('(forced-colors: none)').matches" in helper
     assert 'expect(state.active).toBe(expectedActive)' in helper
     assert 'expect(state.none).toBe(!expectedActive)' in helper
-    assert source.count('await assertForcedColorState(page, testInfo)') >= 4
+    assert source.count('await ownershipStep(() => assertForcedColorState(page, testInfo))') >= 4
     compact = "".join(source.split())
     assert "expect.configure({soft:true})" in compact
     assert "comparison: testInfo.errors.length === errorsBefore ? 'passed' : 'failed'" in source

@@ -363,9 +363,17 @@ test.each(['create', 'edit'])(
       expect(root).toHaveClass('px-4');
       expect(screen.getByRole('region', { name: 'Record details' })).toHaveClass('p-5');
       await user.click(edit);
-      // Pristine editing needs practical width before the first keystroke.
-      expect(root).toHaveClass('px-0', 'sm:px-4');
-      expect(screen.getByRole('button', { name: 'Save changes' })).toBeDisabled();
+      // Edit changes inspector state first; its onEditingChange passive effect
+      // then reconciles the parent's presentation. user.click is not a promise
+      // that this second render has settled. Require both observable states,
+      // still before any keystroke, rather than sampling the transitional render.
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'Save changes' })).toBeDisabled();
+        expect(screen.getByRole('button', { name: 'Discard changes' })).toBeEnabled();
+        expect(screen.getByRole('region', { name: 'Record details' }).parentElement)
+          .toHaveAttribute('data-editing', 'true');
+        expect(root).toHaveClass('px-0', 'sm:px-4');
+      });
       await user.click(screen.getByRole('button', { name: 'Discard changes' }));
     }
     // Inspector editing exits before its effect reconciles parent presentation.
