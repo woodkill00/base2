@@ -160,3 +160,102 @@ def test_workflow_retains_original_and_failure_propagation():
     backend = (ROOT / ".github/workflows/ci-backend.yml").read_text()
     assert "scripts/tests/test_visual_matrix_artifacts.py" in backend
     assert "scripts/tests/test_operations_motion_cascade.py" in backend
+
+
+def media_observation_fixture(tmp_path):
+    source, old_case, output = fixture(tmp_path)
+    before = json.loads((source / "source-before.json").read_bytes())
+    before["matrix"] = "media"
+    for declared in before["expectedTests"]:
+        declared["title"] = module.MEDIA_TEST
+    (source / "source-before.json").write_text(json.dumps(before))
+    case = old_case.with_name(module.MEDIA_CASE + "chromium-desktop")
+    old_case.rename(case)
+    rectangle = {"x": 0, "y": 0, "width": 10, "height": 10,
+                 "top": 0, "right": 10, "bottom": 10, "left": 0}
+    target = {"kind": "filename", "rect": rectangle, "centerInViewport": True,
+              "centerUnobstructed": False, "overlappingControls": ["base2-scroll-ascend"]}
+    body = {
+        "schemaVersion": 1, "fixtureScope": "synthetic-project-tests",
+        "project": "chromium-desktop", "test": module.MEDIA_TEST,
+        "scope": "Diagnostic viewport observations; not visual acceptance.",
+        "viewportObservations": [
+            {"cardIndex": index, "scrollY": 200, "viewport": [1440, 1000],
+             "controls": [{"id": "base2-scroll-ascend", "rect": rectangle}],
+             "targets": [target.copy() for _ in range(5)]} for index in (0, 2, 4)
+        ],
+    }
+    for index in (0, 2, 4):
+        (case / f"current-media-library-viewport-{index}.png").write_bytes(PNG)
+    observation = case / module.OBSERVATION_NAME
+    observation.write_text(json.dumps(body))
+    return source, case, output, observation, body
+
+
+def test_allowlisted_observation_bytes_and_hash_preserve_native_failure(tmp_path):
+    source, case, output, observation, _ = media_observation_fixture(tmp_path)
+    raw = observation.read_bytes()
+    # Deliberately invalid/private-shaped adjacent JSON must never be read/exported.
+    (case / "private.json").write_text('{"private":"unit sentinel"}')
+    (case / "arbitrary-report.json").write_text("not JSON")
+    result = module.stage(source, output)
+    assert not result["errors"]
+    name = observation.relative_to(source / "test-results").as_posix()
+    diagnostic = result["projects"]["chromium-desktop"]["diagnostics"]
+    assert diagnostic == [{"path": name, "bytes": len(raw), "sha256": hashlib.sha256(raw).hexdigest()}]
+    assert result["projects"]["chromium-desktop"]["missingDiagnostics"] == []
+    assert result["projects"]["chromium-light"]["missingDiagnostics"] == [module.OBSERVATION_NAME]
+    with zipfile.ZipFile(output / "chromium-desktop.zip") as z:
+        assert z.read(name) == raw
+        assert [n for n in z.namelist() if n.endswith(".json")] == [name]
+    with zipfile.ZipFile(output / "metadata.zip") as z:
+        assert z.read("source-after.json") == b'{"nativeOutcome":"failure"}'
+        assert json.loads(z.read("inventory.json"))["projects"]["chromium-desktop"]["diagnostics"] == diagnostic
+    assert observation.read_bytes() == raw
+
+
+@pytest.mark.parametrize("change", [
+    "oversize", "private-field", "target-text", "wrong-project", "wrong-fixture",
+    "unknown-control", "nonfinite", "wrong-case", "symlink", "missing-png", "duplicate-key",
+])
+def test_unsafe_observations_are_never_exported(tmp_path, change):
+    source, case, output, observation, body = media_observation_fixture(tmp_path)
+    if change == "oversize":
+        observation.write_bytes(b" " * (module.OBSERVATION_BUDGET + 1))
+    elif change == "symlink":
+        observation.unlink()
+        observation.symlink_to(source / "source-after.json")
+    elif change == "wrong-case":
+        case.rename(case.with_name("other-case-chromium-desktop"))
+    elif change == "missing-png":
+        (case / "current-media-library-viewport-2.png").unlink()
+    elif change == "duplicate-key":
+        observation.write_text('{"scope":"unit private sentinel",' + observation.read_text()[1:])
+    else:
+        if change == "private-field":
+            body["private"] = "unit sentinel"
+        elif change == "target-text":
+            body["viewportObservations"][0]["targets"][0]["text"] = "unit sentinel"
+        elif change == "wrong-project":
+            body["project"] = "chromium-light"
+        elif change == "wrong-fixture":
+            body["fixtureScope"] = "real-user-data"
+        elif change == "unknown-control":
+            body["viewportObservations"][0]["controls"][0]["id"] = "private-control"
+        elif change == "nonfinite":
+            body["viewportObservations"][0]["scrollY"] = float("nan")
+        observation.write_text(json.dumps(body))
+    result = module.stage(source, output)
+    assert result["errors"]
+    assert not (output / "chromium-desktop.zip").exists()
+    with zipfile.ZipFile(output / "metadata.zip") as z:
+        assert z.read("source-after.json") == b'{"nativeOutcome":"failure"}'
+
+
+def test_native_persists_same_safe_observation_as_attachment():
+    source = (ROOT / "react-app/e2e/media/media-release.spec.ts").read_text()
+    assert "testInfo.outputPath('media-viewport-observations.json')" in source
+    assert "body: observationBytes" in source
+    assert "fixtureScope: 'synthetic-project-tests'" in source
+    assert "text: target.textContent" not in source
+    assert "name: control.getAttribute('aria-label')" not in source

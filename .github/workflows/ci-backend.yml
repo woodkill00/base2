@@ -90,7 +90,7 @@ jobs:
 
       - name: Frontend/E2E acceptance contracts
         if: matrix.service == 'api'
-        run: python -m pytest -q scripts/tests/test_frontend_ci_scope.py scripts/tests/test_visual_matrix_ci.py scripts/tests/test_visual_matrix_artifacts.py scripts/tests/test_operations_motion_cascade.py scripts/tests/test_screenshot_archive.py scripts/tests/test_settings_foundation_ci.py scripts/tests/test_stacked_pr_ci.py scripts/tests/test_e2e_workspace_topology.py e2e/support/test_workspace_fixture.py e2e/support/test_workspace_journey_source.py
+        run: python -m pytest -q scripts/tests/test_frontend_ci_scope.py scripts/tests/test_visual_matrix_ci.py scripts/tests/test_visual_matrix_artifacts.py scripts/tests/test_operations_motion_cascade.py scripts/tests/test_media_coverage_slice.py scripts/tests/test_screenshot_archive.py scripts/tests/test_settings_foundation_ci.py scripts/tests/test_stacked_pr_ci.py scripts/tests/test_e2e_workspace_topology.py e2e/support/test_workspace_fixture.py e2e/support/test_workspace_journey_source.py
 
       - name: Validate retained screenshot archive integrity
         if: matrix.service == 'api'

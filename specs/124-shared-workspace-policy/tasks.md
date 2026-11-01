@@ -1007,3 +1007,31 @@ unreferenced merge or transfer commits. Native visual acceptance remains separat
 The separately prepared passing-evidence batch adds 13 files and retains earlier
 failures. Full media native success is scoped to 24 supported Chromium cases;
 visual acceptance is pending technical review. No complete gate was executed.
+
+
+### Media coverage/usability preparation (held)
+
+- [x] T51 Import 24 diagnostic PNG captures from run 41283921639 using the verified
+      Git transfer, deduplicate existing bytes and preserve native 24 passed / 12
+      skipped plus known technical review limitations. Do not promote references.
+- [x] T52 Add failing-first source contracts and focused selection-announcement
+      regression; reserve intrinsic counter width with responsive toolbar wrapping.
+- [x] T53 Add stable detail top/completed and picker-bottom diagnostic captures,
+      plus viewport/hit-test evidence for floating controls; preserve old assertions.
+- [ ] T54 Independently review the complete candidate, obtain publication review and
+      fresh native evidence before accepting any new visual change. Earlier media
+      source-bound accepted metadata remains stale; do not rehash it into acceptance.
+
+- [ ] T55 Resolve global footer wording in a separately reviewed copy change.
+      HomeFooter.jsx labels its static panel Preview status, but unconditionally
+      displays System evidence current with no live-service or evidence freshness
+      input. It can mislead beside stale/unavailable operations data. Proposed
+      follow-up: label this as preview information and state that service freshness
+      is reported in the operations panel; do not claim current build evidence
+      without a bound source. No global shell or reference changes in this slice.
+
+- [x] T56 Close bounded viewport-observation delivery: persist and attach identical
+      explicitly named synthetic geometry JSON, validate its strict schema and
+      64 KiB limit, package it only with the corresponding project/case viewport
+      PNGs and record byte/hash provenance. Exclude arbitrary/private JSON and
+      preserve missing-data visibility and original native failure outcomes.

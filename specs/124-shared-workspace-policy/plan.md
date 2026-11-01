@@ -632,3 +632,41 @@ pending reference with stable top/preview/header/close and completed-state captu
 Also capture the compact picker bottom/actions; investigate the large-text selection
 counter splitting and fixed scroll-control overlap with viewport screenshots before
 classifying the latter as a product defect. Preserve all current references/history.
+
+
+### Media supplementary coverage and selection-counter usability (unpublished)
+
+Source starts at published 4e591455b1eb7491b81b53b01c8648a8ef2d2489. Its full
+operations and media native matrices passed their supported cases, with declared
+skips preserved; this does not grant visual acceptance. Retain the earlier full
+media run 41283921639 as diagnostic history: 24 executed passes / 12 declared skips,
+Chromium only. Imported PNGs retain externally verified archive provenance and local
+Git/SHA256/size/dimension/full-decode verification, separate from future results.
+
+Correct only the media toolbar counter layout: reserve intrinsic unbroken counter
+width and let search/status controls wrap responsively. Preserve the surrounding
+Obsidian design. Component checks retain polite LTR selection announcements; native
+geometry checks require a single counter line and no horizontal overflow, including
+the existing large-text and narrow projects. Source contracts fail first on the
+old grid/counter rules. Native rendering validation remains pending.
+
+Keep all existing reference files and pending-action comparison assertions unchanged.
+Supplement each supported detail case with stable loaded top/header/close/preview
+and completed-mutation diagnostic captures. Completion requires the real fixture
+response, completed status/version, dismissed confirmation and restored focus.
+Supplement picker captures with the bottom item and enabled submit control in view.
+These current PNGs are diagnostics, not pre-approved reference targets.
+
+Before the existing full-page normalization, collect first/middle/last-card viewport
+PNGs with the real sticky header and floating movement controls. Attach native
+geometry, hit-test and control-overlap observations without declaring intersection
+alone a product defect. Persist the exact media-viewport-observations.json file and
+retain the same bytes as a Playwright attachment. The bounded project ZIP includes
+only this explicitly named synthetic geometry schema alongside its three viewport
+PNGs; generic JSON, DOM/card text, arbitrary bodies and traces remain excluded.
+The file has a 64 KiB limit, exact case/project/test binding, duplicate-key rejection,
+finite numeric bounds, fixed control/target enums and no extra fields. Inventory
+records its SHA256 and size under the native source/run identity. Missing diagnostics
+remain visible; original native failure and report bytes remain unchanged. Expected totals
+remain 36 declared / 24 supported / 12 skipped across 12 Chromium projects. Capture
+counts increase, but no additional browsers or automatic acceptance are introduced.

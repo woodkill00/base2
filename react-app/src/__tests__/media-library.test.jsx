@@ -116,6 +116,12 @@ it('renders an accessible searchable selectable library', async () => {
   expect(await screen.findByText('safe.png')).toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: 'Select safe.png' }));
   const selectionStatus = screen.getByText('1 selected');
+  expect(selectionStatus).toHaveClass('media-selection');
+  expect(selectionStatus).toHaveAttribute('aria-live', 'polite');
+  fireEvent.click(screen.getByRole('button', { name: 'Deselect safe.png' }));
+  expect(selectionStatus).toHaveTextContent('0 selected');
+  fireEvent.click(screen.getByRole('button', { name: 'Select safe.png' }));
+  expect(selectionStatus).toHaveTextContent('1 selected');
   expect(selectionStatus).toHaveAttribute('dir', 'ltr');
   expect(selectionStatus).toHaveAttribute('lang', 'en');
   expect(

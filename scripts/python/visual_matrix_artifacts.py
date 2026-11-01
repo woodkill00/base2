@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
 import re
 import zipfile
 from pathlib import Path
@@ -12,11 +13,76 @@ from typing import Any
 PNG_BUDGET = 28 * 1024 * 1024
 ZIP_BUDGET = 30 * 1024 * 1024
 METADATA_BUDGET = 2 * 1024 * 1024
+OBSERVATION_BUDGET = 64 * 1024
+OBSERVATION_NAME = "media-viewport-observations.json"
+MEDIA_CASE = "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-"
+MEDIA_TEST = "media library is accessible responsive and visually reviewed"
+CONTROL_IDS = {"base2-scroll-ascend", "base2-scroll-descend"}
 PNG_NAME = re.compile(
     r"(?:current-[a-zA-Z0-9_-]+|[a-zA-Z0-9_-]+-(?:actual|expected|diff|post-assert)"
     r"|test-failed-[0-9]+)\.png"
 )
 REPORTS = ("source-before.json", "source-after.json", "operations-visual-runner.json", "stages.md")
+
+
+def observations(raw: bytes, project: str) -> dict:
+    """Accept only synthetic geometry/enums, never DOM text or generic JSON."""
+    def require(condition: bool) -> None:
+        if not condition:
+            raise ValueError("invalid viewport observation schema")
+
+    def unique(pairs: list) -> dict:
+        result = {}
+        for key, value in pairs:
+            require(key not in result)
+            result[key] = value
+        return result
+
+    def number(value: Any) -> bool:
+        return type(value) in {int, float} and abs(value) <= 100_000 and math.isfinite(value)
+
+    def rect(value: Any) -> None:
+        require(isinstance(value, dict) and set(value) ==
+                {"x", "y", "width", "height", "top", "right", "bottom", "left"})
+        require(all(number(v) for v in value.values()))
+        require(value["width"] >= 0 and value["height"] >= 0)
+
+    data = json.loads(raw, object_pairs_hook=unique)
+    require(isinstance(data, dict) and set(data) == {
+        "schemaVersion", "fixtureScope", "project", "test", "scope", "viewportObservations"})
+    require(type(data["schemaVersion"]) is int and data["schemaVersion"] == 1)
+    require(data["fixtureScope"] == "synthetic-project-tests" and data["project"] == project)
+    require(data["test"] == MEDIA_TEST)
+    require(data["scope"] == "Diagnostic viewport observations; not visual acceptance.")
+    rows = data["viewportObservations"]
+    require(isinstance(rows, list) and len(rows) == 3)
+    for index, row in zip((0, 2, 4), rows, strict=True):
+        require(isinstance(row, dict) and set(row) ==
+                {"cardIndex", "scrollY", "viewport", "controls", "targets"})
+        require(type(row["cardIndex"]) is int and row["cardIndex"] == index)
+        require(number(row["scrollY"]) and row["scrollY"] >= 0)
+        require(isinstance(row["viewport"], list) and len(row["viewport"]) == 2
+                and all(type(v) is int and 0 < v <= 32768 for v in row["viewport"]))
+        require(isinstance(row["controls"], list) and len(row["controls"]) <= 2)
+        ids = []
+        for control in row["controls"]:
+            require(isinstance(control, dict) and set(control) == {"id", "rect"})
+            require(isinstance(control["id"], str) and control["id"] in CONTROL_IDS)
+            ids.append(control["id"])
+            rect(control["rect"])
+        require(len(set(ids)) == len(ids))
+        require(isinstance(row["targets"], list) and len(row["targets"]) == 5)
+        for target in row["targets"]:
+            require(isinstance(target, dict) and set(target) ==
+                    {"kind", "rect", "centerInViewport", "centerUnobstructed", "overlappingControls"})
+            require(target["kind"] in ("filename", "metadata", "status", "action"))
+            rect(target["rect"])
+            require(type(target["centerInViewport"]) is bool
+                    and type(target["centerUnobstructed"]) is bool)
+            overlaps = target["overlappingControls"]
+            require(isinstance(overlaps, list) and len(overlaps) <= 2
+                    and all(isinstance(v, str) and v in ids for v in overlaps))
+    return data
 
 
 def safe(path: Path) -> None:
@@ -83,6 +149,7 @@ def stage(source: Path, output: Path) -> dict:
             inventory["errors"].append(f"{name}: {exc}")
     results = source / "test-results"
     grouped: dict[str, list[Path]] = {p: [] for p in projects}
+    diagnostics: dict[str, list[Path]] = {p: [] for p in projects}
     try:
         safe(results)
         if results.exists():
@@ -102,9 +169,18 @@ def stage(source: Path, output: Path) -> dict:
                         if not PNG_NAME.fullmatch(path.name):
                             raise ValueError("unrecognized PNG capture name")
                         grouped[matches[0]].append(path)
+                    elif path.name == OBSERVATION_NAME:
+                        project = matches[0]
+                        declared = any(t["project"] == project and t.get("title") == MEDIA_TEST
+                                       and t.get("expectedStatus") == "passed"
+                                       for t in before["expectedTests"])
+                        if before["matrix"] != "media" or case.name != MEDIA_CASE + project or not declared:
+                            raise ValueError("observation outside declared media library case")
+                        diagnostics[project].append(path)
     except ValueError as exc:
         inventory["errors"].append(str(exc))
         grouped = {p: [] for p in projects}
+        diagnostics = {p: [] for p in projects}
     for project, paths in grouped.items():
         supported = [t for t in before["expectedTests"]
                      if t["project"] == project and t.get("expectedStatus") == "passed"]
@@ -112,6 +188,8 @@ def stage(source: Path, output: Path) -> dict:
             "status": "incomplete", "captures": [], "expectedSupportedTests": supported,
             "currentCaptureCount": 0, "minimumCaptureShortfall": len(supported),
             "captureCoverage": "incomplete",
+            "diagnostics": [],
+            "missingDiagnostics": [OBSERVATION_NAME] if before["matrix"] == "media" else [],
         }
         inventory["projects"][project] = entry
         try:
@@ -127,6 +205,21 @@ def stage(source: Path, output: Path) -> dict:
                 entry["captures"].append({
                     "path": name, "bytes": len(raw), "sha256": hashlib.sha256(raw).hexdigest()
                 })
+            if len(diagnostics[project]) > 1:
+                raise ValueError("duplicate project observation file")
+            for path in diagnostics[project]:
+                raw = read(path, OBSERVATION_BUDGET)
+                data = observations(raw, project)
+                for row in data["viewportObservations"]:
+                    capture = path.parent / f"current-media-library-viewport-{row['cardIndex']}.png"
+                    if capture.relative_to(results).as_posix() not in members:
+                        raise ValueError("observation missing corresponding viewport PNG")
+                name = path.relative_to(results).as_posix()
+                members[name] = raw
+                entry["diagnostics"].append({
+                    "path": name, "bytes": len(raw), "sha256": hashlib.sha256(raw).hexdigest()
+                })
+                entry["missingDiagnostics"] = []
             if members:
                 archive(output / f"{project}.zip", members)
                 entry["status"] = "packaged"
