@@ -1,5 +1,6 @@
 import copy
 import json
+import re
 from pathlib import Path
 
 import pytest
@@ -96,8 +97,9 @@ def test_checkpoint_hooks_preserve_footer_assertion_and_capture_first():
     source = (root / 'react-app/e2e/continuous-scroll.ts').read_text()
     assert source.index("'capture-before', index") < source.index("'capture-after', index")
     assert source.index("'capture-after', index") < source.index('Capture endpoint scroll/focus/geometry must remain stable')
-    assert "await expect(page.locator('.volcano-footer-frame')).toBeInViewport();" in source
-    assert source.index("'continuous-footer-before'") < source.index("await expect(page.locator('.volcano-footer-frame')).toBeInViewport();")
+    footer = re.search(r"await ownershipStep\(\(\) =>\s*expect\(page\.locator\('\.volcano-footer-frame'\)\)\.toBeInViewport\(\)\s*\);", source)
+    assert footer
+    assert source.index("'continuous-footer-before'") < footer.start()
     assert "failure = error;\n    errors.push('capture-or-validation-failed');" in source
 
 

@@ -1313,3 +1313,22 @@ captures prove their observed fallback states, not populated content readiness.
       Keep the full-label and enclosure assertions unchanged; fresh native pixels
       must establish readability. WebKit's 60-second body timeout remains open;
       current checkpoint receipts require inspection before a causal repair.
+
+- [ ] T97 Repair selected-editor media heading hierarchy (record h3 → media h4)
+      and reset the structured fieldset's browser min-content inline minimum so
+      its native file control can shrink within the inspector. Preserve disabled
+      fieldset semantics, existing styling, axe and all native containment checks.
+      Run 41354479659 proves focus, Discard, zero updates, original record equality,
+      reopen and original-title assertions in all three selected-edit scenarios.
+      Compact then fails heading-order; desktop/large-text fail panel scrollWidth
+      containment despite enclosed outer edges. Save remains unproven. The
+      fieldset sizing repair needs fresh native geometry/pixels; DOM tests do not
+      establish browser layout. Optional runs preserve both legacy screenshot
+      mismatches and missing sequence-reference failures. WebKit capture ownership
+      remains a separate read-only proposal; no timeout or coverage changes here.
+      Fresh native pixels additionally show the viewport-md relationship grid
+      squeezing Add relationship into a tall word-broken column. Replace its
+      fixed minimum columns plus residual action slot with available-width tracks
+      (14rem preferred, bounded by full available width). Extend native containment
+      to all nested structured sections, fieldsets, forms and controls. No clipping
+      concealment; media sections retain their original styling.

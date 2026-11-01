@@ -105,19 +105,19 @@ def test_compact_drawer_toggles_occupy_reserved_control_strip_not_content():
 
 
 def test_scrollport_failure_keeps_sampled_image_and_bounded_geometry_before_assertion():
-    source = (ROOT / 'react-app/e2e/scroll-target.ts').read_text()
-    capture = source.index('await page.screenshot({')
+    source = ''.join((ROOT / 'react-app/e2e/scroll-target.ts').read_text().split())
+    capture = source.index('awaitownershipStep(()=>ownedScreenshot(page,testInfo,{')
     geometry = source.index("'scrollport-overlap-evidence'")
-    assertion = source.index("expect(footerOverlaps, 'Persistent controls")
-    cleanup = source.index('await scrollPageTo(page, saved.y, saved.x)')
+    assertion = source.index("expect(footerOverlaps,'Persistentcontrolsmustnotoverlapvisiblefootercontent')")
+    cleanup = source.index('awaitownershipStep(()=>scrollPageTo(page,saved.y,saved.x))')
     assert capture < geometry < assertion < cleanup
-    assert capture < source.index("await expect(page.locator('.volcano-footer-frame')).toBeInViewport()") < cleanup
-    assert capture < source.index('.poll(async () => Math.abs((await pageScrollTop(page)) - max))') < cleanup
-    assert source.index('if (captureFailed) throw captureFailure') > assertion
-    assert 'if (!originalFailure) {' in source
-    assert 'failure = cleanupError' in source
-    assert source.index('if (originalFailure) throw failure') > cleanup
-    assert '64 * 1024' in source
+    assert capture < source.index("awaitownershipStep(()=>expect(page.locator('.volcano-footer-frame')).toBeInViewport())") < cleanup
+    assert capture < source.index('.poll(async()=>Math.abs((awaitownershipStep(()=>pageScrollTop(page)))-max))') < cleanup
+    assert source.index('if(captureFailed)throwcaptureFailure') > assertion
+    assert 'if(!originalFailure){' in source
+    assert 'failure=cleanupError' in source
+    assert source.index('if(originalFailure)throwfailure') > cleanup
+    assert '64*1024' in source
 
 
 def test_detail_forced_textarea_and_lifecycle_continue_after_comparison_failure():

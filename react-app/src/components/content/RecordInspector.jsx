@@ -447,7 +447,7 @@ export default function RecordInspector({
         </>
       )}
 
-      <fieldset disabled={busy || blocked || editing || !canWrite}>
+      <fieldset style={{ minInlineSize: 0 }} disabled={busy || blocked || editing || !canWrite}>
         <RecordStructuredFields
           typeKey={typeKey}
           schema={schema}

@@ -9,7 +9,12 @@ import shutil
 import subprocess
 from pathlib import Path
 
-from scripts.python import continuous_evidence, sequence_evidence, workspace_checkpoints
+from scripts.python import (
+    continuous_evidence,
+    sequence_evidence,
+    workspace_checkpoints,
+    workspace_ownership,
+)
 
 BUDGET = 28 * 1024 * 1024
 SLOTS = 480
@@ -111,6 +116,8 @@ def allowed(suite: str, relative: Path) -> bool:
 
 
 def image_role(name: str) -> str:
+    if name == workspace_ownership.NAME:
+        return "workspace-ownership-diagnostic"
     if name == workspace_checkpoints.NAME:
         return "workspace-phase-diagnostic"
     if sequence_evidence.NAME.fullmatch(name):
@@ -151,6 +158,7 @@ def stage(sources: dict[str, Path], output: Path, provenance: dict) -> None:
     rejected = set()
     errors: dict[str, int] = {}
     bound_frames = set()
+    owned_frames: set[Path] = set()
     bound_comparisons = set()
     states = {}
     # No generic JSON, report HTML, traces, video, fixtures or source trees are copied.
@@ -169,6 +177,16 @@ def stage(sources: dict[str, Path], output: Path, provenance: dict) -> None:
                 continue
             try:
                 safe(path)
+                if path.name == workspace_ownership.NAME:
+                    if not workspace_ownership.registered(suite, relative):
+                        continue
+                    if not path.is_file() or path.stat().st_size > workspace_ownership.BUDGET:
+                        raise ValueError('oversized workspace ownership receipt')
+                    raw = path.read_bytes()
+                    data = workspace_ownership.validate(raw, path, provenance)
+                    owned_frames.update(path.parent / row['file'] for row in data['frames'])
+                    members.append((path, f'{suite}/{relative.as_posix()}', len(raw), hashlib.sha256(raw).hexdigest()))
+                    continue
                 if path.name == workspace_checkpoints.NAME:
                     if not workspace_checkpoints.registered(suite, relative):
                         continue
@@ -241,7 +259,7 @@ def stage(sources: dict[str, Path], output: Path, provenance: dict) -> None:
     # Every continuous frame must have a validated original receipt in the same
     # producer directory. Unknown PNGs remain excluded and counted separately.
     unbound = {tuple(Path(item[1]).parts[:2]) for item in members
-               if (continuous_evidence.FRAME.fullmatch(item[0].name) and item[0] not in bound_frames)
+               if (continuous_evidence.FRAME.fullmatch(item[0].name) and item[0] not in bound_frames and item[0] not in owned_frames)
                or (sequence_evidence.IMAGE.fullmatch(item[0].name) and item[0] not in bound_comparisons)}
     for unbound_producer in unbound:
         errors[unbound_producer[0]] = errors.get(unbound_producer[0], 0) + 1

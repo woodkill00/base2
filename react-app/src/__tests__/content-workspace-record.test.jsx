@@ -75,6 +75,26 @@ describe('record workspace inspector', () => {
     });
   });
 
+  test('editing retains sequential media headings and a shrinkable disabled structured fieldset', async () => {
+    const user = userEvent.setup();
+    const { container } = render(
+      <main>
+        <h1>Content workspace</h1><h2>Records</h2>
+        <RecordInspector typeKey="article" canEdit schema={{ fields: [
+          ...schema.fields, { fieldKey: 'hero', label: 'Hero image', fieldKind: 'image' },
+        ] }} record={record} onChanged={vi.fn()} onError={vi.fn()} />
+      </main>
+    );
+    await user.click(screen.getByRole('button', { name: 'Edit fields' }));
+    const media = screen.getByRole('heading', { name: 'Hero image' });
+    expect.soft(media.tagName).toBe('H4');
+    const fieldset = media.closest('fieldset');
+    expect(fieldset).toBeDisabled();
+    expect.soft(fieldset).toHaveStyle({ minInlineSize: '0' });
+    expect(fieldset.querySelector('input[type="file"]')).toBeDisabled();
+    expect(await axe(container, { rules: { 'heading-order': { enabled: true } } })).toHaveNoViolations();
+  });
+
   test('edits typed values with optimistic versioning and protects unsaved work', async () => {
     const user = userEvent.setup();
     const { props } = renderInspector();

@@ -144,3 +144,32 @@ test('a changed fully transparent shadow is not a visible focus indicator', () =
     false
   );
 });
+
+test('revocation cannot replace an already rejected sampled screenshot and cleanup still settles', async () => {
+  const { CaptureOwner } = await import('../../e2e/workspace-capture-ownership');
+  const owner = new CaptureOwner('vocabulary');
+  let reject!: (error: unknown) => void, entered!: () => void;
+  const waiting = new Promise<void>((resolve) => { entered = resolve; });
+  const pending = new Promise<Buffer>((_resolve, fail) => { reject = fail; });
+  const original = new Error('original in-flight screenshot failure');
+  const events: string[] = [];
+  const page = {
+    locator: () => ({ count: async () => 1, evaluate: async () => 100 }),
+    url: () => 'https://synthetic.invalid/workspace',
+    screenshot: () => { entered(); return pending; },
+    evaluate: async (callback: Function, argument?: { top: number }) => {
+      if (callback.toString().includes('return { x:')) return { x: 0, y: 37 };
+      if (argument?.top === 37) { events.push('cleanup'); throw new Error('secondary cleanup'); }
+      if (callback.toString().includes('.volcano-footer-frame p')) return [];
+    },
+  };
+  const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+  try {
+    const body = owner.body(() => captureScrollportExtent(page as never, { outputPath: (name: string) => name } as never));
+    const assertion = expect(body).rejects.toBe(original);
+    await waiting;
+    const hook = owner.afterEach(async () => { events.push('hook'); }, 1000, false, false);
+    reject(original); await assertion; await hook;
+    expect(events).toEqual(['cleanup', 'hook']);
+  } finally { log.mockRestore(); }
+});

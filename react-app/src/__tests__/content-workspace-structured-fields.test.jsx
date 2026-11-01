@@ -55,6 +55,16 @@ describe('structured record controls', () => {
     vi.unstubAllGlobals();
   });
 
+  test('relationship actions receive a readable track based on panel width', async () => {
+    setup();
+    await screen.findByText('No relationships are attached.');
+    const button = screen.getByRole('button', { name: 'Add relationship' });
+    expect(button.closest('form')).toHaveStyle({
+      gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 14rem), 1fr))',
+    });
+    expect(screen.getByLabelText('Target record ID')).toBeRequired();
+  });
+
   test('hashes and uploads in memory but refuses attachment while quarantined', async () => {
     const user = userEvent.setup();
     const { props } = setup();

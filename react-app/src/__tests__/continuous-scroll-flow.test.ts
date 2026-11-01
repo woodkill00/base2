@@ -197,3 +197,31 @@ test('original coverage failure wins over focus restoration failure', async () =
   expect(data.complete).toBe(false);
   expect(data.errors).toContain('focus-restore-failed');
 });
+
+test('revocation after an in-flight frame retains its segment and completes owned restoration before hook', async () => {
+  const { CaptureOwner, CaptureRevoked, CaptureCoverageIncomplete } = await import('../../e2e/workspace-capture-ownership');
+  const f = fixture({ cleanupFails: true });
+  const owner = new CaptureOwner('corpus');
+  const screenshot = f.page.screenshot;
+  let release!: () => void, entered!: () => void;
+  const waiting = new Promise<void>((resolve) => { entered = resolve; });
+  const blocked = new Promise<void>((resolve) => { release = resolve; });
+  let calls = 0;
+  f.page.screenshot = async (options) => {
+    if (++calls === 2) { entered(); await blocked; }
+    return screenshot(options);
+  };
+  const body = owner.body(() => captureContinuousScroll(f.page as never, f.info as never, 'workspace-exports', f.target as never));
+  const failed = expect(body).rejects.toBeInstanceOf(CaptureRevoked);
+  await waiting;
+  const hook = owner.afterEach(async () => { f.events.push('hook'); }, 1000, false, false);
+  release(); await failed; await expect(hook).rejects.toBeInstanceOf(CaptureCoverageIncomplete);
+  const data = JSON.parse(readFileSync(join(f.directory, 'continuous-workspace-exports.json'), 'utf8'));
+  expect(data.complete).toBe(false);
+  expect(data.segments).toHaveLength(1);
+  expect(data.segments[0].sha256).toBe(owner.frames[1].sha256);
+  expect(owner.frames).toHaveLength(2);
+  expect(f.events.indexOf('focus-restore')).toBeLessThan(f.events.indexOf('hook'));
+  expect(f.events.indexOf('cleanup')).toBeLessThan(f.events.indexOf('hook'));
+  expect(data.errors).toContain('capture-or-validation-failed');
+});

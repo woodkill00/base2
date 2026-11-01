@@ -229,8 +229,8 @@ def test_per_state_comparisons_keep_hard_footer_assertions_and_runtime_bindings(
     after = scroll.split("if (!captured) return;", 1)[1]
     assert "if (comparisonRatio !== undefined) return" not in after
     assert (
-        "expect(footerOverlaps, 'Persistent controls must not overlap visible footer content')"
-        in after
+        "expect(footerOverlaps,'Persistentcontrolsmustnotoverlapvisiblefootercontent')"
+        in "".join(after.split())
     )
     assert "toBeInViewport" in after
     source = (root / "react-app/e2e/sequence-reference.ts").read_text()
@@ -287,7 +287,7 @@ def test_attempted_applicability_failure_is_captured_before_rethrow():
 
     source = (Path(__file__).parents[2] / "react-app/e2e/continuous-scroll.ts").read_text()
     block = source.split("let applicable: boolean;", 1)[1].split("const receiptName", 1)[0]
-    assert block.index("await page.screenshot") < block.index("throw error")
+    assert block.index("ownedScreenshot(page, info,") < block.index("throw error")
     assert "Preserve the original applicability failure" in block
 
 
