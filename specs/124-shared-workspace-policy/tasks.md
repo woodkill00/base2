@@ -988,3 +988,22 @@ PNG hashes and full decoding, and historical baseline references with full check
 history and no persisted credentials. Exact native merge-commit object proofs bind
 tested source identity to tree-equivalent retained heads, avoiding dependency on
 unreferenced merge or transfer commits. Native visual acceptance remains separate.
+
+
+### Full matrix follow-up (unpublished)
+
+- [x] T47 Preserve operations run 41283915226 failure (21 passed / 20 skipped /
+      1 failed). Reproduce the cascade defect with a failing-first specificity
+      regression; scope the correction to the existing reduced-motion media query.
+- [x] T48 Prepare bounded per-project PNG and small report/source artifacts alongside
+      the original full artifact. Test limits, unchanged bytes, incomplete captures,
+      symlink/traversal rejection and unchanged native failure propagation.
+- [ ] T49 Independently review and publish the bounded candidate only after review;
+      obtain fresh exact-source native reduced-motion/full matrix validation.
+- [ ] T50 Supplement media detail top and completed-state visual evidence, compact
+      picker actions and large-text selection counter coverage. Diagnose scroll
+      control overlap using viewport captures. No baseline edits in this batch.
+
+The separately prepared passing-evidence batch adds 13 files and retains earlier
+failures. Full media native success is scoped to 24 supported Chromium cases;
+visual acceptance is pending technical review. No complete gate was executed.

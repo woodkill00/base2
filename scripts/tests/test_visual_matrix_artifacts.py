@@ -1,0 +1,162 @@
+import hashlib
+import json
+import re
+import subprocess
+import zipfile
+from pathlib import Path
+
+import pytest
+import yaml
+
+from scripts.python import visual_matrix_artifacts as module
+
+ROOT = Path(__file__).resolve().parents[2]
+PNG = b"\x89PNG\r\n\x1a\n" + b"unit fixture, not native evidence"
+
+
+def fixture(tmp_path):
+    source = tmp_path / "native"
+    source.mkdir()
+    before = {"sourceCommit": "a" * 40, "sourceTree": "b" * 40,
+              "runId": "123", "attempt": "1", "matrix": "operations",
+              "expectedTests": [{"project": p, "title": "unit fixture", "expectedStatus": "passed"}
+                                for p in ["chromium-desktop", "chromium-light"]]}
+    (source / "source-before.json").write_text(json.dumps(before))
+    (source / "source-after.json").write_text('{"nativeOutcome":"failure"}')
+    case = source / "test-results" / "operations-case-chromium-desktop"
+    case.mkdir(parents=True)
+    (case / "current-operations.png").write_bytes(PNG)
+    (case / "operations-actual.png").write_bytes(PNG)
+    (case / "trace.zip").write_bytes(b"excluded")
+    (case / "video.webm").write_bytes(b"excluded")
+    return source, case, tmp_path / "bounded"
+
+
+def test_exact_pngs_and_original_failed_reports_with_empty_project_visible(tmp_path):
+    source, case, output = fixture(tmp_path)
+    original = {p: p.read_bytes() for p in source.rglob("*") if p.is_file()}
+    result = module.stage(source, output)
+    assert not result["errors"]
+    assert result["projects"]["chromium-light"]["status"] == "incomplete"
+    assert result["projects"]["chromium-light"]["captures"] == []
+    assert result["projects"]["chromium-light"]["minimumCaptureShortfall"] == 1
+    assert result["projects"]["chromium-desktop"]["captureCoverage"] == "requires-review"
+    assert "operations-visual-runner.json" in result["missingReports"]
+    with zipfile.ZipFile(output / "chromium-desktop.zip") as z:
+        assert len(z.namelist()) == 2
+        assert all(z.read(n) == PNG for n in z.namelist())
+        assert all(n.endswith(".png") for n in z.namelist())
+    with zipfile.ZipFile(output / "metadata.zip") as z:
+        assert z.read("source-after.json") == b'{"nativeOutcome":"failure"}'
+        assert json.loads(z.read("inventory.json")) == result
+    assert all(p.read_bytes() == raw for p, raw in original.items())
+    assert all(p.stat().st_size < 32 * 1024 * 1024 for p in output.iterdir())
+    capture = result["projects"]["chromium-desktop"]["captures"][0]
+    assert capture["sha256"] == hashlib.sha256(PNG).hexdigest()
+    with pytest.raises(ValueError, match="fresh"):
+        module.stage(source, output)
+
+
+@pytest.mark.parametrize("kind", ["file", "case", "source"])
+def test_symlinks_rejected_without_copying_target(tmp_path, kind):
+    source, case, output = fixture(tmp_path)
+    if kind == "file":
+        (case / "test-failed-1.png").symlink_to(case / "current-operations.png")
+    elif kind == "case":
+        (source / "test-results" / "other-chromium-light").symlink_to(case, target_is_directory=True)
+    else:
+        alias = tmp_path / "alias"
+        alias.symlink_to(source, target_is_directory=True)
+        with pytest.raises(ValueError, match="symlink"):
+            module.stage(alias, output)
+        return
+    result = module.stage(source, output)
+    assert any("symlink" in e for e in result["errors"])
+    assert not list(output.glob("chromium-*.zip"))
+
+
+def test_traversal_and_untrusted_project_names(tmp_path):
+    source, _, output = fixture(tmp_path)
+    with pytest.raises(ValueError, match="traversal"):
+        module.stage(source / ".." / "native", output)
+    before = json.loads((source / "source-before.json").read_text())
+    before["expectedTests"] = [{"project": "../escape"}]
+    (source / "source-before.json").write_text(json.dumps(before))
+    with pytest.raises(ValueError, match="projects"):
+        module.stage(source, output)
+
+
+@pytest.mark.parametrize("change", ["oversize", "unknown", "signature"])
+def test_incomplete_inputs_never_truncated_or_reported_packaged(tmp_path, monkeypatch, change):
+    source, case, output = fixture(tmp_path)
+    if change == "oversize":
+        monkeypatch.setattr(module, "PNG_BUDGET", len(PNG))
+    elif change == "unknown":
+        (case / "private.png").write_bytes(PNG)
+    else:
+        (case / "current-operations.png").write_bytes(b"not PNG")
+    result = module.stage(source, output)
+    assert result["errors"]
+    assert result["projects"]["chromium-desktop"]["status"] == "incomplete"
+    assert not (output / "chromium-desktop.zip").exists()
+    assert (output / "metadata.zip").is_file()
+
+
+def test_missing_test_results_stays_incomplete(tmp_path):
+    source, case, output = fixture(tmp_path)
+    for p in case.iterdir():
+        p.unlink()
+    case.rmdir()
+    case.parent.rmdir()
+    result = module.stage(source, output)
+    assert all(p["status"] == "incomplete" for p in result["projects"].values())
+    assert not list(output.glob("chromium-*.zip"))
+
+
+def test_diagnostic_only_project_does_not_hide_missing_current_capture(tmp_path):
+    source, case, output = fixture(tmp_path)
+    (case / "current-operations.png").unlink()
+    result = module.stage(source, output)
+    project = result["projects"]["chromium-desktop"]
+    assert project["status"] == "packaged"
+    assert project["captureCoverage"] == "incomplete"
+    assert project["minimumCaptureShortfall"] == 1
+
+
+def test_zip_overhead_limit_is_checked(tmp_path, monkeypatch):
+    monkeypatch.setattr(module, "ZIP_BUDGET", 10)
+    with pytest.raises(ValueError, match="ZIP"):
+        module.archive(tmp_path / "bounded.zip", {"capture.png": PNG})
+    assert not list(tmp_path.iterdir())
+
+
+def test_workflow_retains_original_and_failure_propagation():
+    workflow = yaml.safe_load((ROOT / ".github/workflows/ci-visual-review.yml").read_text())
+    steps = workflow["jobs"]["visual-review"]["steps"]
+    indexed = {s["id"]: s for s in steps if "id" in s}
+    assert indexed["evidence"]["if"] == "always()"
+    assert indexed["evidence"]["with"]["path"].splitlines()[0] == "${{ env.VISUAL_OUTPUT }}/test-results/"
+    assert steps.index(indexed["evidence"]) < steps.index(indexed["bounded"])
+    assert indexed["bounded"]["if"] == "always() && steps.before.outcome == 'success'"
+    assert not any("continue-on-error" in s for s in steps)
+    assert "||" not in indexed["matrix"]["run"]
+    assert "--update-snapshots=none" in indexed["matrix"]["run"]
+    projects = set()
+    for mode in ("operations", "media"):
+        config = (ROOT / f"react-app/playwright.{mode}-release.config.mjs").read_text()
+        projects.update(re.findall(r"(?:chromium\(\s*|name:\s*)'([^']+)'", config))
+    uploads = [s for s in steps if s.get("name", "").startswith("Retain bounded ")]
+    paths = {s["with"]["path"].split("/")[-1] for s in uploads}
+    assert paths == {"metadata.zip", *(p + ".zip" for p in projects)}
+    for step in uploads:
+        assert step["if"] == "always() && steps.before.outcome == 'success'"
+        assert step["with"]["retention-days"] == 7
+        assert len(step["uses"].split("@")[1]) == 40
+    # A failing matrix remains a failing shell command; diagnostic packaging
+    # is a separate always() step, with no success override.
+    failed = subprocess.run(["bash", "-e", "-c", indexed["matrix"]["run"]],
+                            env={"REVIEW_LABEL": "unknown"}, capture_output=True)
+    assert failed.returncode == 2
+    backend = (ROOT / ".github/workflows/ci-backend.yml").read_text()
+    assert "scripts/tests/test_visual_matrix_artifacts.py" in backend
+    assert "scripts/tests/test_operations_motion_cascade.py" in backend

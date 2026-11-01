@@ -580,3 +580,55 @@ PNG hashes and full decoding, and historical baseline references with full check
 history and no persisted credentials. Exact native merge-commit object proofs bind
 tested source identity to tree-equivalent retained heads, avoiding dependency on
 unreferenced merge or transfer commits. Native visual acceptance remains separate.
+
+
+### Native reduced-motion defect and bounded matrix diagnostics
+
+Frozen head cfc0c4be5d952322fe3af742394e8fe2c45a2a27 passed the standard
+437-case browser run 41282645641. Full optional operations run 41283915226
+then exposed a real reduced-motion cascade defect: 21 passed, 20 declared skips,
+one failure at the exact-zero transition assertion (received 1e-05s). The global
+preference selector outranks the operations selector. Increase only the operations
+selector specificity inside its existing reduced-motion media query; retain zero
+animation/transition duration, normal-motion rules, native assertion and baselines.
+The first native failure log and failing-first specificity regression are retained.
+
+Keep the original full matrix artifact unchanged. Add bounded forward diagnostic
+packaging after the original upload: exact source/report bytes and an inventory in
+one small metadata ZIP, plus PNG-only ZIPs for each declared project. Limit PNG
+input to 28 MiB per project and every completed ZIP to 30 MiB, leaving room under
+the 32 MiB transfer ceiling for the upload wrapper. Reject symlinks, traversal,
+unknown PNG names/project association and output reuse; never truncate bytes.
+Empty/missing captures remain explicitly incomplete. Packaging cannot turn native
+failure into success, promote references or produce a replacement native receipt.
+No historical oversized artifact download is retried.
+
+Bounded metadata contains exact source-before/source-after JSON, the operations
+receipt when emitted, stages and a derived diagnostic inventory. Raw playwright.json
+remains in the full artifact because its embedded PNG bodies can be large. A PNG
+project marked packaged only means available bytes were retained; supported-test
+counts and minimum current-capture shortfalls remain visible, and no count grants
+complete visual coverage.
+
+Passing standard-run retention remains a separate 13-file append-only candidate:
+five manifests, five validation events, two PNG objects and one exact merge source
+proof. Its eight captures do not establish full matrix acceptance. Optional media
+run 41283921639 has 24 supported passes and 12 declared skips across 12 Chromium
+projects; no Firefox/WebKit media coverage is claimed and pixel review is pending.
+
+Evidence-only CI scope changes are deferred. The current base-policy comparison
+still requires full frontend checks. A future reuse policy must bind executable,
+configuration, fixture, toolchain and baseline identities to verified prior native
+source, validate every evidence append, reject rewrites/deletions and unknown paths,
+and fail closed for missing history. Recording validation must not manufacture a
+new native pass. Stacked PR base differences cannot be ignored merely because the
+latest commit contains evidence only.
+
+Media review follow-up (not part of this repair): the detail test deliberately holds
+the lifecycle response, scrolls to Applying action, captures pending state, then
+releases the request and asserts completion text/focus. No top-of-dialog or terminal
+state screenshot exists in the searched E2E sources. Supplement the preserved
+pending reference with stable top/preview/header/close and completed-state captures.
+Also capture the compact picker bottom/actions; investigate the large-text selection
+counter splitting and fixed scroll-control overlap with viewport screenshots before
+classifying the latter as a product defect. Preserve all current references/history.

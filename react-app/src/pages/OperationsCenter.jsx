@@ -678,9 +678,9 @@ export default function OperationsCenter() {
       >
         <style>{`
           @media (prefers-reduced-motion: reduce) {
-            .operations-center *,
-            .operations-center *::before,
-            .operations-center *::after {
+            html body .operations-center *,
+            html body .operations-center *::before,
+            html body .operations-center *::after {
               animation-duration: 0s !important;
               scroll-behavior: auto !important;
               transition-duration: 0s !important;
