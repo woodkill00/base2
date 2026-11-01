@@ -227,7 +227,7 @@ test('media picker is visually and keyboard contained in a real workflow', async
   await assertForcedColorState(page, testInfo);
   if (testInfo.project.name === 'chromium-high-contrast') {
     await assertForcedSystemControl(picker.getByLabel('Search media', { exact: true }), true);
-    await assertForcedSystemControl(picker.getByLabel('Status', { exact: true }), true);
+    await assertForcedSystemControl(picker.getByRole('combobox', { name: 'Status', exact: true }), true);
   }
   await expect(page.locator('.app-shell-root')).toHaveJSProperty('inert', true);
   await picker.getByLabel(/Aurora landscape\.png/).check();

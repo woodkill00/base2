@@ -476,7 +476,7 @@ def test_genuine_hc_controls_assert_system_readability_boundaries_and_selected_c
     assert "toContain('underline')" in workspace
     media = (ROOT / 'react-app/e2e/media/media-release.spec.ts').read_text()
     assert "assertForcedSystemControl(picker.getByLabel('Search media', { exact: true }), true)" in media
-    assert "assertForcedSystemControl(picker.getByLabel('Status', { exact: true }), true)" in media
+    assert "assertForcedSystemControl(picker.getByRole('combobox', { name: 'Status', exact: true }), true)" in media
     operations = (ROOT / 'react-app/e2e/operations/operations-release.spec.ts').read_text()
     assert 'assertForcedSystemControl(primary)' in operations
 

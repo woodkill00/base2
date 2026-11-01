@@ -526,3 +526,19 @@ semantics with scoped CSSOM/native checks and unchanged normal styles. Repair th
 observed boundaryless portaled picker search/status field with HC-only borders;
 review any selected-tab shadow fallback separately. No baseline update precedes
 functional/axe correctness and actual pixel review.
+
+### Published-head recovery and optional native review preparation
+
+Recover exact published head 93a3ecc and preserve its failed native evidence. Correct
+only the picker Status control's locator to its exact combobox role/name, retaining
+the required border and all forced-mode, paint, axe and interaction checks. Validate
+source contracts, application/individual fixture types and line-reporter collection;
+collection must not rewrite the tracked operations runner receipt.
+
+Prepare opt-in operations/media full-matrix CI with immutable exact-head checks,
+explicit snapshot-update prohibition, current-source inventory and fresh reporter
+provenance. Reject zero supported execution, missing cases/captures and source or
+baseline mutation. Keep native failures fatal and actual failed evidence available.
+This is evidence collection infrastructure, not visual approval or manifest renewal.
+Review actual native captures before proposing reference changes; hold publication
+for coordination and do not trigger the complete gate at this stage.

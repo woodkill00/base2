@@ -899,3 +899,47 @@ its exact supported main case; original full-suite tests/guards remain unchanged
 Additional executed obligations are3media+1operations, not six claimed states;
 operations empty/recovery HC coverage is not established. Prior native total was
 434passed/3failed/2skipped, and all workflows are terminal before next publication.
+
+### Recovery preparation on 2026-11-01 (unpublished)
+
+Exact checkout recovered at 93a3eccdcf58482c4b0182ef49c0c80eaae905ff,
+tree 9c1654901bff19c4ae448e22981b798db86d14f9. Native run 41221368512 has
+434 / 437 browser passes with three failures, confirmed from frontend job
+124596436414 logs. Workspace has 23 passed / 1 failed; media HC has 2 passed /
+1 failed; operations HC has 1 failed. The other six browser suites pass all
+409 cases. The earlier 434 passed / 3 failed / 2 skipped total above belongs to
+a different run and is preserved, not reconciled into this run.
+The picker Status locator is corrected to exact combobox role/name with its source
+contract failing first and all original border/mode/paint/axe/selection guards kept.
+No product styling, thresholds, references or accepted manifests are changed.
+
+- [ ] T40 Complete native HC visual recovery: recover artifact 13050237917 and
+      artifact 13049683866 bytes, verify ZIP/member hashes, inspect actual/diff pixels
+      before proposing the four workspace and one operations reference corrections.
+      GitHub metadata matches run/head/ZIP digests; workspace download is blocked by
+      proxy CONNECT 403 to the connector's file host. Bytes and pixels remain unverified.
+      Picker reference remains unchanged pending fresh native functional/paint evidence.
+- [ ] T41 Review and publish the recovered optional operations/media workflow only
+      after coordination; run actual full matrices and independently review captures.
+      Recovered workflow/backend/test files match all three supplied SHA256 values.
+      Full inventories remain 42 operations (22 supported / 20 declared skips) and 36
+      media (24 supported / 12 declared skips). No label or workflow run is requested.
+
+Application types and isolated media/operations/workspace fixture types pass.
+Line-reporter collection yields 24 / 36 / 42 cases, respectively workspace/media/operations;
+tracked operations runner SHA256 stays
+2ab8fe705f0640ee47a09cd5ed0d247da64abba3262bfb5be670b7112ed31d89.
+Combined fixture type invocation exposes incompatible existing global axe declarations;
+individual suite checks pass without source changes to those declarations.
+Broader source-contract diagnostic: 104 passed, two failed, eight subtests passed.
+Both failures are existing source-bound visual acceptance drift: media review predates
+published UI/proof changes; operations manifest has 12 mismatched published-source
+hashes at 93a3ecc. Preserve them; real full-matrix review must renew acceptance.
+Focused workflow/forced-color contracts pass 91 checks. Initial expanded standard
+CI-contract attempt passes 175 and fails four on absent local fastapi/psycopg2
+prerequisites. Preserve that failure log. Installing the normal pinned
+requirements-dev-api.txt into isolated .venv-api succeeds; pip check is clean and
+the four previously blocked contracts then pass 4 / 4 without product changes.
+Logs and failure evidence are retained outside the checkout in /workspace/recovery-124.
+Full 134-check gate remains unrun, inherited 71 media security findings remain unresolved,
+Feature 122 repair remains prohibited, and the broader family roadmap is incomplete.
