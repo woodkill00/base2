@@ -303,6 +303,178 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+      - name: Stage bounded synthetic shell PNG evidence
+        id: shell_png
+        if: always() && steps.scope.outputs.mode == 'full' && steps.browsers.outcome == 'success'
+        working-directory: .
+        env:
+          SHELL_REQUESTED_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+          SHELL_LAYOUT_OUTCOME: ${{ steps.layout_acceptance.outcome }}
+          SHELL_VOLCANO_OUTCOME: ${{ steps.volcano_acceptance.outcome }}
+          SHELL_SETTINGS_OUTCOME: ${{ steps.settings_acceptance.outcome }}
+          SHELL_WORKSPACE_OUTCOME: ${{ steps.workspace_acceptance.outcome }}
+        run: python3 scripts/python/shell_png_evidence.py
+
+      - name: Retain bounded shell PNG shard 00
+        if: always() && steps.scope.outputs.mode == 'full' && steps.shell_png.outcome == 'success'
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: shell-png-00-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .artifacts/shell-png/00/
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Retain bounded shell PNG shard 01
+        if: always() && steps.scope.outputs.mode == 'full' && steps.shell_png.outcome == 'success'
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: shell-png-01-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .artifacts/shell-png/01/
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Retain bounded shell PNG shard 02
+        if: always() && steps.scope.outputs.mode == 'full' && steps.shell_png.outcome == 'success'
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: shell-png-02-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .artifacts/shell-png/02/
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Retain bounded shell PNG shard 03
+        if: always() && steps.scope.outputs.mode == 'full' && steps.shell_png.outcome == 'success'
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: shell-png-03-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .artifacts/shell-png/03/
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Retain bounded shell PNG shard 04
+        if: always() && steps.scope.outputs.mode == 'full' && steps.shell_png.outcome == 'success'
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: shell-png-04-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .artifacts/shell-png/04/
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Retain bounded shell PNG shard 05
+        if: always() && steps.scope.outputs.mode == 'full' && steps.shell_png.outcome == 'success'
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: shell-png-05-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .artifacts/shell-png/05/
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Retain bounded shell PNG shard 06
+        if: always() && steps.scope.outputs.mode == 'full' && steps.shell_png.outcome == 'success'
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: shell-png-06-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .artifacts/shell-png/06/
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Retain bounded shell PNG shard 07
+        if: always() && steps.scope.outputs.mode == 'full' && steps.shell_png.outcome == 'success'
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: shell-png-07-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .artifacts/shell-png/07/
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Retain bounded shell PNG shard 08
+        if: always() && steps.scope.outputs.mode == 'full' && steps.shell_png.outcome == 'success'
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: shell-png-08-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .artifacts/shell-png/08/
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Retain bounded shell PNG shard 09
+        if: always() && steps.scope.outputs.mode == 'full' && steps.shell_png.outcome == 'success'
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: shell-png-09-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .artifacts/shell-png/09/
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Retain bounded shell PNG shard 10
+        if: always() && steps.scope.outputs.mode == 'full' && steps.shell_png.outcome == 'success'
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: shell-png-10-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .artifacts/shell-png/10/
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Retain bounded shell PNG shard 11
+        if: always() && steps.scope.outputs.mode == 'full' && steps.shell_png.outcome == 'success'
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: shell-png-11-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .artifacts/shell-png/11/
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Retain bounded shell PNG shard 12
+        if: always() && steps.scope.outputs.mode == 'full' && steps.shell_png.outcome == 'success'
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: shell-png-12-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .artifacts/shell-png/12/
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Retain bounded shell PNG shard 13
+        if: always() && steps.scope.outputs.mode == 'full' && steps.shell_png.outcome == 'success'
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: shell-png-13-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .artifacts/shell-png/13/
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Retain bounded shell PNG shard 14
+        if: always() && steps.scope.outputs.mode == 'full' && steps.shell_png.outcome == 'success'
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: shell-png-14-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .artifacts/shell-png/14/
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Retain bounded shell PNG shard 15
+        if: always() && steps.scope.outputs.mode == 'full' && steps.shell_png.outcome == 'success'
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: shell-png-15-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .artifacts/shell-png/15/
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 7
+
       - name: Build Storybook
         if: steps.scope.outputs.mode == 'full'
         run: npm run build-storybook

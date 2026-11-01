@@ -1067,3 +1067,37 @@ and phone-DPR3 viewport samples 0/2 also obscure neighboring-card filenames omit
 by the former centered-card observations. Version 2 enumerates all visible targets
 and retains rectangle intersections independently of center hits. A clear center
 must never certify an unobstructed action or erase a corner-overlap finding.
+
+### Reserved control-space implementation (owner-approved; publication held)
+
+- [x] T63 Map shared movement consumers, document/element scroll assumptions and
+      modal locks before implementing a distinct shell slice on 2939e45f.
+- [x] T64 Add desktop logical gutters and compact bounded content plus separate
+      dock, preserving button appearance, movement toggle and legacy consumers.
+- [x] T65 Add explicit target metrics/events/edges/anchor alignment, responsive
+      position preservation, stale-timer cancellation and target-aware modal locks.
+- [x] T66 Migrate actual media/operations/interaction scroll helpers; add unit and
+      native geometry contracts for corners/all visible targets, focus, footer,
+      toggle, forced colors, RTL, zoom and short landscape.
+- [ ] T67 Finish independent review and local validation; obtain parent publication
+      review, then fresh native cross-device evidence and technical pixel review.
+      No reference or acceptance-manifest updates are part of this source candidate.
+
+Review-driven corrections in the shell draft: malformed fragments are ignored;
+retained hashes do not replay on target-only transitions; observer cleanup covers
+both layout subscriptions; native edge checks use the real target. Drawer body
+locking has one owner and nested-target locking is separate from focus trapping.
+Pending legacy section movement timers/frames now cancel on unmount or target
+change; an immediate-unmount regression covers the previously escaping callback.
+
+Further shell review corrections: all modal/document overflow owners now share
+reference counting; ancestor-inert palette shortcuts are blocked. Repeated picker
+button-close and out-of-order lock release have regressions. POP restoration keeps
+pending offsets during bounded async content growth, with observer cleanup tests;
+cold compact fragments wait for the real target without resize/hash replay.
+Native execution and actual mobile virtual-keyboard behavior remain pending.
+
+History identity audit: cold and native null-state fragments no longer share a
+custom `default` slot. Real href fragment regression covers repeated fragments,
+Back/Forward, query changes, keyed-save isolation and unchanged history state.
+Unkeyed nested-scrollport exact-offset restoration remains a stated limitation.

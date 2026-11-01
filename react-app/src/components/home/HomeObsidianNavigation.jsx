@@ -1,3 +1,5 @@
+import { createScrollTarget } from '../../lib/scrollTarget';
+import { createPortal } from 'react-dom';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Activity,
@@ -290,6 +292,10 @@ const HomeObsidianNavigation = ({
   renderControls,
   routes,
   currentPath,
+  scrollTarget,
+  movementContainer,
+  onMovementEnabledChange,
+  initialMovementEnabled = true,
 }) => {
   const sectionItems = useMemo(
     () =>
@@ -310,7 +316,7 @@ const HomeObsidianNavigation = ({
   const [isLeftOpen, setIsLeftOpen] = useState(false);
   const [isRightOpen, setIsRightOpen] = useState(false);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
-  const [navButtonsEnabled, setNavButtonsEnabled] = useState(true);
+  const [navButtonsEnabled, setNavButtonsEnabled] = useState(initialMovementEnabled);
   const [activeSection, setActiveSection] = useState('home');
   const [activeLeftSectionSlot, setActiveLeftSectionSlot] = useState(sectionItems.length);
   const [activeUtilitySlot, setActiveUtilitySlot] = useState(utilityItems.length + 4);
@@ -343,13 +349,12 @@ const HomeObsidianNavigation = ({
     const previous = document.activeElement;
     const background = [
       ...document.querySelectorAll(
-        '.volcano-header-frame,.volcano-page-main,.volcano-footer-frame'
+        '.volcano-header-frame,.volcano-page-main,.volcano-footer-frame,.volcano-movement-dock'
       ),
     ];
     const inert = background.map((node) => node.hasAttribute('inert'));
     background.forEach((node) => node.setAttribute('inert', ''));
-    const overflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
+    const releaseDocumentLock = createScrollTarget().lock();
     const controls = () =>
       [
         ...panel.querySelectorAll(
@@ -382,10 +387,16 @@ const HomeObsidianNavigation = ({
       background.forEach((node, index) => {
         if (!inert[index]) node.removeAttribute('inert');
       });
-      document.body.style.overflow = overflow;
+      releaseDocumentLock();
       if (previous?.isConnected) previous.focus?.({ preventScroll: true });
     };
   }, [routes, isLeftOpen, isCommandPaletteOpen]);
+
+  // Moving between scroll targets must not rerun the drawer focus trap.
+  useEffect(() => {
+    if (scrollTarget?.element && routes?.length && (isLeftOpen || isCommandPaletteOpen))
+      return scrollTarget.lock();
+  }, [routes, isLeftOpen, isCommandPaletteOpen, scrollTarget]);
 
   const visibleSectionItems = useMemo(
     () => [...sectionItems, ...sectionItems, ...sectionItems],
@@ -508,13 +519,25 @@ const HomeObsidianNavigation = ({
 
   const clearMovementAlignTimers = useCallback(() => {
     movementAlignTimers.current.forEach(({ type, id }) => {
-      if (type === 'interval') {
+      if (type === 'frame') {
+        window.cancelAnimationFrame(id);
+      } else if (type === 'interval') {
         window.clearInterval(id);
       } else {
         window.clearTimeout(id);
       }
     });
     movementAlignTimers.current = [];
+  }, []);
+
+  const scheduleMovementFrame = useCallback((callback) => {
+    const id = window.requestAnimationFrame(() => {
+      movementAlignTimers.current = movementAlignTimers.current.filter(
+        (timer) => timer.id !== id || timer.type !== 'frame'
+      );
+      callback();
+    });
+    movementAlignTimers.current.push({ type: 'frame', id });
   }, []);
 
   const scheduleMovementTimeout = useCallback((callback, delay) => {
@@ -532,14 +555,20 @@ const HomeObsidianNavigation = ({
     return id;
   }, []);
 
+  useEffect(() => {
+    clearMovementAlignTimers();
+    if (movementClickTimer.current) window.clearTimeout(movementClickTimer.current);
+    return clearMovementAlignTimers;
+  }, [scrollTarget, clearMovementAlignTimers]);
+
   const updateScrollState = useCallback(() => {
-    setScrollState(getScrollMetrics());
+    setScrollState(scrollTarget ? scrollTarget.metrics() : getScrollMetrics());
     const nextActiveSection = routes?.length ? currentPath : readActiveSection();
     if (Date.now() > movementScrollLockUntilRef.current) {
       activeSectionRef.current = nextActiveSection;
       setActiveSection(nextActiveSection);
     }
-  }, [routes, currentPath]);
+  }, [routes, currentPath, scrollTarget]);
 
   useEffect(() => {
     activeUtilitySlotRef.current = activeUtilitySlot;
@@ -626,7 +655,8 @@ const HomeObsidianNavigation = ({
 
   useEffect(() => {
     updateScrollState();
-    window.addEventListener('scroll', updateScrollState, { passive: true });
+    const unsubscribe = scrollTarget?.subscribe(updateScrollState);
+    if (!scrollTarget) window.addEventListener('scroll', updateScrollState, { passive: true });
     window.addEventListener('resize', updateScrollState);
     window.addEventListener('load', updateScrollState);
     window.addEventListener('pageshow', updateScrollState);
@@ -638,6 +668,10 @@ const HomeObsidianNavigation = ({
     const resizeObserver =
       typeof ResizeObserver === 'function' ? new ResizeObserver(updateScrollState) : null;
     if (resizeObserver && document.body) resizeObserver.observe(document.body);
+    if (resizeObserver && scrollTarget?.element) {
+      resizeObserver.observe(scrollTarget.element);
+      [...scrollTarget.element.children].forEach((node) => resizeObserver.observe(node));
+    }
 
     const layoutFrames = [];
     if (resizeObserver) {
@@ -648,6 +682,7 @@ const HomeObsidianNavigation = ({
       );
     }
     return () => {
+      unsubscribe?.();
       window.removeEventListener('scroll', updateScrollState);
       window.removeEventListener('resize', updateScrollState);
       window.removeEventListener('load', updateScrollState);
@@ -655,7 +690,7 @@ const HomeObsidianNavigation = ({
       resizeObserver?.disconnect();
       layoutFrames.forEach((frame) => window.cancelAnimationFrame(frame));
     };
-  }, [updateScrollState]);
+  }, [updateScrollState, scrollTarget]);
 
   useEffect(
     () => () => {
@@ -752,7 +787,7 @@ const HomeObsidianNavigation = ({
 
   useEffect(() => {
     const handleKeyDown = (event) => {
-      if (document.querySelector('.home-obsidian-nav-layer[inert]')) return;
+      if (document.querySelector('.home-obsidian-nav-layer')?.closest('[inert]')) return;
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
         event.preventDefault();
         if (renderControls) window.dispatchEvent(new Event('base2:open-page-context'));
@@ -838,7 +873,7 @@ const HomeObsidianNavigation = ({
         body.style.scrollBehavior = previousBodyBehavior;
       };
       scrollToSectionTop();
-      window.requestAnimationFrame(scrollToSectionTop);
+      scheduleMovementFrame(scrollToSectionTop);
       [120, 320, 720, 1240, 1880, 2600, 3600, 4600, 5600].forEach((delay) => {
         scheduleMovementTimeout(scrollToSectionTop, delay);
       });
@@ -856,7 +891,12 @@ const HomeObsidianNavigation = ({
         }
       }, 180);
     },
-    [clearMovementAlignTimers, scheduleMovementInterval, scheduleMovementTimeout]
+    [
+      clearMovementAlignTimers,
+      scheduleMovementFrame,
+      scheduleMovementInterval,
+      scheduleMovementTimeout,
+    ]
   );
 
   const goToSection = useCallback(
@@ -881,14 +921,26 @@ const HomeObsidianNavigation = ({
       }
 
       forceSectionIntoView(item);
-      window.setTimeout(updateScrollState, 420);
-      window.setTimeout(updateScrollState, 840);
+      scheduleMovementTimeout(updateScrollState, 420);
+      scheduleMovementTimeout(updateScrollState, 840);
     },
-    [forceSectionIntoView, onNavigate, updateScrollState, renderControls, routes, sectionItems]
+    [
+      forceSectionIntoView,
+      onNavigate,
+      updateScrollState,
+      renderControls,
+      routes,
+      sectionItems,
+      scheduleMovementTimeout,
+    ]
   );
 
   const moveSection = (direction) => {
     if (typeof window === 'undefined' || typeof document === 'undefined') return;
+    if (routes?.length && scrollTarget) {
+      scrollTarget.move(direction);
+      return;
+    }
     if (routes?.length) {
       window.scrollBy({ top: direction * window.innerHeight * 0.8, behavior: 'smooth' });
       return;
@@ -915,6 +967,11 @@ const HomeObsidianNavigation = ({
   const forceScrollToDocumentEdge = (top) => {
     if (typeof window === 'undefined' || typeof document === 'undefined') return;
     clearMovementAlignTimers();
+    if (scrollTarget) {
+      scrollTarget.edge(top);
+      updateScrollState();
+      return;
+    }
     const resolveTarget = () => {
       const root = document.documentElement;
       const body = document.body;
@@ -932,7 +989,7 @@ const HomeObsidianNavigation = ({
     };
 
     jump();
-    window.requestAnimationFrame(jump);
+    scheduleMovementFrame(jump);
     [120, 260, 620, 960, 1320, 1900, 2700, 3600, 4600, 5600].forEach((delay) => {
       scheduleMovementTimeout(jump, delay);
     });
@@ -1026,6 +1083,54 @@ const HomeObsidianNavigation = ({
       moveSection,
       onUtilityAction,
     });
+
+  const movementControls = navButtonsEnabled ? (
+    <div
+      className="home-bottom-movement-controls"
+      lang={resolvedLocale}
+      dir={resolvedLocale === 'ar' ? 'rtl' : 'ltr'}
+      style={{
+        '--obsidian-primary': activeColorScheme.primary,
+        '--obsidian-accent': activeColorScheme.accent,
+        '--obsidian-surface': activeColorScheme.surface,
+      }}
+      data-testid="base2-bottom-movement-controls"
+      data-active-section={activeSection}
+    >
+      <output className="home-active-section-output" data-testid="base2-section-active">
+        {activeSection}
+      </output>
+      {canMoveUp ? (
+        <button
+          type="button"
+          className="home-movement-button home-movement-button-up"
+          onClick={() => handleMovementClick(-1)}
+          onDoubleClick={(event) => handleMovementDoubleClick(-1, event)}
+          aria-label={copy.scrollUp}
+          data-testid="base2-scroll-ascend"
+        >
+          <span className="home-movement-progress" style={{ height: `${scrollState.progress}%` }} />
+          <ChevronUp aria-hidden="true" />
+          <ArrowUp aria-hidden="true" />
+        </button>
+      ) : null}
+
+      {canMoveDown ? (
+        <button
+          type="button"
+          className="home-movement-button home-movement-button-down"
+          onClick={() => handleMovementClick(1)}
+          onDoubleClick={(event) => handleMovementDoubleClick(1, event)}
+          aria-label={copy.scrollDown}
+          data-testid="base2-scroll-descend"
+        >
+          <span className="home-movement-progress" style={{ height: `${scrollState.progress}%` }} />
+          <ArrowDown aria-hidden="true" />
+          <ChevronDown aria-hidden="true" />
+        </button>
+      ) : null}
+    </div>
+  ) : null;
 
   return (
     <div
@@ -1162,7 +1267,10 @@ const HomeObsidianNavigation = ({
             <input
               type="checkbox"
               checked={navButtonsEnabled}
-              onChange={() => setNavButtonsEnabled((enabled) => !enabled)}
+              onChange={() => {
+                setNavButtonsEnabled(!navButtonsEnabled);
+                onMovementEnabledChange?.(!navButtonsEnabled);
+              }}
               aria-label={copy.toggleMovement}
               tabIndex={isLeftOpen ? 0 : -1}
             />
@@ -1256,7 +1364,10 @@ const HomeObsidianNavigation = ({
               <span>{copy.navigation}</span>
               <button
                 type="button"
-                onClick={() => setNavButtonsEnabled((enabled) => !enabled)}
+                onClick={() => {
+                  setNavButtonsEnabled(!navButtonsEnabled);
+                  onMovementEnabledChange?.(!navButtonsEnabled);
+                }}
                 aria-label={copy.toggleMovement}
                 aria-pressed={navButtonsEnabled}
               >
@@ -1310,52 +1421,7 @@ const HomeObsidianNavigation = ({
         </button>
       </div>
 
-      {navButtonsEnabled ? (
-        <div
-          className="home-bottom-movement-controls"
-          data-testid="base2-bottom-movement-controls"
-          data-active-section={activeSection}
-        >
-          <output className="home-active-section-output" data-testid="base2-section-active">
-            {activeSection}
-          </output>
-          {canMoveUp ? (
-            <button
-              type="button"
-              className="home-movement-button home-movement-button-up"
-              onClick={() => handleMovementClick(-1)}
-              onDoubleClick={(event) => handleMovementDoubleClick(-1, event)}
-              aria-label={copy.scrollUp}
-              data-testid="base2-scroll-ascend"
-            >
-              <span
-                className="home-movement-progress"
-                style={{ height: `${scrollState.progress}%` }}
-              />
-              <ChevronUp aria-hidden="true" />
-              <ArrowUp aria-hidden="true" />
-            </button>
-          ) : null}
-
-          {canMoveDown ? (
-            <button
-              type="button"
-              className="home-movement-button home-movement-button-down"
-              onClick={() => handleMovementClick(1)}
-              onDoubleClick={(event) => handleMovementDoubleClick(1, event)}
-              aria-label={copy.scrollDown}
-              data-testid="base2-scroll-descend"
-            >
-              <span
-                className="home-movement-progress"
-                style={{ height: `${scrollState.progress}%` }}
-              />
-              <ArrowDown aria-hidden="true" />
-              <ChevronDown aria-hidden="true" />
-            </button>
-          ) : null}
-        </div>
-      ) : null}
+      {movementContainer ? createPortal(movementControls, movementContainer) : movementControls}
     </div>
   );
 };

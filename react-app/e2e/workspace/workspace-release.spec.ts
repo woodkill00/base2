@@ -1,3 +1,5 @@
+import { captureScrollportExtent } from '../scroll-target';
+import { scrollPageTo, pageScrollTop } from '../scroll-target';
 import { assertForcedColorState, assertForcedSystemControl } from '../forced-color-state';
 import { setSessionFixture, fulfillSessionFixture } from '../session-fixture';
 import { expect, test } from '@playwright/test';
@@ -272,8 +274,8 @@ async function assertUsable(page) {
 }
 
 async function prepareStableFullPageCapture(page) {
-  await page.evaluate(() => scrollTo(0, 0));
-  await expect.poll(() => page.evaluate(() => scrollY)).toBe(0);
+  await scrollPageTo(page, 0);
+  await expect.poll(() => pageScrollTop(page)).toBe(0);
   await page.addStyleTag({
     content: '.volcano-header-frame{position:static!important}',
   });
@@ -381,7 +383,7 @@ test('workspace release corpus is accessible, responsive, and visually stable', 
 
   await page.getByRole('tab', { name: 'Schemas' }).click();
   await expect(page.getByRole('heading', { name: /schema · universal articles/i })).toBeVisible();
-  await page.evaluate(() => scrollTo(0, 0));
+  await scrollPageTo(page, 0);
   await assertUsable(page);
   await compareAndRetain('schema', `workspace-schema-${testInfo.project.name}.png`);
 
@@ -390,7 +392,7 @@ test('workspace release corpus is accessible, responsive, and visually stable', 
     await expect(
       page.getByRole('heading', { name: new RegExp(`${tab} · Universal articles`, 'i') })
     ).toBeVisible();
-    await page.evaluate(() => scrollTo(0, 0));
+    await scrollPageTo(page, 0);
     await assertUsable(page);
     await compareAndRetain(
       tab.toLowerCase(),
@@ -429,3 +431,7 @@ declare global {
     };
   }
 }
+
+test.afterEach(async ({ page }, testInfo) => {
+  if (testInfo.status !== 'skipped') await captureScrollportExtent(page, testInfo);
+});

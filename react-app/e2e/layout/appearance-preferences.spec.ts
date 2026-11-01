@@ -1,3 +1,4 @@
+import { scrollPageTo, pageScrollTop } from '../scroll-target';
 import { expect, test } from './fixtures';
 import axe from 'axe-core';
 import { fulfillSessionFixture, setSessionFixture } from '../session-fixture';
@@ -77,8 +78,8 @@ for (const width of [390, 1440]) {
       // Save/select interactions scroll focused controls into view. A full-page
       // capture must start at the top so sticky headers are not composited over
       // controls in the middle of the resulting image.
-      await page.evaluate(() => window.scrollTo({ top: 0, left: 0, behavior: 'instant' }));
-      await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
+      await scrollPageTo(page, 0);
+      await expect.poll(() => pageScrollTop(page)).toBe(0);
       await page.screenshot({
         path: info.outputPath(name),
         fullPage: true,

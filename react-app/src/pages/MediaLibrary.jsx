@@ -1,3 +1,4 @@
+import { ScrollTargetLock } from '../lib/scrollTarget';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import AppShell from '../components/glass/AppShell';
 import GlassButton from '../components/glass/GlassButton';
@@ -451,7 +452,7 @@ export default function MediaLibrary() {
     if (!activeAssetId) return undefined;
     const backgroundNodes = [
       ...document.querySelectorAll(
-        '.app-shell > header, .app-shell-content > nav, .app-shell-footer, .unified-layout-header-frame, .unified-layout-rail, .unified-layout-footer-frame, .volcano-header-frame, .volcano-footer-frame, .volcano-layout .home-obsidian-nav-layer, .volcano-page-context, .media-library > :not(.media-dialog-backdrop)'
+        '.app-shell > header, .app-shell-content > nav, .app-shell-footer, .unified-layout-header-frame, .unified-layout-rail, .unified-layout-footer-frame, .volcano-header-frame, .volcano-footer-frame, .volcano-layout .home-obsidian-nav-layer, .volcano-movement-dock, .volcano-page-context, .media-library > :not(.media-dialog-backdrop)'
       ),
     ];
     backgroundNodes.forEach((node) => {
@@ -621,6 +622,7 @@ export default function MediaLibrary() {
     <AppShell>
       <Navigation />
       <div className="media-library">
+        <ScrollTargetLock active={Boolean(activeAssetId)} />
         <header className="media-library-header">
           <div>
             <p className="media-eyebrow">Content operations</p>

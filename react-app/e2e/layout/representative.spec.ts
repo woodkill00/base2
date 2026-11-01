@@ -1,3 +1,4 @@
+import { scrollPageTo, pageScrollTop } from '../scroll-target';
 import { setSessionFixture, fulfillSessionFixture } from '../session-fixture';
 import { expect, test } from './fixtures';
 
@@ -130,8 +131,8 @@ for (const width of [320, 390, 767, 768, 1024, 1279, 1280, 1440, 1920]) {
           )
           .toEqual([]);
       }
-      await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }));
-      await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
+      await scrollPageTo(page, 0);
+      await expect.poll(() => pageScrollTop(page)).toBe(0);
       await page.screenshot({ path: info.outputPath('viewport.png'), animations: 'disabled' });
       await page.screenshot({
         path: info.outputPath('page.png'),

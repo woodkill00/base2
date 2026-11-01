@@ -687,3 +687,56 @@ schema version 2 measures every visible relevant card target (bounded five-card
 fixture), retaining version 1 validation and safe geometry-only export. Shared
 floating-control placement is an open usability defect; no product placement change
 is included in this slice. Fresh native evidence must verify the new assertions.
+
+### Reserved movement-control layout (separate owner-approved shell slice)
+
+Starting source is 2939e45f. The owner approved desktop side gutters and a separate
+mobile bottom strip after native evidence confirmed text/action obstruction. Desktop
+keeps document scrolling with logical gutters; compact/zoomed layouts use a bounded
+content scrollport above the dock. The movement toggle restores the prior document
+layout when disabled. Legacy Home/HomeSharedControls remain document-based.
+
+A shared explicit target adapter owns scroll metrics, events, height-based movement,
+edge jumps, measured sticky-header anchor offsets and reference-counted locking.
+Responsive/toggle transitions preserve a visible content anchor and cancel old
+movement timers. Docked buttons preserve their existing appearance and participate
+in modal inertness; modal locks follow target changes through context.
+
+Validation covers adapter behavior, nested locks, route controls, focused media and
+navigation units, types and migrated native contracts. New native geometry checks
+measure all visible relevant content rectangles against actual controls at top,
+middle and bottom; centered hit tests alone are insufficient. Mobile full-page
+screenshots now represent the bounded shell viewport, not an expanded document:
+separate top/middle/footer captures are required to show reachable content. Existing
+references remain immutable and may fail for this intentional layout change; no
+comparison is bypassed or auto-approved. Cross-device native execution and technical
+pixel review remain pending publication review.
+
+Media observation schema version 3 records the content scrollport clipping rectangle
+as well as original target/control rectangles; overlap is computed against visible
+content intersections. Versions 1 and 2 remain valid historical evidence. Native
+post-test top/middle/footer viewport captures supplement bounded mobile full-page
+images in media, operations, workspace, settings and Volcano suites. Captures are
+not taken through an open modal; such cases do not claim underlying-page coverage.
+Media/operations PNGs use the existing bounded project collector. Other suites'
+full original artifacts retain supplementary captures; broader bounded retrieval
+remains separate collection work. This is not approval of replacement baselines.
+
+Shell revision review adds coordinated document-lock ownership across picker,
+GlassModal and navigation drawers; ancestor-inert navigation ignores shortcuts.
+History positions are bounded by router entry and restored on the active target.
+A pending POP offset survives initially short loading content; content observers
+retry for up to five seconds, stop on success or deliberate input, and preserve
+unreached offsets without claiming restoration. Cold fragments wait for the actual
+compact scrollport. Native Back/Forward, button-close/reopen and cold-fragment
+checks are added to existing cases. Real mobile virtual-keyboard/visual-viewport
+behavior remains unverified; window resize and JSDOM are not keyboard evidence.
+
+History identity boundary: BrowserRouter's shared `default` key is not an entry
+identity. Cold/unkeyed native fragment entries are excluded from custom offset
+storage/restoration; their standard history state is never rewritten and native
+scroll-restoration policy is preserved. Fragment alignment still follows their
+actual URL. Keyed router entries retain bounded loading-aware restoration, with
+entry ownership checked before storing offsets or applying pending restoration.
+Exact prior-offset restoration for an unkeyed nested-scrollport entry is not
+claimed; browser fragment alignment/native restoration remains the fallback.

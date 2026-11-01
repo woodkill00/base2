@@ -50,7 +50,7 @@ def observations(raw: bytes, project: str) -> dict:
     data = json.loads(raw, object_pairs_hook=unique)
     require(isinstance(data, dict) and set(data) == {
         "schemaVersion", "fixtureScope", "project", "test", "scope", "viewportObservations"})
-    require(type(data["schemaVersion"]) is int and data["schemaVersion"] in (1, 2))
+    require(type(data["schemaVersion"]) is int and data["schemaVersion"] in (1, 2, 3))
     require(data["fixtureScope"] == "synthetic-project-tests" and data["project"] == project)
     require(data["test"] == MEDIA_TEST)
     require(data["scope"] == "Diagnostic viewport observations; not visual acceptance.")
@@ -58,7 +58,10 @@ def observations(raw: bytes, project: str) -> dict:
     require(isinstance(rows, list) and len(rows) == 3)
     for index, row in zip((0, 2, 4), rows, strict=True):
         require(isinstance(row, dict) and set(row) ==
-                {"cardIndex", "scrollY", "viewport", "controls", "targets"})
+                ({"cardIndex", "scrollY", "viewport", "controls", "targets"}
+                 | ({"contentViewport"} if data["schemaVersion"] == 3 else set())))
+        if data["schemaVersion"] == 3:
+            rect(row["contentViewport"])
         require(type(row["cardIndex"]) is int and row["cardIndex"] == index)
         require(number(row["scrollY"]) and row["scrollY"] >= 0)
         require(isinstance(row["viewport"], list) and len(row["viewport"]) == 2
@@ -77,8 +80,8 @@ def observations(raw: bytes, project: str) -> dict:
         for target in row["targets"]:
             require(isinstance(target, dict) and set(target) ==
                     ({"kind", "rect", "centerInViewport", "centerUnobstructed", "overlappingControls"}
-                     | ({"cardIndex", "targetIndex"} if data["schemaVersion"] == 2 else set())))
-            if data["schemaVersion"] == 2:
+                     | ({"cardIndex", "targetIndex"} if data["schemaVersion"] >= 2 else set())))
+            if data["schemaVersion"] >= 2:
                 require(type(target["cardIndex"]) is int and 0 <= target["cardIndex"] < 5)
                 require(type(target["targetIndex"]) is int and 0 <= target["targetIndex"] < 5)
                 identity = (target["cardIndex"], target["targetIndex"])

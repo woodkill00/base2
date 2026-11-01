@@ -100,3 +100,66 @@ describe('original Volcano route adapter', () => {
     expect(screen.queryByTestId('base2-right-utility-icons')).not.toBeInTheDocument();
   });
 });
+
+test('docked route controls use the provided target and become inert with a drawer', () => {
+  const dock = document.createElement('div');
+  dock.className = 'volcano-movement-dock';
+  document.body.append(dock);
+  const unlock = vi.fn();
+  const target = {
+    element: document.createElement('div'),
+    metrics: () => ({ progress: 50, canAscend: true, canDescend: true }),
+    move: vi.fn(),
+    edge: vi.fn(),
+    subscribe: () => vi.fn(),
+    lock: vi.fn(() => unlock),
+  };
+  const { unmount } = render(
+    <HomeObsidianNavigation
+      routes={[{ label: 'Home', to: '/' }]}
+      currentPath="/"
+      onNavigate={vi.fn()}
+      scrollTarget={target}
+      movementContainer={dock}
+    />
+  );
+  const down = screen.getByTestId('base2-scroll-descend');
+  expect(dock).toContainElement(down);
+  fireEvent.click(down);
+  expect(target.move).toHaveBeenCalledWith(1);
+  fireEvent.doubleClick(down);
+  expect(target.edge).toHaveBeenCalledWith(false);
+  fireEvent.keyDown(window, { key: 'k', ctrlKey: true });
+  expect(dock).toHaveAttribute('inert');
+  expect(target.lock).toHaveBeenCalled();
+  fireEvent.keyDown(window, { key: 'Escape' });
+  expect(dock).not.toHaveAttribute('inert');
+  expect(unlock).toHaveBeenCalled();
+  unmount();
+  dock.remove();
+});
+
+test('document-target drawer restores body scrolling without a second body lock', () => {
+  document.body.style.overflow = 'auto';
+  const target = {
+    element: null,
+    metrics: () => ({ progress: 0, canAscend: false, canDescend: false }),
+    subscribe: () => vi.fn(),
+    lock: vi.fn(),
+  };
+  const { unmount } = render(
+    <HomeObsidianNavigation
+      routes={[{ label: 'Home', to: '/' }]}
+      currentPath="/"
+      onNavigate={vi.fn()}
+      scrollTarget={target}
+    />
+  );
+  fireEvent.keyDown(window, { key: 'k', ctrlKey: true });
+  expect(document.body.style.overflow).toBe('hidden');
+  fireEvent.keyDown(window, { key: 'Escape' });
+  expect(document.body.style.overflow).toBe('auto');
+  expect(target.lock).not.toHaveBeenCalled();
+  unmount();
+  document.body.style.overflow = '';
+});

@@ -95,6 +95,10 @@
       "collection": "pending-bounded-adapter"
     },
     {
+      "path": "react-app/e2e/scroll-target.ts",
+      "collection": "bounded-media-operations; other consumers pending bounded adapter"
+    },
+    {
       "path": "react-app/e2e/visual/hermetic-visual.spec.ts",
       "collection": "pending-bounded-adapter"
     },

@@ -1,3 +1,5 @@
+import { captureScrollportExtent } from '../scroll-target';
+import { scrollPageTo } from '../scroll-target';
 import { assertForcedColorState, assertForcedSystemControl } from '../forced-color-state';
 import { setSessionFixture, fulfillSessionFixture } from '../session-fixture';
 import { expect, test } from '@playwright/test';
@@ -175,6 +177,17 @@ test('media detail preserves safe preview usage and consequence context', async 
     animations: 'disabled',
     caret: 'hide',
   });
+  if (testInfo.project.name === 'chromium-desktop') {
+    const originalViewport = page.viewportSize()!;
+    await page.setViewportSize({ width: 390, height: 844 });
+    await expect(page.locator('.volcano-layout')).toHaveAttribute('data-movement-layout', 'bottom');
+    await expect(page.getByTestId('volcano-scrollport')).toHaveCSS('overflow', 'hidden');
+    await expect(page.getByTestId('volcano-movement-dock')).toHaveJSProperty('inert', true);
+    await expect(dialog.getByRole('button', { name: 'Close' })).toBeFocused();
+    await page.setViewportSize(originalViewport);
+    await expect(page.locator('.volcano-layout')).toHaveAttribute('data-movement-layout', 'sides');
+    await expect(page.getByTestId('volcano-scrollport')).not.toHaveCSS('overflow', 'hidden');
+  }
   await expect(page.locator('.volcano-header-frame')).toHaveJSProperty('inert', true);
   await expect(page.locator('.volcano-footer-frame')).toHaveJSProperty('inert', true);
   await expect(page.getByTestId('base2-obsidian-navigation')).toHaveJSProperty('inert', true);
@@ -293,6 +306,13 @@ test('media picker is visually and keyboard contained in a real workflow', async
   const opener = page.getByRole('button', { name: 'Choose existing media' });
   await opener.click();
   const picker = page.getByRole('dialog', { name: 'Choose media' });
+  // Closing by button must not leave a shortcut-opened inert palette or stale lock.
+  await page.keyboard.press('Control+k');
+  await expect(page.getByRole('dialog', { name: 'Base2 command palette' })).toHaveCount(0);
+  await picker.getByRole('button', { name: 'Close', exact: true }).click();
+  await expect(opener).toBeFocused();
+  await expect(page.locator('body')).not.toHaveCSS('overflow', 'hidden');
+  await opener.click();
   await expect(picker.getByRole('button', { name: 'Close' })).toBeFocused();
   await assertForcedColorState(page, testInfo);
   if (testInfo.project.name === 'chromium-high-contrast') {
@@ -494,7 +514,7 @@ test('media library is accessible responsive and visually reviewed', async ({ pa
   const appNavigation = page.getByRole('navigation', { name: 'Public header' });
   await expect(appNavigation).toHaveCount(1);
   // Preserve the hard comparison failure while collecting supplementary diagnostics.
-  await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }));
+  await scrollPageTo(page, 0);
   // Full-page screenshots are stitched from multiple viewports. Chromium otherwise
   // paints sticky content at an arbitrary stitch boundary, obscuring document order.
   const screenshotHeaderStyle = await page.addStyleTag({
@@ -540,13 +560,17 @@ test('media library is accessible responsive and visually reviewed', async ({ pa
           )
       );
       const observation = await cards.evaluateAll((nodes) => {
+        const port = document.querySelector<HTMLElement>('.volcano-layout[data-movement-layout="bottom"] .volcano-content-scrollport');
+        const viewport = port?.getBoundingClientRect() || new DOMRect(0, 0, innerWidth, innerHeight);
+
         const controls = [
           ...document.querySelectorAll(
             '[data-testid="base2-scroll-ascend"], [data-testid="base2-scroll-descend"]'
           ),
         ];
         return {
-          scrollY,
+          contentViewport: viewport.toJSON(),
+          scrollY: port?.scrollTop ?? scrollY,
           viewport: [innerWidth, innerHeight],
           controls: controls.map((control) => ({
             id: control.getAttribute('data-testid'),
@@ -565,10 +589,10 @@ test('media library is accessible responsive and visually reviewed', async ({ pa
               return (
                 box.width > 0 &&
                 box.height > 0 &&
-                box.right > 0 &&
-                box.left < innerWidth &&
-                box.bottom > 0 &&
-                box.top < innerHeight
+                box.right > viewport.left &&
+                box.left < viewport.right &&
+                box.bottom > viewport.top &&
+                box.top < viewport.bottom
               );
             })
             .map(({ target, cardIndex, targetIndex }) => {
@@ -588,7 +612,7 @@ test('media library is accessible responsive and visually reviewed', async ({ pa
                         ? 'status'
                         : 'metadata',
                 rect: rect.toJSON(),
-                centerInViewport: x >= 0 && x < innerWidth && y >= 0 && y < innerHeight,
+                centerInViewport: x >= viewport.left && x < viewport.right && y >= viewport.top && y < viewport.bottom,
                 centerUnobstructed: !!hit && (hit === target || target.contains(hit)),
                 overlappingControls: controls
                   .filter((control) => {
@@ -596,10 +620,10 @@ test('media library is accessible responsive and visually reviewed', async ({ pa
                     return (
                       box.width > 0 &&
                       box.height > 0 &&
-                      box.left < rect.right &&
-                      box.right > rect.left &&
-                      box.top < rect.bottom &&
-                      box.bottom > rect.top
+                      box.left < Math.min(rect.right, viewport.right) &&
+                      box.right > Math.max(rect.left, viewport.left) &&
+                      box.top < Math.min(rect.bottom, viewport.bottom) &&
+                      box.bottom > Math.max(rect.top, viewport.top)
                     );
                   })
                   .map((control) => control.getAttribute('data-testid')),
@@ -619,7 +643,7 @@ test('media library is accessible responsive and visually reviewed', async ({ pa
     const observationBytes = Buffer.from(
       JSON.stringify(
         {
-          schemaVersion: 2,
+          schemaVersion: 3,
           fixtureScope: 'synthetic-project-tests',
           project: testInfo.project.name,
           test: testInfo.title,
@@ -638,6 +662,7 @@ test('media library is accessible responsive and visually reviewed', async ({ pa
       body: observationBytes,
       contentType: 'application/json',
     });
+    expect(viewportObservations.flatMap((row) => row.targets.flatMap((target) => target.overlappingControls))).toEqual([]);
   } catch (diagnosticFailure) {
     // A later diagnostic error must never replace the original comparison failure.
     if (comparisonFailure) throw comparisonFailure;
@@ -658,3 +683,7 @@ declare global {
     };
   }
 }
+
+test.afterEach(async ({ page }, testInfo) => {
+  if (testInfo.status !== 'skipped') await captureScrollportExtent(page, testInfo);
+});

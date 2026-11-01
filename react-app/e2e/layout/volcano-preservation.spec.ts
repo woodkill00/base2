@@ -1,3 +1,5 @@
+import { captureScrollportExtent } from '../scroll-target';
+import { pageScrollTop, scrollPageTo } from '../scroll-target';
 import { setSessionFixture, fulfillSessionFixture } from '../session-fixture';
 import { expect, test } from './fixtures';
 import { assertApprovedReference } from '../live/approved-reference';
@@ -228,3 +230,165 @@ for (const width of [390, 1440]) {
     await assertApprovedReference(page, 'http://127.0.0.1:4192', width);
   });
 }
+
+for (const scenario of [
+  { name: 'compact', width: 320, height: 568 },
+  { name: 'landscape', width: 844, height: 390 },
+  { name: 'desktop', width: 1440, height: 900 },
+  { name: 'rtl', width: 390, height: 844 },
+  { name: 'forced', width: 390, height: 844 },
+  { name: 'zoom', width: 1280, height: 900 },
+]) {
+  test(`reserved movement space ${scenario.name}`, async ({ page }, info) => {
+    await page.setViewportSize({ width: scenario.width, height: scenario.height });
+    if (scenario.name === 'forced') await page.emulateMedia({ forcedColors: 'active' });
+    await page.route('**/api/**', async (route) => {
+      if (await fulfillSessionFixture(route, { appearanceDefaults: true })) return;
+      return route.fulfill({ status: 503, json: { detail: 'Synthetic fixture unavailable' } });
+    });
+    await page.goto(scenario.name === 'compact' ? '/signup#main-content' : '/signup');
+    if (scenario.name === 'rtl')
+      await page.locator('html').evaluate((node) => node.setAttribute('dir', 'rtl'));
+    if (scenario.name === 'zoom')
+      await page.locator('html').evaluate((node) => {
+        node.style.zoom = '2';
+      });
+    const shell = page.locator('.volcano-layout');
+    const expectedMode = scenario.name === 'desktop' ? 'sides' : 'bottom';
+    await expect(shell).toHaveAttribute('data-movement-layout', expectedMode);
+    const port = page.getByTestId('volcano-scrollport');
+    await expect(page.locator('.volcano-header-frame')).toHaveCSS('position', 'sticky');
+    await page.locator('.unified-skip-link').focus();
+    await page.keyboard.press('Enter');
+    await expect(page.locator('#main-content')).toBeFocused();
+    const anchorPosition = await page.evaluate(() => ({
+      main: document.querySelector('#main-content')!.getBoundingClientRect().top,
+      header: document.querySelector('.volcano-header-frame')!.getBoundingClientRect().bottom,
+    }));
+    expect(anchorPosition.main).toBeGreaterThanOrEqual(anchorPosition.header - 1);
+    for (const fraction of [0, 0.5, 1]) {
+      await page.evaluate((value) => {
+        const nested = document.querySelector<HTMLElement>(
+          '.volcano-layout[data-movement-layout="bottom"] .volcano-content-scrollport'
+        );
+        const max = nested
+          ? nested.scrollHeight - nested.clientHeight
+          : document.documentElement.scrollHeight - innerHeight;
+        (nested || window).scrollTo({ top: max * value, behavior: 'instant' });
+      }, fraction);
+      await page.evaluate(
+        () =>
+          new Promise<void>((resolve) =>
+            requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
+          )
+      );
+      const geometry = await page.evaluate(() => {
+        const nested = document.querySelector<HTMLElement>(
+          '.volcano-layout[data-movement-layout="bottom"] .volcano-content-scrollport'
+        );
+        const view = nested?.getBoundingClientRect() || {
+          left: 0,
+          top: 0,
+          right: innerWidth,
+          bottom: innerHeight,
+        };
+        const controls = [...document.querySelectorAll('.volcano-movement-dock button')].map(
+          (node) => node.getBoundingClientRect()
+        );
+        const targets = [
+          ...document.querySelectorAll(
+            '.volcano-content-scrollport a,.volcano-content-scrollport button,.volcano-content-scrollport input,.volcano-content-scrollport label,.volcano-content-scrollport p,.volcano-content-scrollport h1,.volcano-content-scrollport h2'
+          ),
+        ];
+        const overlaps = targets.flatMap((node, index) => {
+          const box = node.getBoundingClientRect();
+          const visible = {
+            left: Math.max(box.left, view.left),
+            right: Math.min(box.right, view.right),
+            top: Math.max(box.top, view.top),
+            bottom: Math.min(box.bottom, view.bottom),
+          };
+          if (visible.right <= visible.left || visible.bottom <= visible.top) return [];
+          return controls.some(
+            (control) =>
+              control.left < visible.right &&
+              control.right > visible.left &&
+              control.top < visible.bottom &&
+              control.bottom > visible.top
+          )
+            ? [index]
+            : [];
+        });
+        return {
+          overlaps,
+          controlSizes: controls.map((box) => [box.width, box.height]),
+          documentOverflow: document.documentElement.scrollWidth - innerWidth,
+          portOverflow: nested ? nested.scrollWidth - nested.clientWidth : 0,
+          contentBottom: view.bottom,
+          dockTop: document.querySelector('.volcano-movement-dock')!.getBoundingClientRect().top,
+        };
+      });
+      await page.screenshot({
+        path: info.outputPath(`movement-${scenario.name}-${fraction}.png`),
+        fullPage: false,
+      });
+      await info.attach(`movement-geometry-${fraction}`, {
+        body: Buffer.from(JSON.stringify(geometry)),
+        contentType: 'application/json',
+      });
+      expect(geometry.overlaps).toEqual([]);
+      expect(geometry.documentOverflow).toBeLessThanOrEqual(1);
+      expect(geometry.portOverflow).toBeLessThanOrEqual(1);
+      for (const size of geometry.controlSizes)
+        expect(Math.min(...size)).toBeGreaterThanOrEqual(44);
+      if (expectedMode === 'bottom')
+        expect(geometry.contentBottom).toBeLessThanOrEqual(geometry.dockTop + 1);
+    }
+    await expect(page.locator('.volcano-footer-frame')).toBeInViewport();
+    // The retained skip-link hash must not replay on target/toggle changes.
+    await expect.poll(() => pageScrollTop(page)).toBeGreaterThan(0);
+    await page.getByTestId('base2-left-menu-toggle').click();
+    await expect(page.getByTestId('volcano-movement-dock')).toHaveAttribute('inert');
+    if (expectedMode === 'bottom') await expect(port).toHaveCSS('overflow', 'hidden');
+    await page.getByRole('checkbox', { name: 'Toggle Base2 movement buttons' }).uncheck();
+    await expect(shell).toHaveAttribute('data-movement-layout', 'off');
+    await expect(page.getByRole('checkbox', { name: 'Toggle Base2 movement buttons' })).toBeFocused();
+    await page.getByRole('checkbox', { name: 'Toggle Base2 movement buttons' }).check();
+    await expect(shell).toHaveAttribute('data-movement-layout', expectedMode);
+    await page.keyboard.press('Escape');
+    await expect(page.getByTestId('volcano-movement-dock')).not.toHaveAttribute('inert');
+    await expect(page.getByTestId('base2-left-menu-toggle')).toBeFocused();
+    await expect.poll(() => pageScrollTop(page)).toBeGreaterThan(0);
+    await page.getByTestId('base2-scroll-ascend').dblclick();
+    await expect.poll(() => pageScrollTop(page)).toBe(0);
+    if (scenario.name === 'compact') {
+      // Exercise exact offsets on uniquely keyed router entries. The cold/native
+      // fragment entry above deliberately uses browser fallback, not a shared key.
+      await page.locator('a[href="/login"]').first().evaluate((node: HTMLAnchorElement) => node.click());
+      await expect(page).toHaveURL(/\/login$/);
+      await page.locator('a[href="/signup"]').first().evaluate((node: HTMLAnchorElement) => node.click());
+      await expect(page).toHaveURL(/\/signup$/);
+      await page.setViewportSize({ width: 1440, height: 900 });
+      await expect(shell).toHaveAttribute('data-movement-layout', 'sides');
+      await scrollPageTo(page, 100);
+      await expect.poll(() => pageScrollTop(page)).toBe(100);
+      // DOM activation avoids Playwright scrolling the link before navigation.
+      await page.locator('a[href="/login"]').first().evaluate((node: HTMLAnchorElement) => node.click());
+      await expect(page).toHaveURL(/\/login$/);
+      await page.setViewportSize({ width: 320, height: 568 });
+      await expect(shell).toHaveAttribute('data-movement-layout', 'bottom');
+      await scrollPageTo(page, 180);
+      await expect.poll(() => pageScrollTop(page)).toBe(180);
+      await page.goBack();
+      await expect(page).toHaveURL(/\/signup(?:#.*)?$/);
+      await expect.poll(() => pageScrollTop(page)).toBe(100);
+      await page.goForward();
+      await expect(page).toHaveURL(/\/login$/);
+      await expect.poll(() => pageScrollTop(page)).toBe(180);
+    }
+  });
+}
+
+test.afterEach(async ({ page }, testInfo) => {
+  if (testInfo.status !== 'skipped') await captureScrollportExtent(page, testInfo);
+});

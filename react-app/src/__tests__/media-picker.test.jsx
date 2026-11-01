@@ -1,4 +1,5 @@
-import { createRef } from 'react';
+import { createRef, useState } from 'react';
+import HomeObsidianNavigation from '../components/home/HomeObsidianNavigation';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { axe, toHaveNoViolations } from 'jest-axe';
 import MediaPicker from '../components/media/MediaPicker';
@@ -65,4 +66,35 @@ it('announces an empty result and closes with Escape', async () => {
   expect(await screen.findByText('No matching media. Change the search or status filter.')).toBeInTheDocument();
   fireEvent.keyDown(dialog, { key: 'Escape' });
   expect(onClose).toHaveBeenCalledOnce();
+});
+
+it('blocks ancestor-inert palette shortcuts and restores scrolling after repeated button closes', async () => {
+  document.body.style.overflow = 'auto';
+  function Example() {
+    const [open, setOpen] = useState(false);
+    return <>
+      <div className="app-shell-root">
+        <HomeObsidianNavigation routes={[{ label: 'Home', to: '/' }]} currentPath="/" onNavigate={() => {}} />
+        <button onClick={() => setOpen(true)}>Open picker</button>
+      </div>
+      <MediaPicker open={open} onClose={() => setOpen(false)} onConfirm={() => {}} />
+    </>;
+  }
+  const { unmount } = render(<Example />);
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    fireEvent.click(screen.getByRole('button', { name: 'Open picker' }));
+    await screen.findByText('one.png');
+    expect(document.body.style.overflow).toBe('hidden');
+    fireEvent.keyDown(window, { key: 'k', ctrlKey: true });
+    expect(document.querySelector('.home-command-palette-modal')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Close', exact: true }));
+    expect(document.body.style.overflow).toBe('auto');
+    fireEvent.keyDown(window, { key: 'k', ctrlKey: true });
+    expect(document.querySelector('.home-command-palette-modal')).not.toBeNull();
+    expect(document.body.style.overflow).toBe('hidden');
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(document.body.style.overflow).toBe('auto');
+  }
+  unmount();
+  document.body.style.overflow = '';
 });

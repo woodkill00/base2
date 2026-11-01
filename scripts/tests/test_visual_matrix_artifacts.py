@@ -307,3 +307,18 @@ def test_clear_center_does_not_erase_control_corner_overlap(tmp_path):
         assert all(target['centerUnobstructed'] is True for target in row['targets'])
         assert all(target['overlappingControls'] == ['base2-scroll-ascend']
                    for target in row['targets'])
+
+
+def test_v3_retains_explicit_scrollport_clip_geometry(tmp_path):
+    _, _, _, _, body = media_observation_fixture(tmp_path)
+    body['schemaVersion'] = 3
+    for row in body['viewportObservations']:
+        row['contentViewport'] = {'x': 0, 'y': 0, 'width': 320, 'height': 500,
+                                  'left': 0, 'top': 0, 'right': 320, 'bottom': 500}
+        row['targets'] = [{**target, 'cardIndex': 4, 'targetIndex': index}
+                          for index, target in enumerate(row['targets'])]
+    checked = module.observations(json.dumps(body).encode(), 'chromium-desktop')
+    assert checked['viewportObservations'][0]['contentViewport']['bottom'] == 500
+    body['viewportObservations'][0]['contentViewport']['private'] = 'not allowed'
+    with pytest.raises(ValueError):
+        module.observations(json.dumps(body).encode(), 'chromium-desktop')

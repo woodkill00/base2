@@ -67,5 +67,8 @@ def test_preview_foreground_and_all_visible_card_diagnostics():
     assert 'expect(Math.min(...previewContrast)).toBeGreaterThanOrEqual(4.5)' in spec
     assert 'expect(previewContrast).toHaveLength(2)' in spec
     assert 'const observation = await cards.evaluateAll' in spec
-    assert 'schemaVersion: 2' in spec
-    assert 'targetIndex' in spec and 'box.bottom > 0' in spec and 'box.top < innerHeight' in spec
+    assert 'schemaVersion: 3' in spec
+    assert 'contentViewport: viewport.toJSON()' in spec
+    assert 'targetIndex' in spec and 'box.bottom > viewport.top' in spec and 'box.top < viewport.bottom' in spec
+
+    assert 'row.targets.flatMap((target) => target.overlappingControls))).toEqual([])' in spec

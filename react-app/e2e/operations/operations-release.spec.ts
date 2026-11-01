@@ -1,3 +1,5 @@
+import { captureScrollportExtent } from '../scroll-target';
+import { scrollPageTo, pageScrollTop } from '../scroll-target';
 import { assertForcedColorState, assertForcedSystemControl } from '../forced-color-state';
 import { setSessionFixture, fulfillSessionFixture, getSessionFixture } from '../session-fixture';
 import { expect, test } from '@playwright/test';
@@ -16,9 +18,10 @@ async function captureCurrentRun(page, testInfo, name, maxDiffPixelRatio = 0.01)
   const options = { fullPage: true, animations: 'disabled' as const, caret: 'hide' as const };
   await page.evaluate(() => {
     document.documentElement.style.scrollBehavior = 'auto';
-    window.scrollTo(0, 0);
+
   });
-  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
+  await scrollPageTo(page, 0);
+  await expect.poll(() => pageScrollTop(page)).toBe(0);
   await assertForcedColorState(page, testInfo);
   await expect(page).toHaveScreenshot(name, { ...options, maxDiffPixelRatio });
   await assertForcedColorState(page, testInfo);
@@ -501,3 +504,7 @@ declare global {
     axe: { run: (root: Document) => Promise<{ violations: Array<{ id: string }> }> };
   }
 }
+
+test.afterEach(async ({ page }, testInfo) => {
+  if (testInfo.status !== 'skipped') await captureScrollportExtent(page, testInfo);
+});

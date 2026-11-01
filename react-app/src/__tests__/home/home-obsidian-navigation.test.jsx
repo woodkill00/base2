@@ -320,3 +320,22 @@ describe('Base2 restored Obsidian navigation', () => {
     vi.useRealTimers();
   });
 });
+
+test('cancels pending section movement when navigation unmounts', () => {
+  vi.useFakeTimers();
+  document.documentElement.scrollTop = 0;
+  document.body.scrollTop = 0;
+  Object.defineProperty(document.documentElement, 'scrollHeight', { configurable: true, value: 2400 });
+  Object.defineProperty(window, 'innerHeight', { configurable: true, value: 600 });
+  Object.defineProperty(window, 'scrollY', { configurable: true, value: 0 });
+  const scroll = vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+  const { unmount } = renderNavigation();
+  fireEvent.click(screen.getByTestId('base2-scroll-descend'));
+  expect(vi.getTimerCount()).toBeGreaterThan(0);
+  unmount();
+  scroll.mockClear();
+  act(() => vi.advanceTimersByTime(8000));
+  expect(scroll).not.toHaveBeenCalled();
+  expect(vi.getTimerCount()).toBe(0);
+  scroll.mockRestore(); vi.useRealTimers();
+});
