@@ -1,0 +1,16 @@
+{
+  "conclusion": "inconclusive",
+  "inspections": [
+    {
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-landscape-touch/current-operations-center-chromium-landscape-touch.png",
+      "method": "individual-pixels",
+      "role": "current",
+      "sha256": "50bbd336227643bb90112b527340bbd0a188465bb76abb15f38c32ed10296389"
+    }
+  ],
+  "kind": "technical-review",
+  "manifest": "runs/41290418358-1-124800320642-13076654353.json",
+  "manifestSha256": "609968f61f3db93eccfa608407856818198d47490ff44ee53de445d989fbce07",
+  "notes": "Diagnostic review only; no baseline approval or whole-matrix acceptance. Original supplied pixel review retained; contact-sheet overview does not verify all fine text. Exact-byte matches refer to previously inspected images. Expected reference PNGs/diffs/traces/raw Playwright report absent from bounded archive; receipt identities and summary verified, no independent raw step replay. 20 declared skips are not executions; recovery states covered only in compact and Chromium/Firefox/WebKit desktop projects. Cancellation dialog full-page image has viewport-limited dimming; complete dialog visible, unseen viewport positions not proven. Generic footer System evidence current persists in unavailable/stale states; misleading-copy concern requires scope decision.",
+  "schemaVersion": 2
+}

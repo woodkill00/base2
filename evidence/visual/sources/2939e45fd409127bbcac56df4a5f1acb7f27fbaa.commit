@@ -1,0 +1,6 @@
+tree ff51d9cad431505872f3ccb8a904b9a6809e6ff1
+parent 173c17eaf44e93850901f474be29b2fa7b83e2fb
+author woodkill woodkill <thejunkmailvoid@gmail.com> 1793522879 +0000
+committer woodkill woodkill <thejunkmailvoid@gmail.com> 1793522879 +0000
+
+fix(media): constrain preview and preserve diagnostic comparison state

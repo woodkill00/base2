@@ -1,0 +1,212 @@
+{
+  "archiveSha256": "820a8b24d20211bcd98e787bae61c6360624c20d8eb5d7dbd81bfeb576ab0858",
+  "artifactId": 13078448264,
+  "attempt": 1,
+  "captures": [
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "chromium-ultrawide.zip",
+          "sha256": "d26f4ac323db6e0d44e4b70ab231eecf2bfb1eb8522a082c8af37c8dd75d46fc"
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-ultrawide/current-media-library-viewport-0.png",
+          "sha256": "376204b2b746a3d18eea2e4706b97431008c6dac0b0919095fec9b079d493396"
+        }
+      ],
+      "bytes": 1379957,
+      "dimensions": [
+        2560,
+        1440
+      ],
+      "identityBasis": "native-report",
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-ultrawide/current-media-library-viewport-0.png",
+      "originalOutcome": "passed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "passed"
+        ],
+        "basis": "retained-native-report",
+        "project": "chromium-ultrawide",
+        "title": "media library is accessible responsive and visually reviewed"
+      },
+      "project": "chromium-ultrawide",
+      "role": "current",
+      "sha256": "376204b2b746a3d18eea2e4706b97431008c6dac0b0919095fec9b079d493396",
+      "storage": "objects/376204b2b746a3d18eea2e4706b97431008c6dac0b0919095fec9b079d493396.png",
+      "test": "media library is accessible responsive and visually reviewed",
+      "viewport": [
+        2560,
+        1440
+      ],
+      "viewportBasis": "native-project-config"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "chromium-ultrawide.zip",
+          "sha256": "d26f4ac323db6e0d44e4b70ab231eecf2bfb1eb8522a082c8af37c8dd75d46fc"
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-ultrawide/current-media-library-viewport-2.png",
+          "sha256": "376204b2b746a3d18eea2e4706b97431008c6dac0b0919095fec9b079d493396"
+        }
+      ],
+      "bytes": 1379957,
+      "dimensions": [
+        2560,
+        1440
+      ],
+      "identityBasis": "native-report",
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-ultrawide/current-media-library-viewport-2.png",
+      "originalOutcome": "passed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "passed"
+        ],
+        "basis": "retained-native-report",
+        "project": "chromium-ultrawide",
+        "title": "media library is accessible responsive and visually reviewed"
+      },
+      "project": "chromium-ultrawide",
+      "role": "current",
+      "sha256": "376204b2b746a3d18eea2e4706b97431008c6dac0b0919095fec9b079d493396",
+      "storage": "objects/376204b2b746a3d18eea2e4706b97431008c6dac0b0919095fec9b079d493396.png",
+      "test": "media library is accessible responsive and visually reviewed",
+      "viewport": [
+        2560,
+        1440
+      ],
+      "viewportBasis": "native-project-config"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "chromium-ultrawide.zip",
+          "sha256": "d26f4ac323db6e0d44e4b70ab231eecf2bfb1eb8522a082c8af37c8dd75d46fc"
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-ultrawide/current-media-library-viewport-4.png",
+          "sha256": "cb8debd5887ed7e24c8a2c09f051ad81c688dfbe4dbab326aa497ad0b6311f81"
+        }
+      ],
+      "bytes": 1224651,
+      "dimensions": [
+        2560,
+        1440
+      ],
+      "identityBasis": "native-report",
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-ultrawide/current-media-library-viewport-4.png",
+      "originalOutcome": "passed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "passed"
+        ],
+        "basis": "retained-native-report",
+        "project": "chromium-ultrawide",
+        "title": "media library is accessible responsive and visually reviewed"
+      },
+      "project": "chromium-ultrawide",
+      "role": "current",
+      "sha256": "cb8debd5887ed7e24c8a2c09f051ad81c688dfbe4dbab326aa497ad0b6311f81",
+      "storage": "objects/cb8debd5887ed7e24c8a2c09f051ad81c688dfbe4dbab326aa497ad0b6311f81.png",
+      "test": "media library is accessible responsive and visually reviewed",
+      "viewport": [
+        2560,
+        1440
+      ],
+      "viewportBasis": "native-project-config"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "chromium-ultrawide.zip",
+          "sha256": "d26f4ac323db6e0d44e4b70ab231eecf2bfb1eb8522a082c8af37c8dd75d46fc"
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-ultrawide/current-media-library.png",
+          "sha256": "17fb1f412225047daf479b7a3425a0dc86b3513d38743af305b4a34fc2c9d304"
+        }
+      ],
+      "bytes": 1537029,
+      "dimensions": [
+        2560,
+        1988
+      ],
+      "identityBasis": "native-report",
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-ultrawide/current-media-library.png",
+      "originalOutcome": "passed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "passed"
+        ],
+        "basis": "retained-native-report",
+        "project": "chromium-ultrawide",
+        "title": "media library is accessible responsive and visually reviewed"
+      },
+      "project": "chromium-ultrawide",
+      "role": "current",
+      "sha256": "17fb1f412225047daf479b7a3425a0dc86b3513d38743af305b4a34fc2c9d304",
+      "storage": "objects/17fb1f412225047daf479b7a3425a0dc86b3513d38743af305b4a34fc2c9d304.png",
+      "test": "media library is accessible responsive and visually reviewed",
+      "viewport": [
+        2560,
+        1440
+      ],
+      "viewportBasis": "native-project-config"
+    }
+  ],
+  "fixtureScope": "synthetic-project-tests",
+  "jobId": 124813961797,
+  "laterValidation": "pending",
+  "observations": [
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "chromium-ultrawide.zip",
+          "sha256": "d26f4ac323db6e0d44e4b70ab231eecf2bfb1eb8522a082c8af37c8dd75d46fc"
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-ultrawide/media-viewport-observations.json",
+          "sha256": "e00599728d569cea93c34cb92cde0939e19c0aaa8bdde3813338adbd6f4c255c"
+        }
+      ],
+      "bytes": 39368,
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-ultrawide/media-viewport-observations.json",
+      "project": "chromium-ultrawide",
+      "schemaVersion": 3,
+      "sha256": "e00599728d569cea93c34cb92cde0939e19c0aaa8bdde3813338adbd6f4c255c",
+      "storage": "observations/e00599728d569cea93c34cb92cde0939e19c0aaa8bdde3813338adbd6f4c255c.json"
+    }
+  ],
+  "originalOutcome": "failed",
+  "repository": "woodkill00/base2",
+  "requestedHead": "cb674560dc15de030d39491367646b2a15276be7",
+  "runId": 41295029086,
+  "schemaVersion": 2,
+  "sourceCommit": "cb674560dc15de030d39491367646b2a15276be7",
+  "sourceTree": "14a670e2b5049b6658e453d6307727cbf66670c4",
+  "technicalReview": "pending",
+  "transfer": {
+    "blobs": {
+      "17fb1f412225047daf479b7a3425a0dc86b3513d38743af305b4a34fc2c9d304": "ef656841ca237632f3b7c0af21506d4b4b292a0b",
+      "376204b2b746a3d18eea2e4706b97431008c6dac0b0919095fec9b079d493396": "618abfed8439ad3091a6cb6aca40fad5ff657c90",
+      "cb8debd5887ed7e24c8a2c09f051ad81c688dfbe4dbab326aa497ad0b6311f81": "47f69006f3e4d4d66ba6e4dd5b2ffa63bed74f84",
+      "e00599728d569cea93c34cb92cde0939e19c0aaa8bdde3813338adbd6f4c255c": "cec29005845b55c23343599802caf713b6031a20"
+    },
+    "commit": "f64e46dd898a3c4253577498388d38be3425cc4b",
+    "localVerification": "git-blob-sha256-size-dimensions-full-decode",
+    "originalArchiveVerification": "externally-verified-zip-and-members",
+    "tree": "e8425cadd61d77bbc02d87ac4738a894a2401263"
+  }
+}

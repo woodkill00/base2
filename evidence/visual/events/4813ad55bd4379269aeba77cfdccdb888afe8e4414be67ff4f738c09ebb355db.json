@@ -1,0 +1,64 @@
+{
+  "conclusion": "inconclusive",
+  "inspections": [
+    {
+      "member": "media-release-media-detail-fa505-age-and-consequence-context-chromium-desktop/current-media-detail-completed.png",
+      "method": "individual-pixels",
+      "role": "current",
+      "sha256": "079dc3e089f21535ba66d19634fd1672fad3a858a86c046f7bd31150acc137e6"
+    },
+    {
+      "member": "media-release-media-detail-fa505-age-and-consequence-context-chromium-desktop/current-media-detail-top.png",
+      "method": "individual-pixels",
+      "role": "current",
+      "sha256": "2c1fc3f49a916281621ac946f1c963aabba707704382c846797c8298d4d6922c"
+    },
+    {
+      "member": "media-release-media-detail-fa505-age-and-consequence-context-chromium-desktop/current-media-detail.png",
+      "method": "individual-pixels",
+      "role": "current",
+      "sha256": "143a91da0e945c015a00ab4e1b16e57fcdba9ac9da2fbcc28a6e3338a2a7de9d"
+    },
+    {
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-desktop/current-media-library-viewport-0.png",
+      "method": "individual-pixels",
+      "role": "current",
+      "sha256": "ae1c989ac73d1da3e4badad3309ae91cf6f1120eba49c54025358d5d27b5aff3"
+    },
+    {
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-desktop/current-media-library-viewport-2.png",
+      "method": "individual-pixels",
+      "role": "current",
+      "sha256": "ae1c989ac73d1da3e4badad3309ae91cf6f1120eba49c54025358d5d27b5aff3"
+    },
+    {
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-desktop/current-media-library-viewport-4.png",
+      "method": "individual-pixels",
+      "role": "current",
+      "sha256": "045090838e6802340e9da18423cd49571d62d80cee4cf761c347144ab4d6e218"
+    },
+    {
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-desktop/current-media-library.png",
+      "method": "individual-pixels",
+      "role": "current",
+      "sha256": "6780e469fae3c3e6d10977409d49250b93516e16352d871162c421194517aa6c"
+    },
+    {
+      "member": "media-release-media-picker-72bf8-ontained-in-a-real-workflow-chromium-desktop/current-media-picker-bottom.png",
+      "method": "individual-pixels",
+      "role": "current",
+      "sha256": "df01154e072ad27aba1bcb273e9e9b9bc81223d5316bd728872ff99fddde9ba1"
+    },
+    {
+      "member": "media-release-media-picker-72bf8-ontained-in-a-real-workflow-chromium-desktop/current-media-picker.png",
+      "method": "individual-pixels",
+      "role": "current",
+      "sha256": "df01154e072ad27aba1bcb273e9e9b9bc81223d5316bd728872ff99fddde9ba1"
+    }
+  ],
+  "kind": "technical-review",
+  "manifest": "runs/41287894771-1-124792843889-13075393744.json",
+  "manifestSha256": "0c56fbacef2aced878ab5c9570c2b7147a7befbea52f52d4d9a313d8d731920e",
+  "notes": "Diagnostic review only; no baseline approval or whole-matrix acceptance. Original supplied pixel review retained; contact-sheet overview does not verify all fine text. Exact-byte matches refer to previously inspected images. 12 declared skips; Chromium-only matrix. No raw traces or detailed Playwright step report in bounded metadata; source-after reports 20 passed,4 failed,12 skipped. Viewport observations sample three centered cards; cannot prove all-scroll/all-visible-target safety. Four desktop/light/HC/RTL detail top/completed states captured; compact and zoom remain unproven. Packaging missingReports lists operations-visual-runner.json (operations-specific receipt, not supplied for media).",
+  "schemaVersion": 2
+}

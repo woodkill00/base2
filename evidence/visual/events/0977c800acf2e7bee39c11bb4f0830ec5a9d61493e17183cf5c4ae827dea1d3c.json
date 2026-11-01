@@ -1,0 +1,34 @@
+{
+  "conclusion": "inconclusive",
+  "inspections": [
+    {
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-ultrawide/current-media-library-viewport-0.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "376204b2b746a3d18eea2e4706b97431008c6dac0b0919095fec9b079d493396"
+    },
+    {
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-ultrawide/current-media-library-viewport-2.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "376204b2b746a3d18eea2e4706b97431008c6dac0b0919095fec9b079d493396"
+    },
+    {
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-ultrawide/current-media-library-viewport-4.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "cb8debd5887ed7e24c8a2c09f051ad81c688dfbe4dbab326aa497ad0b6311f81"
+    },
+    {
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-ultrawide/current-media-library.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "17fb1f412225047daf479b7a3425a0dc86b3513d38743af305b4a34fc2c9d304"
+    }
+  ],
+  "kind": "technical-review",
+  "manifest": "runs/41295029086-1-124813961797-13078448264.json",
+  "manifestSha256": "48e062a581dd9942eb0783e3b053a519eb09424565c59e314bedb8bbb84aeab6",
+  "notes": "Diagnostic review only; no baseline approval or whole-matrix acceptance. Original supplied pixel review retained; contact-sheet overview does not verify all fine text. Exact-byte matches refer to previously inspected images. No reference promotion, acceptance, or uploads. Review method and uninspected images explicitly recorded. Full-page comparison in mobile inner scrollport is viewport-sized, not complete content. Standard supplementary captures may be after navigation; folder route is not proof of currently pictured route. Bounded collector excludes non-project PNGs per provenance; oversized original artifacts not fetched. Scaled contact sheets establish overview review only; not detailed acceptance of every small text/control in tall full-page images.",
+  "schemaVersion": 2
+}

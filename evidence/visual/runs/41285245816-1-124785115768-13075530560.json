@@ -1,0 +1,68 @@
+{
+  "archiveSha256": "395f680d88af8cefe52ff58919ed94f01ac2e9d9f8442fe3163c7da3ea138657",
+  "artifactId": 13075530560,
+  "attempt": 1,
+  "captures": [
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "chromium-reduced-motion.zip",
+          "sha256": "ec972dd54f8adf85cd445d1e0efba8e39721bb13299b81d328592caf762c682b"
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-reduced-motion/current-operations-center-chromium-reduced-motion.png",
+          "sha256": "4272cdcd9b0f397c42359d848dc24a78a45fe494b79a625d0326eaa9cbca361a"
+        }
+      ],
+      "bytes": 650722,
+      "dimensions": [
+        1280,
+        2949
+      ],
+      "identityBasis": "native-report",
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-reduced-motion/current-operations-center-chromium-reduced-motion.png",
+      "originalOutcome": "passed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "passed"
+        ],
+        "basis": "retained-native-report",
+        "project": "chromium-reduced-motion",
+        "title": "operations center is accessible responsive and visually stable"
+      },
+      "project": "chromium-reduced-motion",
+      "role": "current",
+      "sha256": "4272cdcd9b0f397c42359d848dc24a78a45fe494b79a625d0326eaa9cbca361a",
+      "storage": "objects/4272cdcd9b0f397c42359d848dc24a78a45fe494b79a625d0326eaa9cbca361a.png",
+      "test": "operations center is accessible responsive and visually stable",
+      "viewport": [
+        1280,
+        900
+      ],
+      "viewportBasis": "native-project-config"
+    }
+  ],
+  "fixtureScope": "synthetic-project-tests",
+  "jobId": 124785115768,
+  "laterValidation": "pending",
+  "observations": [],
+  "originalOutcome": "passed",
+  "repository": "woodkill00/base2",
+  "requestedHead": "4e591455b1eb7491b81b53b01c8648a8ef2d2489",
+  "runId": 41285245816,
+  "schemaVersion": 2,
+  "sourceCommit": "4e591455b1eb7491b81b53b01c8648a8ef2d2489",
+  "sourceTree": "a04738b7d35e16a130a1fadb1d0440bdd411fefc",
+  "technicalReview": "pending",
+  "transfer": {
+    "blobs": {
+      "4272cdcd9b0f397c42359d848dc24a78a45fe494b79a625d0326eaa9cbca361a": "038e14d2e1f184d3e0f275ee4bbcba7999c214bd"
+    },
+    "commit": "cfd7012fc6e77f4567135cade3a349d26aae6dc4",
+    "localVerification": "git-blob-sha256-size-dimensions-full-decode",
+    "originalArchiveVerification": "externally-verified-zip-and-members",
+    "tree": "d3ab244c2c8dd0c696bbea2451297a21de7bb82c"
+  }
+}

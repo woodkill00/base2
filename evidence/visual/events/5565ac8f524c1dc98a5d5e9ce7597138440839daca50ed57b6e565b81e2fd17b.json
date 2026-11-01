@@ -1,0 +1,34 @@
+{
+  "conclusion": "inconclusive",
+  "inspections": [
+    {
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-landscape-touch/current-media-library-viewport-0.png",
+      "method": "individual-pixels",
+      "role": "current",
+      "sha256": "48ad6f5ad83a7addbf16cef740fe6f88a4c2549b3be9b0ff5f890a80c357bef0"
+    },
+    {
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-landscape-touch/current-media-library-viewport-2.png",
+      "method": "individual-pixels",
+      "role": "current",
+      "sha256": "f41f01108588d72f373a85a0eeb9a5c7040c3800863f0723c11617d6507c8356"
+    },
+    {
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-landscape-touch/current-media-library-viewport-4.png",
+      "method": "individual-pixels",
+      "role": "current",
+      "sha256": "5f5f26ee4d66abcc494d9f45fef2bf1325d229cf0284bc001987eed0137598f7"
+    },
+    {
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-landscape-touch/current-media-library.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "655f5f7b08373bf252e5da29335be3d3595fc93ba44db70cc88df3d205e0b8fd"
+    }
+  ],
+  "kind": "technical-review",
+  "manifest": "runs/41290408745-1-124800292922-13076722728.json",
+  "manifestSha256": "33d5e83869ee2a5b701ac2867d0452a0c5e3492a0fe1c0d02647cd144a65ac09",
+  "notes": "Diagnostic review only; no baseline approval or whole-matrix acceptance. Original supplied pixel review retained; contact-sheet overview does not verify all fine text. Exact-byte matches refer to previously inspected images. All twelve media project image bundles retained; metadata covers all36native identities. 12declared skips; Chromium-only matrix. No raw traces or detailed Playwright error report in bounded metadata; native summary22passed2failed12skipped. Viewport observations sample three scroll positions, not all scrolling. Partial modal captures are complementary top/pending/completed or picker top/bottom, not individually complete states.",
+  "schemaVersion": 2
+}

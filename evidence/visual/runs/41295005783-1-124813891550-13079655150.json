@@ -1,0 +1,2471 @@
+{
+  "archiveSha256": "8d2b9bfc75075b7634ca1bb6718cb4cf51f22054199fa268a90eb94b43dfc92e",
+  "artifactId": 13079655150,
+  "attempt": 1,
+  "captures": [
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "settings/settings-release-release-p-27468-essible-and-visually-stable-chromium-ultrawide/settings-release-before-axe.png",
+          "sha256": "5bd83f7fa44433cf224552d2983aed3ebf614883114e40b1d3e78366c6c1d5e4"
+        }
+      ],
+      "bytes": 1077323,
+      "dimensions": [
+        2560,
+        1440
+      ],
+      "identityBasis": "native-report",
+      "member": "settings/settings-release-release-p-27468-essible-and-visually-stable-chromium-ultrawide/settings-release-before-axe.png",
+      "originalOutcome": "passed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "passed"
+        ],
+        "basis": "retained-native-log",
+        "project": "chromium-ultrawide",
+        "sourceSha256": "b40560077402ebc9da6f4182244a2f9c47d6fd560d1ee50a2ec7ae75d3fabf0e",
+        "title": "release profile remains readable, reachable, accessible, and visually stable"
+      },
+      "project": "chromium-ultrawide",
+      "role": "current",
+      "sha256": "5bd83f7fa44433cf224552d2983aed3ebf614883114e40b1d3e78366c6c1d5e4",
+      "storage": "objects/5bd83f7fa44433cf224552d2983aed3ebf614883114e40b1d3e78366c6c1d5e4.png",
+      "test": "release profile remains readable, reachable, accessible, and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "settings/settings-release-release-p-27468-essible-and-visually-stable-firefox-desktop/settings-release-before-axe.png",
+          "sha256": "caa1dc407e2ced11e6af1f87f2996298bcb73496d6807404f789c02fa69389a2"
+        }
+      ],
+      "bytes": 407215,
+      "dimensions": [
+        1440,
+        1228
+      ],
+      "identityBasis": "native-report",
+      "member": "settings/settings-release-release-p-27468-essible-and-visually-stable-firefox-desktop/settings-release-before-axe.png",
+      "originalOutcome": "passed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "passed"
+        ],
+        "basis": "retained-native-log",
+        "project": "firefox-desktop",
+        "sourceSha256": "b40560077402ebc9da6f4182244a2f9c47d6fd560d1ee50a2ec7ae75d3fabf0e",
+        "title": "release profile remains readable, reachable, accessible, and visually stable"
+      },
+      "project": "firefox-desktop",
+      "role": "current",
+      "sha256": "caa1dc407e2ced11e6af1f87f2996298bcb73496d6807404f789c02fa69389a2",
+      "storage": "objects/caa1dc407e2ced11e6af1f87f2996298bcb73496d6807404f789c02fa69389a2.png",
+      "test": "release profile remains readable, reachable, accessible, and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "settings/settings-release-release-p-27468-essible-and-visually-stable-webkit-mobile/settings-release-before-axe.png",
+          "sha256": "f541674b35f259752b636719de7e335543eb27faf9c4be5141d3e5ef688fd433"
+        }
+      ],
+      "bytes": 819731,
+      "dimensions": [
+        1170,
+        7041
+      ],
+      "identityBasis": "native-report",
+      "member": "settings/settings-release-release-p-27468-essible-and-visually-stable-webkit-mobile/settings-release-before-axe.png",
+      "originalOutcome": "passed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "passed"
+        ],
+        "basis": "retained-native-log",
+        "project": "webkit-mobile",
+        "sourceSha256": "b40560077402ebc9da6f4182244a2f9c47d6fd560d1ee50a2ec7ae75d3fabf0e",
+        "title": "release profile remains readable, reachable, accessible, and visually stable"
+      },
+      "project": "webkit-mobile",
+      "role": "current",
+      "sha256": "f541674b35f259752b636719de7e335543eb27faf9c4be5141d3e5ef688fd433",
+      "storage": "objects/f541674b35f259752b636719de7e335543eb27faf9c4be5141d3e5ef688fd433.png",
+      "test": "release profile remains readable, reachable, accessible, and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-400-zoom/current-scrollport-footer.png",
+          "sha256": "a02c239b49802b044790562c959d023a62ae4ead2774a30a49ac7c3ab442f192"
+        }
+      ],
+      "bytes": 63901,
+      "dimensions": [
+        320,
+        720
+      ],
+      "identityBasis": "native-report",
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-400-zoom/current-scrollport-footer.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-log",
+        "project": "chromium-400-zoom",
+        "sourceSha256": "b40560077402ebc9da6f4182244a2f9c47d6fd560d1ee50a2ec7ae75d3fabf0e",
+        "title": "workspace release corpus is accessible, responsive, and visually stable"
+      },
+      "project": "chromium-400-zoom",
+      "role": "current",
+      "sha256": "a02c239b49802b044790562c959d023a62ae4ead2774a30a49ac7c3ab442f192",
+      "storage": "objects/a02c239b49802b044790562c959d023a62ae4ead2774a30a49ac7c3ab442f192.png",
+      "test": "workspace release corpus is accessible, responsive, and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-400-zoom/current-scrollport-middle.png",
+          "sha256": "23e0b2c1de35d0f7f725e8b9985d4812557ce7631dc2f3e000ed827eae9830d3"
+        }
+      ],
+      "bytes": 100848,
+      "dimensions": [
+        320,
+        720
+      ],
+      "identityBasis": "native-report",
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-400-zoom/current-scrollport-middle.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-log",
+        "project": "chromium-400-zoom",
+        "sourceSha256": "b40560077402ebc9da6f4182244a2f9c47d6fd560d1ee50a2ec7ae75d3fabf0e",
+        "title": "workspace release corpus is accessible, responsive, and visually stable"
+      },
+      "project": "chromium-400-zoom",
+      "role": "current",
+      "sha256": "23e0b2c1de35d0f7f725e8b9985d4812557ce7631dc2f3e000ed827eae9830d3",
+      "storage": "objects/23e0b2c1de35d0f7f725e8b9985d4812557ce7631dc2f3e000ed827eae9830d3.png",
+      "test": "workspace release corpus is accessible, responsive, and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-400-zoom/current-scrollport-top.png",
+          "sha256": "44bbc16bcee72059745516a6ecd9b1bbebb89311059b136dddd25c3f2fea1eba"
+        }
+      ],
+      "bytes": 144132,
+      "dimensions": [
+        320,
+        720
+      ],
+      "identityBasis": "native-report",
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-400-zoom/current-scrollport-top.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-log",
+        "project": "chromium-400-zoom",
+        "sourceSha256": "b40560077402ebc9da6f4182244a2f9c47d6fd560d1ee50a2ec7ae75d3fabf0e",
+        "title": "workspace release corpus is accessible, responsive, and visually stable"
+      },
+      "project": "chromium-400-zoom",
+      "role": "current",
+      "sha256": "44bbc16bcee72059745516a6ecd9b1bbebb89311059b136dddd25c3f2fea1eba",
+      "storage": "objects/44bbc16bcee72059745516a6ecd9b1bbebb89311059b136dddd25c3f2fea1eba.png",
+      "test": "workspace release corpus is accessible, responsive, and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-400-zoom/test-failed-1.png",
+          "sha256": "12a2c5e220e022d5b24e5c188a20365d4e3f6772932a92e46dee593aab663e3a"
+        }
+      ],
+      "bytes": 144142,
+      "dimensions": [
+        320,
+        720
+      ],
+      "identityBasis": "native-report",
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-400-zoom/test-failed-1.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-log",
+        "project": "chromium-400-zoom",
+        "sourceSha256": "b40560077402ebc9da6f4182244a2f9c47d6fd560d1ee50a2ec7ae75d3fabf0e",
+        "title": "workspace release corpus is accessible, responsive, and visually stable"
+      },
+      "project": "chromium-400-zoom",
+      "role": "failure",
+      "sha256": "12a2c5e220e022d5b24e5c188a20365d4e3f6772932a92e46dee593aab663e3a",
+      "storage": "objects/12a2c5e220e022d5b24e5c188a20365d4e3f6772932a92e46dee593aab663e3a.png",
+      "test": "workspace release corpus is accessible, responsive, and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-400-zoom/workspace-records-chromium-400-zoom-actual.png",
+          "sha256": "44bbc16bcee72059745516a6ecd9b1bbebb89311059b136dddd25c3f2fea1eba"
+        }
+      ],
+      "bytes": 144132,
+      "dimensions": [
+        320,
+        720
+      ],
+      "identityBasis": "native-report",
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-400-zoom/workspace-records-chromium-400-zoom-actual.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-log",
+        "project": "chromium-400-zoom",
+        "sourceSha256": "b40560077402ebc9da6f4182244a2f9c47d6fd560d1ee50a2ec7ae75d3fabf0e",
+        "title": "workspace release corpus is accessible, responsive, and visually stable"
+      },
+      "project": "chromium-400-zoom",
+      "role": "actual",
+      "sha256": "44bbc16bcee72059745516a6ecd9b1bbebb89311059b136dddd25c3f2fea1eba",
+      "storage": "objects/44bbc16bcee72059745516a6ecd9b1bbebb89311059b136dddd25c3f2fea1eba.png",
+      "test": "workspace release corpus is accessible, responsive, and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-400-zoom/workspace-records-chromium-400-zoom-diff.png",
+          "sha256": "a8cc98f6f9a4739a6a789b698283c3008597ea64cf041d8a24e4070c45fcdade"
+        }
+      ],
+      "bytes": 74522,
+      "dimensions": [
+        320,
+        2615
+      ],
+      "identityBasis": "native-report",
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-400-zoom/workspace-records-chromium-400-zoom-diff.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-log",
+        "project": "chromium-400-zoom",
+        "sourceSha256": "b40560077402ebc9da6f4182244a2f9c47d6fd560d1ee50a2ec7ae75d3fabf0e",
+        "title": "workspace release corpus is accessible, responsive, and visually stable"
+      },
+      "project": "chromium-400-zoom",
+      "role": "diff",
+      "sha256": "a8cc98f6f9a4739a6a789b698283c3008597ea64cf041d8a24e4070c45fcdade",
+      "storage": "objects/a8cc98f6f9a4739a6a789b698283c3008597ea64cf041d8a24e4070c45fcdade.png",
+      "test": "workspace release corpus is accessible, responsive, and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-400-zoom/workspace-records-chromium-400-zoom-expected.png",
+          "sha256": "cba9136aac8754049ad3288d464dd5d0e6ad1d7bb55d9a81b8c3e5dc232eb3af"
+        }
+      ],
+      "bytes": 270927,
+      "dimensions": [
+        320,
+        2615
+      ],
+      "identityBasis": "native-report",
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-400-zoom/workspace-records-chromium-400-zoom-expected.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-log",
+        "project": "chromium-400-zoom",
+        "sourceSha256": "b40560077402ebc9da6f4182244a2f9c47d6fd560d1ee50a2ec7ae75d3fabf0e",
+        "title": "workspace release corpus is accessible, responsive, and visually stable"
+      },
+      "project": "chromium-400-zoom",
+      "role": "expected",
+      "sha256": "cba9136aac8754049ad3288d464dd5d0e6ad1d7bb55d9a81b8c3e5dc232eb3af",
+      "storage": "objects/cba9136aac8754049ad3288d464dd5d0e6ad1d7bb55d9a81b8c3e5dc232eb3af.png",
+      "test": "workspace release corpus is accessible, responsive, and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-compact/current-scrollport-footer.png",
+          "sha256": "1e2940d813317c4820fe6866e631dc45bd28393818d5f79d510383ab533a21dd"
+        }
+      ],
+      "bytes": 50099,
+      "dimensions": [
+        320,
+        568
+      ],
+      "identityBasis": "native-report",
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-compact/current-scrollport-footer.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-log",
+        "project": "chromium-compact",
+        "sourceSha256": "b40560077402ebc9da6f4182244a2f9c47d6fd560d1ee50a2ec7ae75d3fabf0e",
+        "title": "workspace release corpus is accessible, responsive, and visually stable"
+      },
+      "project": "chromium-compact",
+      "role": "current",
+      "sha256": "1e2940d813317c4820fe6866e631dc45bd28393818d5f79d510383ab533a21dd",
+      "storage": "objects/1e2940d813317c4820fe6866e631dc45bd28393818d5f79d510383ab533a21dd.png",
+      "test": "workspace release corpus is accessible, responsive, and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-compact/current-scrollport-middle.png",
+          "sha256": "92853213fc3326f140dfbd9d347c080f7665a641b8f6a0cbf006b416179a16c3"
+        }
+      ],
+      "bytes": 78935,
+      "dimensions": [
+        320,
+        568
+      ],
+      "identityBasis": "native-report",
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-compact/current-scrollport-middle.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-log",
+        "project": "chromium-compact",
+        "sourceSha256": "b40560077402ebc9da6f4182244a2f9c47d6fd560d1ee50a2ec7ae75d3fabf0e",
+        "title": "workspace release corpus is accessible, responsive, and visually stable"
+      },
+      "project": "chromium-compact",
+      "role": "current",
+      "sha256": "92853213fc3326f140dfbd9d347c080f7665a641b8f6a0cbf006b416179a16c3",
+      "storage": "objects/92853213fc3326f140dfbd9d347c080f7665a641b8f6a0cbf006b416179a16c3.png",
+      "test": "workspace release corpus is accessible, responsive, and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-compact/current-scrollport-top.png",
+          "sha256": "4c287483218ba093b3047e39b3ae4fea854205d2ba29d92ecf63dea70aa90086"
+        }
+      ],
+      "bytes": 119240,
+      "dimensions": [
+        320,
+        568
+      ],
+      "identityBasis": "native-report",
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-compact/current-scrollport-top.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-log",
+        "project": "chromium-compact",
+        "sourceSha256": "b40560077402ebc9da6f4182244a2f9c47d6fd560d1ee50a2ec7ae75d3fabf0e",
+        "title": "workspace release corpus is accessible, responsive, and visually stable"
+      },
+      "project": "chromium-compact",
+      "role": "current",
+      "sha256": "4c287483218ba093b3047e39b3ae4fea854205d2ba29d92ecf63dea70aa90086",
+      "storage": "objects/4c287483218ba093b3047e39b3ae4fea854205d2ba29d92ecf63dea70aa90086.png",
+      "test": "workspace release corpus is accessible, responsive, and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-compact/test-failed-1.png",
+          "sha256": "2f789118f01d3d607245e0a5c758ed3f7bd76b60db0eb6e1bc39b8379198dcd2"
+        }
+      ],
+      "bytes": 119223,
+      "dimensions": [
+        320,
+        568
+      ],
+      "identityBasis": "native-report",
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-compact/test-failed-1.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-log",
+        "project": "chromium-compact",
+        "sourceSha256": "b40560077402ebc9da6f4182244a2f9c47d6fd560d1ee50a2ec7ae75d3fabf0e",
+        "title": "workspace release corpus is accessible, responsive, and visually stable"
+      },
+      "project": "chromium-compact",
+      "role": "failure",
+      "sha256": "2f789118f01d3d607245e0a5c758ed3f7bd76b60db0eb6e1bc39b8379198dcd2",
+      "storage": "objects/2f789118f01d3d607245e0a5c758ed3f7bd76b60db0eb6e1bc39b8379198dcd2.png",
+      "test": "workspace release corpus is accessible, responsive, and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-compact/workspace-records-chromium-compact-actual.png",
+          "sha256": "4c287483218ba093b3047e39b3ae4fea854205d2ba29d92ecf63dea70aa90086"
+        }
+      ],
+      "bytes": 119240,
+      "dimensions": [
+        320,
+        568
+      ],
+      "identityBasis": "native-report",
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-compact/workspace-records-chromium-compact-actual.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-log",
+        "project": "chromium-compact",
+        "sourceSha256": "b40560077402ebc9da6f4182244a2f9c47d6fd560d1ee50a2ec7ae75d3fabf0e",
+        "title": "workspace release corpus is accessible, responsive, and visually stable"
+      },
+      "project": "chromium-compact",
+      "role": "actual",
+      "sha256": "4c287483218ba093b3047e39b3ae4fea854205d2ba29d92ecf63dea70aa90086",
+      "storage": "objects/4c287483218ba093b3047e39b3ae4fea854205d2ba29d92ecf63dea70aa90086.png",
+      "test": "workspace release corpus is accessible, responsive, and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-compact/workspace-records-chromium-compact-diff.png",
+          "sha256": "cb5829e2219d0331d55a52df79946f738b3e025a258d042745831e7fd980652e"
+        }
+      ],
+      "bytes": 71026,
+      "dimensions": [
+        320,
+        2615
+      ],
+      "identityBasis": "native-report",
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-compact/workspace-records-chromium-compact-diff.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-log",
+        "project": "chromium-compact",
+        "sourceSha256": "b40560077402ebc9da6f4182244a2f9c47d6fd560d1ee50a2ec7ae75d3fabf0e",
+        "title": "workspace release corpus is accessible, responsive, and visually stable"
+      },
+      "project": "chromium-compact",
+      "role": "diff",
+      "sha256": "cb5829e2219d0331d55a52df79946f738b3e025a258d042745831e7fd980652e",
+      "storage": "objects/cb5829e2219d0331d55a52df79946f738b3e025a258d042745831e7fd980652e.png",
+      "test": "workspace release corpus is accessible, responsive, and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-compact/workspace-records-chromium-compact-expected.png",
+          "sha256": "402a59af0efbadffaf0029b1034184734f0d92738905d6768329cd92b0e81fb4"
+        }
+      ],
+      "bytes": 255405,
+      "dimensions": [
+        320,
+        2615
+      ],
+      "identityBasis": "native-report",
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-compact/workspace-records-chromium-compact-expected.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-log",
+        "project": "chromium-compact",
+        "sourceSha256": "b40560077402ebc9da6f4182244a2f9c47d6fd560d1ee50a2ec7ae75d3fabf0e",
+        "title": "workspace release corpus is accessible, responsive, and visually stable"
+      },
+      "project": "chromium-compact",
+      "role": "expected",
+      "sha256": "402a59af0efbadffaf0029b1034184734f0d92738905d6768329cd92b0e81fb4",
+      "storage": "objects/402a59af0efbadffaf0029b1034184734f0d92738905d6768329cd92b0e81fb4.png",
+      "test": "workspace release corpus is accessible, responsive, and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-desktop/test-failed-1.png",
+          "sha256": "7dba406c9af1a1d3a6b57d0c466ca105f1a4d6caad49185fa25e31f75ffac9fd"
+        }
+      ],
+      "bytes": 469330,
+      "dimensions": [
+        1440,
+        1000
+      ],
+      "identityBasis": "native-report",
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-desktop/test-failed-1.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-log",
+        "project": "chromium-desktop",
+        "sourceSha256": "b40560077402ebc9da6f4182244a2f9c47d6fd560d1ee50a2ec7ae75d3fabf0e",
+        "title": "workspace release corpus is accessible, responsive, and visually stable"
+      },
+      "project": "chromium-desktop",
+      "role": "failure",
+      "sha256": "7dba406c9af1a1d3a6b57d0c466ca105f1a4d6caad49185fa25e31f75ffac9fd",
+      "storage": "objects/7dba406c9af1a1d3a6b57d0c466ca105f1a4d6caad49185fa25e31f75ffac9fd.png",
+      "test": "workspace release corpus is accessible, responsive, and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-desktop/workspace-records-chromium-desktop-actual.png",
+          "sha256": "d0ddd681a2ba76cc0bcd6fb9b52b3022c64806025b9227e2ab0d8521b813f0de"
+        }
+      ],
+      "bytes": 616753,
+      "dimensions": [
+        1440,
+        2110
+      ],
+      "identityBasis": "native-report",
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-desktop/workspace-records-chromium-desktop-actual.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-log",
+        "project": "chromium-desktop",
+        "sourceSha256": "b40560077402ebc9da6f4182244a2f9c47d6fd560d1ee50a2ec7ae75d3fabf0e",
+        "title": "workspace release corpus is accessible, responsive, and visually stable"
+      },
+      "project": "chromium-desktop",
+      "role": "actual",
+      "sha256": "d0ddd681a2ba76cc0bcd6fb9b52b3022c64806025b9227e2ab0d8521b813f0de",
+      "storage": "objects/d0ddd681a2ba76cc0bcd6fb9b52b3022c64806025b9227e2ab0d8521b813f0de.png",
+      "test": "workspace release corpus is accessible, responsive, and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-desktop/workspace-records-chromium-desktop-diff.png",
+          "sha256": "41601307411690025f237992517bff7147b23b78d2d0ee0cb5732d079b2288ad"
+        }
+      ],
+      "bytes": 253581,
+      "dimensions": [
+        1440,
+        2110
+      ],
+      "identityBasis": "native-report",
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-desktop/workspace-records-chromium-desktop-diff.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-log",
+        "project": "chromium-desktop",
+        "sourceSha256": "b40560077402ebc9da6f4182244a2f9c47d6fd560d1ee50a2ec7ae75d3fabf0e",
+        "title": "workspace release corpus is accessible, responsive, and visually stable"
+      },
+      "project": "chromium-desktop",
+      "role": "diff",
+      "sha256": "41601307411690025f237992517bff7147b23b78d2d0ee0cb5732d079b2288ad",
+      "storage": "objects/41601307411690025f237992517bff7147b23b78d2d0ee0cb5732d079b2288ad.png",
+      "test": "workspace release corpus is accessible, responsive, and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-desktop/workspace-records-chromium-desktop-expected.png",
+          "sha256": "974094f4e108a3356d1888dcce80d991373039f99c4cbf0bbf28e74ce0e89534"
+        }
+      ],
+      "bytes": 519149,
+      "dimensions": [
+        1440,
+        1998
+      ],
+      "identityBasis": "native-report",
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-desktop/workspace-records-chromium-desktop-expected.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-log",
+        "project": "chromium-desktop",
+        "sourceSha256": "b40560077402ebc9da6f4182244a2f9c47d6fd560d1ee50a2ec7ae75d3fabf0e",
+        "title": "workspace release corpus is accessible, responsive, and visually stable"
+      },
+      "project": "chromium-desktop",
+      "role": "expected",
+      "sha256": "974094f4e108a3356d1888dcce80d991373039f99c4cbf0bbf28e74ce0e89534",
+      "storage": "objects/974094f4e108a3356d1888dcce80d991373039f99c4cbf0bbf28e74ce0e89534.png",
+      "test": "workspace release corpus is accessible, responsive, and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-high-contrast/test-failed-1.png",
+          "sha256": "06a026a0a069900d21229993b83aa6cad4fce4d281a89a1d5fac19f12bdfdfa8"
+        }
+      ],
+      "bytes": 387689,
+      "dimensions": [
+        1280,
+        900
+      ],
+      "identityBasis": "native-report",
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-high-contrast/test-failed-1.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-log",
+        "project": "chromium-high-contrast",
+        "sourceSha256": "b40560077402ebc9da6f4182244a2f9c47d6fd560d1ee50a2ec7ae75d3fabf0e",
+        "title": "workspace release corpus is accessible, responsive, and visually stable"
+      },
+      "project": "chromium-high-contrast",
+      "role": "failure",
+      "sha256": "06a026a0a069900d21229993b83aa6cad4fce4d281a89a1d5fac19f12bdfdfa8",
+      "storage": "objects/06a026a0a069900d21229993b83aa6cad4fce4d281a89a1d5fac19f12bdfdfa8.png",
+      "test": "workspace release corpus is accessible, responsive, and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-high-contrast/workspace-exports-chromium-high-contrast-actual.png",
+          "sha256": "d1be8be7ce74ead3b60f3f90c5fd8269ee93bd35b36302a77640280d4876a42b"
+        }
+      ],
+      "bytes": 468625,
+      "dimensions": [
+        1280,
+        2042
+      ],
+      "identityBasis": "native-report",
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-high-contrast/workspace-exports-chromium-high-contrast-actual.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-log",
+        "project": "chromium-high-contrast",
+        "sourceSha256": "b40560077402ebc9da6f4182244a2f9c47d6fd560d1ee50a2ec7ae75d3fabf0e",
+        "title": "workspace release corpus is accessible, responsive, and visually stable"
+      },
+      "project": "chromium-high-contrast",
+      "role": "actual",
+      "sha256": "d1be8be7ce74ead3b60f3f90c5fd8269ee93bd35b36302a77640280d4876a42b",
+      "storage": "objects/d1be8be7ce74ead3b60f3f90c5fd8269ee93bd35b36302a77640280d4876a42b.png",
+      "test": "workspace release corpus is accessible, responsive, and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-high-contrast/workspace-exports-chromium-high-contrast-diff.png",
+          "sha256": "f414ab041a344b2b1017885c8fafe6875487bf99c87dfe3925ba6278f918ae4d"
+        }
+      ],
+      "bytes": 205278,
+      "dimensions": [
+        1280,
+        2042
+      ],
+      "identityBasis": "native-report",
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-high-contrast/workspace-exports-chromium-high-contrast-diff.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-log",
+        "project": "chromium-high-contrast",
+        "sourceSha256": "b40560077402ebc9da6f4182244a2f9c47d6fd560d1ee50a2ec7ae75d3fabf0e",
+        "title": "workspace release corpus is accessible, responsive, and visually stable"
+      },
+      "project": "chromium-high-contrast",
+      "role": "diff",
+      "sha256": "f414ab041a344b2b1017885c8fafe6875487bf99c87dfe3925ba6278f918ae4d",
+      "storage": "objects/f414ab041a344b2b1017885c8fafe6875487bf99c87dfe3925ba6278f918ae4d.png",
+      "test": "workspace release corpus is accessible, responsive, and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-high-contrast/workspace-exports-chromium-high-contrast-expected.png",
+          "sha256": "7e9ce3f60b1e9c8466707fe462e0159131b955a019f8962e57dfa01eabc8d233"
+        }
+      ],
+      "bytes": 378319,
+      "dimensions": [
+        1280,
+        1704
+      ],
+      "identityBasis": "native-report",
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-high-contrast/workspace-exports-chromium-high-contrast-expected.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-log",
+        "project": "chromium-high-contrast",
+        "sourceSha256": "b40560077402ebc9da6f4182244a2f9c47d6fd560d1ee50a2ec7ae75d3fabf0e",
+        "title": "workspace release corpus is accessible, responsive, and visually stable"
+      },
+      "project": "chromium-high-contrast",
+      "role": "expected",
+      "sha256": "7e9ce3f60b1e9c8466707fe462e0159131b955a019f8962e57dfa01eabc8d233",
+      "storage": "objects/7e9ce3f60b1e9c8466707fe462e0159131b955a019f8962e57dfa01eabc8d233.png",
+      "test": "workspace release corpus is accessible, responsive, and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-high-contrast/workspace-exports-post-assert.png",
+          "sha256": "d1be8be7ce74ead3b60f3f90c5fd8269ee93bd35b36302a77640280d4876a42b"
+        }
+      ],
+      "bytes": 468625,
+      "dimensions": [
+        1280,
+        2042
+      ],
+      "identityBasis": "native-report",
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-high-contrast/workspace-exports-post-assert.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-log",
+        "project": "chromium-high-contrast",
+        "sourceSha256": "b40560077402ebc9da6f4182244a2f9c47d6fd560d1ee50a2ec7ae75d3fabf0e",
+        "title": "workspace release corpus is accessible, responsive, and visually stable"
+      },
+      "project": "chromium-high-contrast",
+      "role": "current",
+      "sha256": "d1be8be7ce74ead3b60f3f90c5fd8269ee93bd35b36302a77640280d4876a42b",
+      "storage": "objects/d1be8be7ce74ead3b60f3f90c5fd8269ee93bd35b36302a77640280d4876a42b.png",
+      "test": "workspace release corpus is accessible, responsive, and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-high-contrast/workspace-imports-chromium-high-contrast-actual.png",
+          "sha256": "72e6842cdfd5139e94bb3ea2a13967bb3851b19e6533d9dbef145767c23c7c92"
+        }
+      ],
+      "bytes": 443177,
+      "dimensions": [
+        1280,
+        1533
+      ],
+      "identityBasis": "native-report",
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-high-contrast/workspace-imports-chromium-high-contrast-actual.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-log",
+        "project": "chromium-high-contrast",
+        "sourceSha256": "b40560077402ebc9da6f4182244a2f9c47d6fd560d1ee50a2ec7ae75d3fabf0e",
+        "title": "workspace release corpus is accessible, responsive, and visually stable"
+      },
+      "project": "chromium-high-contrast",
+      "role": "actual",
+      "sha256": "72e6842cdfd5139e94bb3ea2a13967bb3851b19e6533d9dbef145767c23c7c92",
+      "storage": "objects/72e6842cdfd5139e94bb3ea2a13967bb3851b19e6533d9dbef145767c23c7c92.png",
+      "test": "workspace release corpus is accessible, responsive, and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-high-contrast/workspace-imports-chromium-high-contrast-diff.png",
+          "sha256": "787bff69f0dfc9fbb7dd54577ba898b535add42fbf1c386733c9d13346eb726e"
+        }
+      ],
+      "bytes": 168359,
+      "dimensions": [
+        1280,
+        1533
+      ],
+      "identityBasis": "native-report",
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-high-contrast/workspace-imports-chromium-high-contrast-diff.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-log",
+        "project": "chromium-high-contrast",
+        "sourceSha256": "b40560077402ebc9da6f4182244a2f9c47d6fd560d1ee50a2ec7ae75d3fabf0e",
+        "title": "workspace release corpus is accessible, responsive, and visually stable"
+      },
+      "project": "chromium-high-contrast",
+      "role": "diff",
+      "sha256": "787bff69f0dfc9fbb7dd54577ba898b535add42fbf1c386733c9d13346eb726e",
+      "storage": "objects/787bff69f0dfc9fbb7dd54577ba898b535add42fbf1c386733c9d13346eb726e.png",
+      "test": "workspace release corpus is accessible, responsive, and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-high-contrast/workspace-imports-chromium-high-contrast-expected.png",
+          "sha256": "8a2598ad098085ebf595b135a01a43813267049ad587c4dfe4140b9841209245"
+        }
+      ],
+      "bytes": 360557,
+      "dimensions": [
+        1280,
+        1384
+      ],
+      "identityBasis": "native-report",
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-high-contrast/workspace-imports-chromium-high-contrast-expected.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-log",
+        "project": "chromium-high-contrast",
+        "sourceSha256": "b40560077402ebc9da6f4182244a2f9c47d6fd560d1ee50a2ec7ae75d3fabf0e",
+        "title": "workspace release corpus is accessible, responsive, and visually stable"
+      },
+      "project": "chromium-high-contrast",
+      "role": "expected",
+      "sha256": "8a2598ad098085ebf595b135a01a43813267049ad587c4dfe4140b9841209245",
+      "storage": "objects/8a2598ad098085ebf595b135a01a43813267049ad587c4dfe4140b9841209245.png",
+      "test": "workspace release corpus is accessible, responsive, and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-high-contrast/workspace-imports-post-assert.png",
+          "sha256": "ec7f033d1472632c5ffc710128ccf1458b8d25d08f47838bdf9c380ae004c410"
+        }
+      ],
+      "bytes": 443151,
+      "dimensions": [
+        1280,
+        1533
+      ],
+      "identityBasis": "native-report",
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-high-contrast/workspace-imports-post-assert.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-log",
+        "project": "chromium-high-contrast",
+        "sourceSha256": "b40560077402ebc9da6f4182244a2f9c47d6fd560d1ee50a2ec7ae75d3fabf0e",
+        "title": "workspace release corpus is accessible, responsive, and visually stable"
+      },
+      "project": "chromium-high-contrast",
+      "role": "current",
+      "sha256": "ec7f033d1472632c5ffc710128ccf1458b8d25d08f47838bdf9c380ae004c410",
+      "storage": "objects/ec7f033d1472632c5ffc710128ccf1458b8d25d08f47838bdf9c380ae004c410.png",
+      "test": "workspace release corpus is accessible, responsive, and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-high-contrast/workspace-records-chromium-high-contrast-actual.png",
+          "sha256": "87648c13a16bc86cc4bb0ce35820bd02f2bb2397b0863f5e63dc14ff33970700"
+        }
+      ],
+      "bytes": 482828,
+      "dimensions": [
+        1280,
+        2254
+      ],
+      "identityBasis": "native-report",
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-high-contrast/workspace-records-chromium-high-contrast-actual.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-log",
+        "project": "chromium-high-contrast",
+        "sourceSha256": "b40560077402ebc9da6f4182244a2f9c47d6fd560d1ee50a2ec7ae75d3fabf0e",
+        "title": "workspace release corpus is accessible, responsive, and visually stable"
+      },
+      "project": "chromium-high-contrast",
+      "role": "actual",
+      "sha256": "87648c13a16bc86cc4bb0ce35820bd02f2bb2397b0863f5e63dc14ff33970700",
+      "storage": "objects/87648c13a16bc86cc4bb0ce35820bd02f2bb2397b0863f5e63dc14ff33970700.png",
+      "test": "workspace release corpus is accessible, responsive, and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-high-contrast/workspace-records-chromium-high-contrast-diff.png",
+          "sha256": "082c9807599337b1f2b5afa6ac773ca8b223613c474f3f444997de6b425f6132"
+        }
+      ],
+      "bytes": 222788,
+      "dimensions": [
+        1280,
+        2254
+      ],
+      "identityBasis": "native-report",
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-high-contrast/workspace-records-chromium-high-contrast-diff.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-log",
+        "project": "chromium-high-contrast",
+        "sourceSha256": "b40560077402ebc9da6f4182244a2f9c47d6fd560d1ee50a2ec7ae75d3fabf0e",
+        "title": "workspace release corpus is accessible, responsive, and visually stable"
+      },
+      "project": "chromium-high-contrast",
+      "role": "diff",
+      "sha256": "082c9807599337b1f2b5afa6ac773ca8b223613c474f3f444997de6b425f6132",
+      "storage": "objects/082c9807599337b1f2b5afa6ac773ca8b223613c474f3f444997de6b425f6132.png",
+      "test": "workspace release corpus is accessible, responsive, and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-high-contrast/workspace-records-chromium-high-contrast-expected.png",
+          "sha256": "28fbeee09d5e63280ba83a5a97b5fec76b72577985fd5b5f9a7aec2a4c8a9cb0"
+        }
+      ],
+      "bytes": 401390,
+      "dimensions": [
+        1280,
+        2081
+      ],
+      "identityBasis": "native-report",
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-high-contrast/workspace-records-chromium-high-contrast-expected.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-log",
+        "project": "chromium-high-contrast",
+        "sourceSha256": "b40560077402ebc9da6f4182244a2f9c47d6fd560d1ee50a2ec7ae75d3fabf0e",
+        "title": "workspace release corpus is accessible, responsive, and visually stable"
+      },
+      "project": "chromium-high-contrast",
+      "role": "expected",
+      "sha256": "28fbeee09d5e63280ba83a5a97b5fec76b72577985fd5b5f9a7aec2a4c8a9cb0",
+      "storage": "objects/28fbeee09d5e63280ba83a5a97b5fec76b72577985fd5b5f9a7aec2a4c8a9cb0.png",
+      "test": "workspace release corpus is accessible, responsive, and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-high-contrast/workspace-records-post-assert.png",
+          "sha256": "20158bec4cd6aec3dca8b5adffde1e8bd879699d6d728e443edb601f654b1862"
+        }
+      ],
+      "bytes": 482834,
+      "dimensions": [
+        1280,
+        2254
+      ],
+      "identityBasis": "native-report",
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-high-contrast/workspace-records-post-assert.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-log",
+        "project": "chromium-high-contrast",
+        "sourceSha256": "b40560077402ebc9da6f4182244a2f9c47d6fd560d1ee50a2ec7ae75d3fabf0e",
+        "title": "workspace release corpus is accessible, responsive, and visually stable"
+      },
+      "project": "chromium-high-contrast",
+      "role": "current",
+      "sha256": "20158bec4cd6aec3dca8b5adffde1e8bd879699d6d728e443edb601f654b1862",
+      "storage": "objects/20158bec4cd6aec3dca8b5adffde1e8bd879699d6d728e443edb601f654b1862.png",
+      "test": "workspace release corpus is accessible, responsive, and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-high-contrast/workspace-schema-chromium-high-contrast-actual.png",
+          "sha256": "8ab655c8769dbb0112a0c8fdd68d06ffe9294652c79f65a9f5089fcfa00dee05"
+        }
+      ],
+      "bytes": 519905,
+      "dimensions": [
+        1280,
+        2586
+      ],
+      "identityBasis": "native-report",
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-high-contrast/workspace-schema-chromium-high-contrast-actual.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-log",
+        "project": "chromium-high-contrast",
+        "sourceSha256": "b40560077402ebc9da6f4182244a2f9c47d6fd560d1ee50a2ec7ae75d3fabf0e",
+        "title": "workspace release corpus is accessible, responsive, and visually stable"
+      },
+      "project": "chromium-high-contrast",
+      "role": "actual",
+      "sha256": "8ab655c8769dbb0112a0c8fdd68d06ffe9294652c79f65a9f5089fcfa00dee05",
+      "storage": "objects/8ab655c8769dbb0112a0c8fdd68d06ffe9294652c79f65a9f5089fcfa00dee05.png",
+      "test": "workspace release corpus is accessible, responsive, and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-high-contrast/workspace-schema-chromium-high-contrast-diff.png",
+          "sha256": "753ba329bf41127fb5a91a044bfb31f75e142cd74d635371f69ca008b34b1f1b"
+        }
+      ],
+      "bytes": 274310,
+      "dimensions": [
+        1280,
+        2586
+      ],
+      "identityBasis": "native-report",
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-high-contrast/workspace-schema-chromium-high-contrast-diff.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-log",
+        "project": "chromium-high-contrast",
+        "sourceSha256": "b40560077402ebc9da6f4182244a2f9c47d6fd560d1ee50a2ec7ae75d3fabf0e",
+        "title": "workspace release corpus is accessible, responsive, and visually stable"
+      },
+      "project": "chromium-high-contrast",
+      "role": "diff",
+      "sha256": "753ba329bf41127fb5a91a044bfb31f75e142cd74d635371f69ca008b34b1f1b",
+      "storage": "objects/753ba329bf41127fb5a91a044bfb31f75e142cd74d635371f69ca008b34b1f1b.png",
+      "test": "workspace release corpus is accessible, responsive, and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-high-contrast/workspace-schema-chromium-high-contrast-expected.png",
+          "sha256": "90ee262788f063532814a7f5c892149d56b28de228a6c4986948665d28285c7f"
+        }
+      ],
+      "bytes": 426745,
+      "dimensions": [
+        1280,
+        2220
+      ],
+      "identityBasis": "native-report",
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-high-contrast/workspace-schema-chromium-high-contrast-expected.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-log",
+        "project": "chromium-high-contrast",
+        "sourceSha256": "b40560077402ebc9da6f4182244a2f9c47d6fd560d1ee50a2ec7ae75d3fabf0e",
+        "title": "workspace release corpus is accessible, responsive, and visually stable"
+      },
+      "project": "chromium-high-contrast",
+      "role": "expected",
+      "sha256": "90ee262788f063532814a7f5c892149d56b28de228a6c4986948665d28285c7f",
+      "storage": "objects/90ee262788f063532814a7f5c892149d56b28de228a6c4986948665d28285c7f.png",
+      "test": "workspace release corpus is accessible, responsive, and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-high-contrast/workspace-schema-post-assert.png",
+          "sha256": "164da8aa3aac48fb12ad03133cff7dd9ead4f2932a2fc32497b473fcec3c73cf"
+        }
+      ],
+      "bytes": 519914,
+      "dimensions": [
+        1280,
+        2586
+      ],
+      "identityBasis": "native-report",
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-high-contrast/workspace-schema-post-assert.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-log",
+        "project": "chromium-high-contrast",
+        "sourceSha256": "b40560077402ebc9da6f4182244a2f9c47d6fd560d1ee50a2ec7ae75d3fabf0e",
+        "title": "workspace release corpus is accessible, responsive, and visually stable"
+      },
+      "project": "chromium-high-contrast",
+      "role": "current",
+      "sha256": "164da8aa3aac48fb12ad03133cff7dd9ead4f2932a2fc32497b473fcec3c73cf",
+      "storage": "objects/164da8aa3aac48fb12ad03133cff7dd9ead4f2932a2fc32497b473fcec3c73cf.png",
+      "test": "workspace release corpus is accessible, responsive, and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-landscape-touch/current-scrollport-footer.png",
+          "sha256": "088253717cc5fa4fffed431f98d8fcb8d5de2f74def34aeaf0c106611d1eed2d"
+        }
+      ],
+      "bytes": 168509,
+      "dimensions": [
+        1688,
+        780
+      ],
+      "identityBasis": "native-report",
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-landscape-touch/current-scrollport-footer.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-log",
+        "project": "chromium-landscape-touch",
+        "sourceSha256": "b40560077402ebc9da6f4182244a2f9c47d6fd560d1ee50a2ec7ae75d3fabf0e",
+        "title": "workspace release corpus is accessible, responsive, and visually stable"
+      },
+      "project": "chromium-landscape-touch",
+      "role": "current",
+      "sha256": "088253717cc5fa4fffed431f98d8fcb8d5de2f74def34aeaf0c106611d1eed2d",
+      "storage": "objects/088253717cc5fa4fffed431f98d8fcb8d5de2f74def34aeaf0c106611d1eed2d.png",
+      "test": "workspace release corpus is accessible, responsive, and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-landscape-touch/current-scrollport-middle.png",
+          "sha256": "1bf2b5c0ca4811fe834135ab43345a31807264735e5b55e2dde4810e2839dbd8"
+        }
+      ],
+      "bytes": 124413,
+      "dimensions": [
+        1688,
+        780
+      ],
+      "identityBasis": "native-report",
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-landscape-touch/current-scrollport-middle.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-log",
+        "project": "chromium-landscape-touch",
+        "sourceSha256": "b40560077402ebc9da6f4182244a2f9c47d6fd560d1ee50a2ec7ae75d3fabf0e",
+        "title": "workspace release corpus is accessible, responsive, and visually stable"
+      },
+      "project": "chromium-landscape-touch",
+      "role": "current",
+      "sha256": "1bf2b5c0ca4811fe834135ab43345a31807264735e5b55e2dde4810e2839dbd8",
+      "storage": "objects/1bf2b5c0ca4811fe834135ab43345a31807264735e5b55e2dde4810e2839dbd8.png",
+      "test": "workspace release corpus is accessible, responsive, and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-landscape-touch/current-scrollport-top.png",
+          "sha256": "4efd4a050fac894f209c81dab31d0c1a36909f1725a593f610145fac659ba91e"
+        }
+      ],
+      "bytes": 355295,
+      "dimensions": [
+        1688,
+        780
+      ],
+      "identityBasis": "native-report",
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-landscape-touch/current-scrollport-top.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-log",
+        "project": "chromium-landscape-touch",
+        "sourceSha256": "b40560077402ebc9da6f4182244a2f9c47d6fd560d1ee50a2ec7ae75d3fabf0e",
+        "title": "workspace release corpus is accessible, responsive, and visually stable"
+      },
+      "project": "chromium-landscape-touch",
+      "role": "current",
+      "sha256": "4efd4a050fac894f209c81dab31d0c1a36909f1725a593f610145fac659ba91e",
+      "storage": "objects/4efd4a050fac894f209c81dab31d0c1a36909f1725a593f610145fac659ba91e.png",
+      "test": "workspace release corpus is accessible, responsive, and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-landscape-touch/test-failed-1.png",
+          "sha256": "c8cb0725525c4d08f028a50813595e86ad6f027b49446d17d524d72bd56bda99"
+        }
+      ],
+      "bytes": 355442,
+      "dimensions": [
+        1688,
+        780
+      ],
+      "identityBasis": "native-report",
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-landscape-touch/test-failed-1.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-log",
+        "project": "chromium-landscape-touch",
+        "sourceSha256": "b40560077402ebc9da6f4182244a2f9c47d6fd560d1ee50a2ec7ae75d3fabf0e",
+        "title": "workspace release corpus is accessible, responsive, and visually stable"
+      },
+      "project": "chromium-landscape-touch",
+      "role": "failure",
+      "sha256": "c8cb0725525c4d08f028a50813595e86ad6f027b49446d17d524d72bd56bda99",
+      "storage": "objects/c8cb0725525c4d08f028a50813595e86ad6f027b49446d17d524d72bd56bda99.png",
+      "test": "workspace release corpus is accessible, responsive, and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-landscape-touch/workspace-records-chromium-landscape-touch-actual.png",
+          "sha256": "6cc8d3e780e39db9b08efa0b6aa58426f081d972ed2a421ae92a7356dc09f443"
+        }
+      ],
+      "bytes": 124272,
+      "dimensions": [
+        844,
+        390
+      ],
+      "identityBasis": "native-report",
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-landscape-touch/workspace-records-chromium-landscape-touch-actual.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-log",
+        "project": "chromium-landscape-touch",
+        "sourceSha256": "b40560077402ebc9da6f4182244a2f9c47d6fd560d1ee50a2ec7ae75d3fabf0e",
+        "title": "workspace release corpus is accessible, responsive, and visually stable"
+      },
+      "project": "chromium-landscape-touch",
+      "role": "actual",
+      "sha256": "6cc8d3e780e39db9b08efa0b6aa58426f081d972ed2a421ae92a7356dc09f443",
+      "storage": "objects/6cc8d3e780e39db9b08efa0b6aa58426f081d972ed2a421ae92a7356dc09f443.png",
+      "test": "workspace release corpus is accessible, responsive, and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-landscape-touch/workspace-records-chromium-landscape-touch-diff.png",
+          "sha256": "7d9bdb0b00a52f31c072e4501fd030e2c8621c744a593b63e1259541db603ed3"
+        }
+      ],
+      "bytes": 100025,
+      "dimensions": [
+        844,
+        2480
+      ],
+      "identityBasis": "native-report",
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-landscape-touch/workspace-records-chromium-landscape-touch-diff.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-log",
+        "project": "chromium-landscape-touch",
+        "sourceSha256": "b40560077402ebc9da6f4182244a2f9c47d6fd560d1ee50a2ec7ae75d3fabf0e",
+        "title": "workspace release corpus is accessible, responsive, and visually stable"
+      },
+      "project": "chromium-landscape-touch",
+      "role": "diff",
+      "sha256": "7d9bdb0b00a52f31c072e4501fd030e2c8621c744a593b63e1259541db603ed3",
+      "storage": "objects/7d9bdb0b00a52f31c072e4501fd030e2c8621c744a593b63e1259541db603ed3.png",
+      "test": "workspace release corpus is accessible, responsive, and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-landscape-touch/workspace-records-chromium-landscape-touch-expected.png",
+          "sha256": "d54e1ba17b8b35554d86e094d67385ce2b4985eb5427a907ac6f4e7c475910f3"
+        }
+      ],
+      "bytes": 363996,
+      "dimensions": [
+        844,
+        2480
+      ],
+      "identityBasis": "native-report",
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-landscape-touch/workspace-records-chromium-landscape-touch-expected.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-log",
+        "project": "chromium-landscape-touch",
+        "sourceSha256": "b40560077402ebc9da6f4182244a2f9c47d6fd560d1ee50a2ec7ae75d3fabf0e",
+        "title": "workspace release corpus is accessible, responsive, and visually stable"
+      },
+      "project": "chromium-landscape-touch",
+      "role": "expected",
+      "sha256": "d54e1ba17b8b35554d86e094d67385ce2b4985eb5427a907ac6f4e7c475910f3",
+      "storage": "objects/d54e1ba17b8b35554d86e094d67385ce2b4985eb5427a907ac6f4e7c475910f3.png",
+      "test": "workspace release corpus is accessible, responsive, and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-large-text/test-failed-1.png",
+          "sha256": "a32847db9b0cf9f7efabdd3c30603308470b693cc4bd3d42abe704990c0e3567"
+        }
+      ],
+      "bytes": 414759,
+      "dimensions": [
+        1280,
+        900
+      ],
+      "identityBasis": "native-report",
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-large-text/test-failed-1.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-log",
+        "project": "chromium-large-text",
+        "sourceSha256": "b40560077402ebc9da6f4182244a2f9c47d6fd560d1ee50a2ec7ae75d3fabf0e",
+        "title": "workspace release corpus is accessible, responsive, and visually stable"
+      },
+      "project": "chromium-large-text",
+      "role": "failure",
+      "sha256": "a32847db9b0cf9f7efabdd3c30603308470b693cc4bd3d42abe704990c0e3567",
+      "storage": "objects/a32847db9b0cf9f7efabdd3c30603308470b693cc4bd3d42abe704990c0e3567.png",
+      "test": "workspace release corpus is accessible, responsive, and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-large-text/workspace-records-chromium-large-text-actual.png",
+          "sha256": "6c9fd769ca2546164aa833266a2eb273549bc42ed73b399fa521b0e28057b160"
+        }
+      ],
+      "bytes": 578207,
+      "dimensions": [
+        1280,
+        2254
+      ],
+      "identityBasis": "native-report",
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-large-text/workspace-records-chromium-large-text-actual.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-log",
+        "project": "chromium-large-text",
+        "sourceSha256": "b40560077402ebc9da6f4182244a2f9c47d6fd560d1ee50a2ec7ae75d3fabf0e",
+        "title": "workspace release corpus is accessible, responsive, and visually stable"
+      },
+      "project": "chromium-large-text",
+      "role": "actual",
+      "sha256": "6c9fd769ca2546164aa833266a2eb273549bc42ed73b399fa521b0e28057b160",
+      "storage": "objects/6c9fd769ca2546164aa833266a2eb273549bc42ed73b399fa521b0e28057b160.png",
+      "test": "workspace release corpus is accessible, responsive, and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-large-text/workspace-records-chromium-large-text-diff.png",
+          "sha256": "affa2d7ae9ec647f490e7bf3d463fb2e7b0fc15f8b21036daae82c6dc53298c7"
+        }
+      ],
+      "bytes": 250445,
+      "dimensions": [
+        1280,
+        2254
+      ],
+      "identityBasis": "native-report",
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-large-text/workspace-records-chromium-large-text-diff.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-log",
+        "project": "chromium-large-text",
+        "sourceSha256": "b40560077402ebc9da6f4182244a2f9c47d6fd560d1ee50a2ec7ae75d3fabf0e",
+        "title": "workspace release corpus is accessible, responsive, and visually stable"
+      },
+      "project": "chromium-large-text",
+      "role": "diff",
+      "sha256": "affa2d7ae9ec647f490e7bf3d463fb2e7b0fc15f8b21036daae82c6dc53298c7",
+      "storage": "objects/affa2d7ae9ec647f490e7bf3d463fb2e7b0fc15f8b21036daae82c6dc53298c7.png",
+      "test": "workspace release corpus is accessible, responsive, and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-large-text/workspace-records-chromium-large-text-expected.png",
+          "sha256": "7bdddf6ec5dba35ab6e4fb546e4eca2ab8d78de28728111cec7ae704cd8e5f58"
+        }
+      ],
+      "bytes": 484786,
+      "dimensions": [
+        1280,
+        2081
+      ],
+      "identityBasis": "native-report",
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-large-text/workspace-records-chromium-large-text-expected.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-log",
+        "project": "chromium-large-text",
+        "sourceSha256": "b40560077402ebc9da6f4182244a2f9c47d6fd560d1ee50a2ec7ae75d3fabf0e",
+        "title": "workspace release corpus is accessible, responsive, and visually stable"
+      },
+      "project": "chromium-large-text",
+      "role": "expected",
+      "sha256": "7bdddf6ec5dba35ab6e4fb546e4eca2ab8d78de28728111cec7ae704cd8e5f58",
+      "storage": "git:3cdd3716702693f650cd85941640aa083df49a0e:react-app/e2e/workspace/workspace-release.spec.ts-snapshots/workspace-records-chromium-high-contrast-chromium-high-contrast-linux.png",
+      "test": "workspace release corpus is accessible, responsive, and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-light/test-failed-1.png",
+          "sha256": "f97e990b77c333f518a64eb4eb5829a699f8aa4442d6235ad231d8b9192a7701"
+        }
+      ],
+      "bytes": 434889,
+      "dimensions": [
+        1280,
+        900
+      ],
+      "identityBasis": "native-report",
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-light/test-failed-1.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-log",
+        "project": "chromium-light",
+        "sourceSha256": "b40560077402ebc9da6f4182244a2f9c47d6fd560d1ee50a2ec7ae75d3fabf0e",
+        "title": "workspace release corpus is accessible, responsive, and visually stable"
+      },
+      "project": "chromium-light",
+      "role": "failure",
+      "sha256": "f97e990b77c333f518a64eb4eb5829a699f8aa4442d6235ad231d8b9192a7701",
+      "storage": "objects/f97e990b77c333f518a64eb4eb5829a699f8aa4442d6235ad231d8b9192a7701.png",
+      "test": "workspace release corpus is accessible, responsive, and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-light/workspace-records-chromium-light-actual.png",
+          "sha256": "486de8ea4d05fba77a65cf851a396b655160323974ec50dd2d0c2e7da24ff743"
+        }
+      ],
+      "bytes": 613070,
+      "dimensions": [
+        1280,
+        2254
+      ],
+      "identityBasis": "native-report",
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-light/workspace-records-chromium-light-actual.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-log",
+        "project": "chromium-light",
+        "sourceSha256": "b40560077402ebc9da6f4182244a2f9c47d6fd560d1ee50a2ec7ae75d3fabf0e",
+        "title": "workspace release corpus is accessible, responsive, and visually stable"
+      },
+      "project": "chromium-light",
+      "role": "actual",
+      "sha256": "486de8ea4d05fba77a65cf851a396b655160323974ec50dd2d0c2e7da24ff743",
+      "storage": "objects/486de8ea4d05fba77a65cf851a396b655160323974ec50dd2d0c2e7da24ff743.png",
+      "test": "workspace release corpus is accessible, responsive, and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-light/workspace-records-chromium-light-diff.png",
+          "sha256": "a00b5f01bc4500da9a9d9818a7f7b479672194c9b70bb26b51f4f2d5f7ab4145"
+        }
+      ],
+      "bytes": 254707,
+      "dimensions": [
+        1280,
+        2254
+      ],
+      "identityBasis": "native-report",
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-light/workspace-records-chromium-light-diff.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-log",
+        "project": "chromium-light",
+        "sourceSha256": "b40560077402ebc9da6f4182244a2f9c47d6fd560d1ee50a2ec7ae75d3fabf0e",
+        "title": "workspace release corpus is accessible, responsive, and visually stable"
+      },
+      "project": "chromium-light",
+      "role": "diff",
+      "sha256": "a00b5f01bc4500da9a9d9818a7f7b479672194c9b70bb26b51f4f2d5f7ab4145",
+      "storage": "objects/a00b5f01bc4500da9a9d9818a7f7b479672194c9b70bb26b51f4f2d5f7ab4145.png",
+      "test": "workspace release corpus is accessible, responsive, and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-light/workspace-records-chromium-light-expected.png",
+          "sha256": "c4b06de96950ee685acfd752a791bd5665e32dedb76c73202ae4906563b3a690"
+        }
+      ],
+      "bytes": 506530,
+      "dimensions": [
+        1280,
+        2081
+      ],
+      "identityBasis": "native-report",
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-light/workspace-records-chromium-light-expected.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-log",
+        "project": "chromium-light",
+        "sourceSha256": "b40560077402ebc9da6f4182244a2f9c47d6fd560d1ee50a2ec7ae75d3fabf0e",
+        "title": "workspace release corpus is accessible, responsive, and visually stable"
+      },
+      "project": "chromium-light",
+      "role": "expected",
+      "sha256": "c4b06de96950ee685acfd752a791bd5665e32dedb76c73202ae4906563b3a690",
+      "storage": "objects/c4b06de96950ee685acfd752a791bd5665e32dedb76c73202ae4906563b3a690.png",
+      "test": "workspace release corpus is accessible, responsive, and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-phone-dpr3/current-scrollport-footer.png",
+          "sha256": "d9a0f221a53d5ac2f7d84a38ef56d0f6555176d77bfd524453c78d81cca75c6c"
+        }
+      ],
+      "bytes": 440770,
+      "dimensions": [
+        1170,
+        2532
+      ],
+      "identityBasis": "native-report",
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-phone-dpr3/current-scrollport-footer.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-log",
+        "project": "chromium-phone-dpr3",
+        "sourceSha256": "b40560077402ebc9da6f4182244a2f9c47d6fd560d1ee50a2ec7ae75d3fabf0e",
+        "title": "workspace release corpus is accessible, responsive, and visually stable"
+      },
+      "project": "chromium-phone-dpr3",
+      "role": "current",
+      "sha256": "d9a0f221a53d5ac2f7d84a38ef56d0f6555176d77bfd524453c78d81cca75c6c",
+      "storage": "objects/d9a0f221a53d5ac2f7d84a38ef56d0f6555176d77bfd524453c78d81cca75c6c.png",
+      "test": "workspace release corpus is accessible, responsive, and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-phone-dpr3/current-scrollport-middle.png",
+          "sha256": "0603d96ee975d0b13b7250c5357d1ea7e82675773b813956020fff974bfd67df"
+        }
+      ],
+      "bytes": 608185,
+      "dimensions": [
+        1170,
+        2532
+      ],
+      "identityBasis": "native-report",
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-phone-dpr3/current-scrollport-middle.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-log",
+        "project": "chromium-phone-dpr3",
+        "sourceSha256": "b40560077402ebc9da6f4182244a2f9c47d6fd560d1ee50a2ec7ae75d3fabf0e",
+        "title": "workspace release corpus is accessible, responsive, and visually stable"
+      },
+      "project": "chromium-phone-dpr3",
+      "role": "current",
+      "sha256": "0603d96ee975d0b13b7250c5357d1ea7e82675773b813956020fff974bfd67df",
+      "storage": "objects/0603d96ee975d0b13b7250c5357d1ea7e82675773b813956020fff974bfd67df.png",
+      "test": "workspace release corpus is accessible, responsive, and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-phone-dpr3/current-scrollport-top.png",
+          "sha256": "15c9df625fd85dcb01d027c1952a94e403df4691a222275d6ea6f2c3e89d7ce5"
+        }
+      ],
+      "bytes": 989148,
+      "dimensions": [
+        1170,
+        2532
+      ],
+      "identityBasis": "native-report",
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-phone-dpr3/current-scrollport-top.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-log",
+        "project": "chromium-phone-dpr3",
+        "sourceSha256": "b40560077402ebc9da6f4182244a2f9c47d6fd560d1ee50a2ec7ae75d3fabf0e",
+        "title": "workspace release corpus is accessible, responsive, and visually stable"
+      },
+      "project": "chromium-phone-dpr3",
+      "role": "current",
+      "sha256": "15c9df625fd85dcb01d027c1952a94e403df4691a222275d6ea6f2c3e89d7ce5",
+      "storage": "objects/15c9df625fd85dcb01d027c1952a94e403df4691a222275d6ea6f2c3e89d7ce5.png",
+      "test": "workspace release corpus is accessible, responsive, and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-phone-dpr3/test-failed-1.png",
+          "sha256": "268b6b56e3525efd6187808294af0935ef6064448a3c6742013f3145a53f7c06"
+        }
+      ],
+      "bytes": 989100,
+      "dimensions": [
+        1170,
+        2532
+      ],
+      "identityBasis": "native-report",
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-phone-dpr3/test-failed-1.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-log",
+        "project": "chromium-phone-dpr3",
+        "sourceSha256": "b40560077402ebc9da6f4182244a2f9c47d6fd560d1ee50a2ec7ae75d3fabf0e",
+        "title": "workspace release corpus is accessible, responsive, and visually stable"
+      },
+      "project": "chromium-phone-dpr3",
+      "role": "failure",
+      "sha256": "268b6b56e3525efd6187808294af0935ef6064448a3c6742013f3145a53f7c06",
+      "storage": "objects/268b6b56e3525efd6187808294af0935ef6064448a3c6742013f3145a53f7c06.png",
+      "test": "workspace release corpus is accessible, responsive, and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-phone-dpr3/workspace-records-chromium-phone-dpr3-actual.png",
+          "sha256": "72535fefe604209a10ea9099187fe6655e2916e2c454f4470ad35b172fef4a26"
+        }
+      ],
+      "bytes": 183956,
+      "dimensions": [
+        390,
+        844
+      ],
+      "identityBasis": "native-report",
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-phone-dpr3/workspace-records-chromium-phone-dpr3-actual.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-log",
+        "project": "chromium-phone-dpr3",
+        "sourceSha256": "b40560077402ebc9da6f4182244a2f9c47d6fd560d1ee50a2ec7ae75d3fabf0e",
+        "title": "workspace release corpus is accessible, responsive, and visually stable"
+      },
+      "project": "chromium-phone-dpr3",
+      "role": "actual",
+      "sha256": "72535fefe604209a10ea9099187fe6655e2916e2c454f4470ad35b172fef4a26",
+      "storage": "objects/72535fefe604209a10ea9099187fe6655e2916e2c454f4470ad35b172fef4a26.png",
+      "test": "workspace release corpus is accessible, responsive, and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-phone-dpr3/workspace-records-chromium-phone-dpr3-diff.png",
+          "sha256": "49da987d9fde15956eae6ec96d860c1138801d8f6caa8b4cfe7395e5d26d8641"
+        }
+      ],
+      "bytes": 90313,
+      "dimensions": [
+        390,
+        2840
+      ],
+      "identityBasis": "native-report",
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-phone-dpr3/workspace-records-chromium-phone-dpr3-diff.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-log",
+        "project": "chromium-phone-dpr3",
+        "sourceSha256": "b40560077402ebc9da6f4182244a2f9c47d6fd560d1ee50a2ec7ae75d3fabf0e",
+        "title": "workspace release corpus is accessible, responsive, and visually stable"
+      },
+      "project": "chromium-phone-dpr3",
+      "role": "diff",
+      "sha256": "49da987d9fde15956eae6ec96d860c1138801d8f6caa8b4cfe7395e5d26d8641",
+      "storage": "objects/49da987d9fde15956eae6ec96d860c1138801d8f6caa8b4cfe7395e5d26d8641.png",
+      "test": "workspace release corpus is accessible, responsive, and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-phone-dpr3/workspace-records-chromium-phone-dpr3-expected.png",
+          "sha256": "00e1c4614528d014b12dd245a67a0fcfcc9d7170e608d0ad9bf48330c0ce8a41"
+        }
+      ],
+      "bytes": 337456,
+      "dimensions": [
+        390,
+        2840
+      ],
+      "identityBasis": "native-report",
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-phone-dpr3/workspace-records-chromium-phone-dpr3-expected.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-log",
+        "project": "chromium-phone-dpr3",
+        "sourceSha256": "b40560077402ebc9da6f4182244a2f9c47d6fd560d1ee50a2ec7ae75d3fabf0e",
+        "title": "workspace release corpus is accessible, responsive, and visually stable"
+      },
+      "project": "chromium-phone-dpr3",
+      "role": "expected",
+      "sha256": "00e1c4614528d014b12dd245a67a0fcfcc9d7170e608d0ad9bf48330c0ce8a41",
+      "storage": "objects/00e1c4614528d014b12dd245a67a0fcfcc9d7170e608d0ad9bf48330c0ce8a41.png",
+      "test": "workspace release corpus is accessible, responsive, and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-tablet/current-scrollport-footer.png",
+          "sha256": "9eff2f6804ea3f983c5c3c497c81dc17bd18d280baed77f65d89d014bc95d304"
+        }
+      ],
+      "bytes": 171317,
+      "dimensions": [
+        1024,
+        768
+      ],
+      "identityBasis": "native-report",
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-tablet/current-scrollport-footer.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-log",
+        "project": "chromium-tablet",
+        "sourceSha256": "b40560077402ebc9da6f4182244a2f9c47d6fd560d1ee50a2ec7ae75d3fabf0e",
+        "title": "workspace release corpus is accessible, responsive, and visually stable"
+      },
+      "project": "chromium-tablet",
+      "role": "current",
+      "sha256": "9eff2f6804ea3f983c5c3c497c81dc17bd18d280baed77f65d89d014bc95d304",
+      "storage": "objects/9eff2f6804ea3f983c5c3c497c81dc17bd18d280baed77f65d89d014bc95d304.png",
+      "test": "workspace release corpus is accessible, responsive, and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-tablet/current-scrollport-middle.png",
+          "sha256": "eed8c84b2de3fab43b7172f2da81dbe117f7cbe6ac73ce1213979ef0245f0b2f"
+        }
+      ],
+      "bytes": 129272,
+      "dimensions": [
+        1024,
+        768
+      ],
+      "identityBasis": "native-report",
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-tablet/current-scrollport-middle.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-log",
+        "project": "chromium-tablet",
+        "sourceSha256": "b40560077402ebc9da6f4182244a2f9c47d6fd560d1ee50a2ec7ae75d3fabf0e",
+        "title": "workspace release corpus is accessible, responsive, and visually stable"
+      },
+      "project": "chromium-tablet",
+      "role": "current",
+      "sha256": "eed8c84b2de3fab43b7172f2da81dbe117f7cbe6ac73ce1213979ef0245f0b2f",
+      "storage": "objects/eed8c84b2de3fab43b7172f2da81dbe117f7cbe6ac73ce1213979ef0245f0b2f.png",
+      "test": "workspace release corpus is accessible, responsive, and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-tablet/current-scrollport-top.png",
+          "sha256": "34372a9b05fce4eb377438550251a12914b7591172a929e6ec115c855d0d17fb"
+        }
+      ],
+      "bytes": 252443,
+      "dimensions": [
+        1024,
+        768
+      ],
+      "identityBasis": "native-report",
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-tablet/current-scrollport-top.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-log",
+        "project": "chromium-tablet",
+        "sourceSha256": "b40560077402ebc9da6f4182244a2f9c47d6fd560d1ee50a2ec7ae75d3fabf0e",
+        "title": "workspace release corpus is accessible, responsive, and visually stable"
+      },
+      "project": "chromium-tablet",
+      "role": "current",
+      "sha256": "34372a9b05fce4eb377438550251a12914b7591172a929e6ec115c855d0d17fb",
+      "storage": "objects/34372a9b05fce4eb377438550251a12914b7591172a929e6ec115c855d0d17fb.png",
+      "test": "workspace release corpus is accessible, responsive, and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-tablet/test-failed-1.png",
+          "sha256": "6d80b2d539f089530094c32f7ef3df5552702a446efe7af70cc82db9da59b29c"
+        }
+      ],
+      "bytes": 252394,
+      "dimensions": [
+        1024,
+        768
+      ],
+      "identityBasis": "native-report",
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-tablet/test-failed-1.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-log",
+        "project": "chromium-tablet",
+        "sourceSha256": "b40560077402ebc9da6f4182244a2f9c47d6fd560d1ee50a2ec7ae75d3fabf0e",
+        "title": "workspace release corpus is accessible, responsive, and visually stable"
+      },
+      "project": "chromium-tablet",
+      "role": "failure",
+      "sha256": "6d80b2d539f089530094c32f7ef3df5552702a446efe7af70cc82db9da59b29c",
+      "storage": "objects/6d80b2d539f089530094c32f7ef3df5552702a446efe7af70cc82db9da59b29c.png",
+      "test": "workspace release corpus is accessible, responsive, and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-tablet/workspace-records-chromium-tablet-actual.png",
+          "sha256": "34372a9b05fce4eb377438550251a12914b7591172a929e6ec115c855d0d17fb"
+        }
+      ],
+      "bytes": 252443,
+      "dimensions": [
+        1024,
+        768
+      ],
+      "identityBasis": "native-report",
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-tablet/workspace-records-chromium-tablet-actual.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-log",
+        "project": "chromium-tablet",
+        "sourceSha256": "b40560077402ebc9da6f4182244a2f9c47d6fd560d1ee50a2ec7ae75d3fabf0e",
+        "title": "workspace release corpus is accessible, responsive, and visually stable"
+      },
+      "project": "chromium-tablet",
+      "role": "actual",
+      "sha256": "34372a9b05fce4eb377438550251a12914b7591172a929e6ec115c855d0d17fb",
+      "storage": "objects/34372a9b05fce4eb377438550251a12914b7591172a929e6ec115c855d0d17fb.png",
+      "test": "workspace release corpus is accessible, responsive, and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-tablet/workspace-records-chromium-tablet-diff.png",
+          "sha256": "dcbb04903ce044b6280402462a834880047b55fac413c16f28722c3adec77eb4"
+        }
+      ],
+      "bytes": 111095,
+      "dimensions": [
+        1024,
+        2396
+      ],
+      "identityBasis": "native-report",
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-tablet/workspace-records-chromium-tablet-diff.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-log",
+        "project": "chromium-tablet",
+        "sourceSha256": "b40560077402ebc9da6f4182244a2f9c47d6fd560d1ee50a2ec7ae75d3fabf0e",
+        "title": "workspace release corpus is accessible, responsive, and visually stable"
+      },
+      "project": "chromium-tablet",
+      "role": "diff",
+      "sha256": "dcbb04903ce044b6280402462a834880047b55fac413c16f28722c3adec77eb4",
+      "storage": "objects/dcbb04903ce044b6280402462a834880047b55fac413c16f28722c3adec77eb4.png",
+      "test": "workspace release corpus is accessible, responsive, and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-tablet/workspace-records-chromium-tablet-expected.png",
+          "sha256": "82b976c968740bff538146eaa72b8eaaf3f54b98d762df9dabee8067408c18d9"
+        }
+      ],
+      "bytes": 441445,
+      "dimensions": [
+        1024,
+        2396
+      ],
+      "identityBasis": "native-report",
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-tablet/workspace-records-chromium-tablet-expected.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-log",
+        "project": "chromium-tablet",
+        "sourceSha256": "b40560077402ebc9da6f4182244a2f9c47d6fd560d1ee50a2ec7ae75d3fabf0e",
+        "title": "workspace release corpus is accessible, responsive, and visually stable"
+      },
+      "project": "chromium-tablet",
+      "role": "expected",
+      "sha256": "82b976c968740bff538146eaa72b8eaaf3f54b98d762df9dabee8067408c18d9",
+      "storage": "objects/82b976c968740bff538146eaa72b8eaaf3f54b98d762df9dabee8067408c18d9.png",
+      "test": "workspace release corpus is accessible, responsive, and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-ultrawide/workspace-exports-post-assert.png",
+          "sha256": "f3ae680b22e9b27c8a2b8b85602d9d8df12533270686ad26a3c5149cf09aeaee"
+        }
+      ],
+      "bytes": 1157678,
+      "dimensions": [
+        2560,
+        1677
+      ],
+      "identityBasis": "native-report",
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-ultrawide/workspace-exports-post-assert.png",
+      "originalOutcome": "passed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "passed"
+        ],
+        "basis": "retained-native-log",
+        "project": "chromium-ultrawide",
+        "sourceSha256": "b40560077402ebc9da6f4182244a2f9c47d6fd560d1ee50a2ec7ae75d3fabf0e",
+        "title": "workspace release corpus is accessible, responsive, and visually stable"
+      },
+      "project": "chromium-ultrawide",
+      "role": "current",
+      "sha256": "f3ae680b22e9b27c8a2b8b85602d9d8df12533270686ad26a3c5149cf09aeaee",
+      "storage": "objects/f3ae680b22e9b27c8a2b8b85602d9d8df12533270686ad26a3c5149cf09aeaee.png",
+      "test": "workspace release corpus is accessible, responsive, and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-ultrawide/workspace-imports-post-assert.png",
+          "sha256": "e2cb954133a38e7c5ada0869993d07c4a0bc771035323f622a9ef3ca61acca69"
+        }
+      ],
+      "bytes": 1179767,
+      "dimensions": [
+        2560,
+        1677
+      ],
+      "identityBasis": "native-report",
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-ultrawide/workspace-imports-post-assert.png",
+      "originalOutcome": "passed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "passed"
+        ],
+        "basis": "retained-native-log",
+        "project": "chromium-ultrawide",
+        "sourceSha256": "b40560077402ebc9da6f4182244a2f9c47d6fd560d1ee50a2ec7ae75d3fabf0e",
+        "title": "workspace release corpus is accessible, responsive, and visually stable"
+      },
+      "project": "chromium-ultrawide",
+      "role": "current",
+      "sha256": "e2cb954133a38e7c5ada0869993d07c4a0bc771035323f622a9ef3ca61acca69",
+      "storage": "objects/e2cb954133a38e7c5ada0869993d07c4a0bc771035323f622a9ef3ca61acca69.png",
+      "test": "workspace release corpus is accessible, responsive, and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-ultrawide/workspace-records-post-assert.png",
+          "sha256": "b76bd0c93b248138f1ce0166c3ea96e41b868de9d6f8a03156feaa07445f0c9f"
+        }
+      ],
+      "bytes": 1230884,
+      "dimensions": [
+        2560,
+        1965
+      ],
+      "identityBasis": "native-report",
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-ultrawide/workspace-records-post-assert.png",
+      "originalOutcome": "passed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "passed"
+        ],
+        "basis": "retained-native-log",
+        "project": "chromium-ultrawide",
+        "sourceSha256": "b40560077402ebc9da6f4182244a2f9c47d6fd560d1ee50a2ec7ae75d3fabf0e",
+        "title": "workspace release corpus is accessible, responsive, and visually stable"
+      },
+      "project": "chromium-ultrawide",
+      "role": "current",
+      "sha256": "b76bd0c93b248138f1ce0166c3ea96e41b868de9d6f8a03156feaa07445f0c9f",
+      "storage": "objects/b76bd0c93b248138f1ce0166c3ea96e41b868de9d6f8a03156feaa07445f0c9f.png",
+      "test": "workspace release corpus is accessible, responsive, and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-ultrawide/workspace-schema-post-assert.png",
+          "sha256": "f74b077cae00664aa161b0ba1c1e51d2285d3d35ba95a5a9fa88a01e9be1ad75"
+        }
+      ],
+      "bytes": 1259981,
+      "dimensions": [
+        2560,
+        2148
+      ],
+      "identityBasis": "native-report",
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-ultrawide/workspace-schema-post-assert.png",
+      "originalOutcome": "passed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "passed"
+        ],
+        "basis": "retained-native-log",
+        "project": "chromium-ultrawide",
+        "sourceSha256": "b40560077402ebc9da6f4182244a2f9c47d6fd560d1ee50a2ec7ae75d3fabf0e",
+        "title": "workspace release corpus is accessible, responsive, and visually stable"
+      },
+      "project": "chromium-ultrawide",
+      "role": "current",
+      "sha256": "f74b077cae00664aa161b0ba1c1e51d2285d3d35ba95a5a9fa88a01e9be1ad75",
+      "storage": "objects/f74b077cae00664aa161b0ba1c1e51d2285d3d35ba95a5a9fa88a01e9be1ad75.png",
+      "test": "workspace release corpus is accessible, responsive, and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-firefox-desktop/test-failed-1.png",
+          "sha256": "b15b659811ef7de8b7993cb432b79f365339e20fead9f2f3e153ed329824c5d2"
+        }
+      ],
+      "bytes": 704593,
+      "dimensions": [
+        1440,
+        1000
+      ],
+      "identityBasis": "native-report",
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-firefox-desktop/test-failed-1.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-log",
+        "project": "firefox-desktop",
+        "sourceSha256": "b40560077402ebc9da6f4182244a2f9c47d6fd560d1ee50a2ec7ae75d3fabf0e",
+        "title": "workspace release corpus is accessible, responsive, and visually stable"
+      },
+      "project": "firefox-desktop",
+      "role": "failure",
+      "sha256": "b15b659811ef7de8b7993cb432b79f365339e20fead9f2f3e153ed329824c5d2",
+      "storage": "objects/b15b659811ef7de8b7993cb432b79f365339e20fead9f2f3e153ed329824c5d2.png",
+      "test": "workspace release corpus is accessible, responsive, and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    }
+  ],
+  "fixtureScope": "synthetic-project-tests",
+  "jobId": 124813891550,
+  "laterValidation": "pending",
+  "observations": [],
+  "originalOutcome": "failed",
+  "repository": "woodkill00/base2",
+  "requestedHead": "cb674560dc15de030d39491367646b2a15276be7",
+  "runId": 41295005783,
+  "schemaVersion": 2,
+  "sourceCommit": "0f64b31d9402f741ee6b3efaccc6e99752a25109",
+  "sourceTree": "14a670e2b5049b6658e453d6307727cbf66670c4",
+  "technicalReview": "pending",
+  "transfer": {
+    "blobs": {
+      "00e1c4614528d014b12dd245a67a0fcfcc9d7170e608d0ad9bf48330c0ce8a41": "f907250255c871fab23ca0875079f43cb6f89726",
+      "0603d96ee975d0b13b7250c5357d1ea7e82675773b813956020fff974bfd67df": "1f3f745ba4bbad19c477b91b934734d8cfcf898b",
+      "06a026a0a069900d21229993b83aa6cad4fce4d281a89a1d5fac19f12bdfdfa8": "f1bb66d2d56913c6099af630c74a05158ef7f61b",
+      "082c9807599337b1f2b5afa6ac773ca8b223613c474f3f444997de6b425f6132": "75d0c4b21e6865e1d3b438663e9121bcf2d4363f",
+      "088253717cc5fa4fffed431f98d8fcb8d5de2f74def34aeaf0c106611d1eed2d": "e2a66724323e4b651a898be2f5acae50c9314ddf",
+      "12a2c5e220e022d5b24e5c188a20365d4e3f6772932a92e46dee593aab663e3a": "c0fb9b15b4ff9de4e0e4021be65cbb9995cf7b4f",
+      "15c9df625fd85dcb01d027c1952a94e403df4691a222275d6ea6f2c3e89d7ce5": "5d058990ba24e7566f0de8c6c42f19a21cff1f91",
+      "164da8aa3aac48fb12ad03133cff7dd9ead4f2932a2fc32497b473fcec3c73cf": "1274aeb78a902299d19f4c27aff91ea476bab274",
+      "1bf2b5c0ca4811fe834135ab43345a31807264735e5b55e2dde4810e2839dbd8": "31f1598db24573efa9d1b10d385aa3e21bf0146a",
+      "1e2940d813317c4820fe6866e631dc45bd28393818d5f79d510383ab533a21dd": "a8a99afdf3bd220d604e12ac480a6049e3019bc1",
+      "20158bec4cd6aec3dca8b5adffde1e8bd879699d6d728e443edb601f654b1862": "cc7072d156200241d4373a93fdaa728ed09257c9",
+      "23e0b2c1de35d0f7f725e8b9985d4812557ce7631dc2f3e000ed827eae9830d3": "a75792c0d3646af8cd5b9612a655a5d1335abc0c",
+      "268b6b56e3525efd6187808294af0935ef6064448a3c6742013f3145a53f7c06": "46406299ac2bd0ea9596b7fa00f150a4abb3c6ab",
+      "28fbeee09d5e63280ba83a5a97b5fec76b72577985fd5b5f9a7aec2a4c8a9cb0": "57fca933091c420e091baf8ebc8408ed4eec2d6c",
+      "2f789118f01d3d607245e0a5c758ed3f7bd76b60db0eb6e1bc39b8379198dcd2": "b4a09a0d48704b730bf0dc978b551c578fa88c26",
+      "34372a9b05fce4eb377438550251a12914b7591172a929e6ec115c855d0d17fb": "6475d61927d6354fec4574e592a9ab701ae73393",
+      "402a59af0efbadffaf0029b1034184734f0d92738905d6768329cd92b0e81fb4": "13af1f85d20be778b429eb57b33bace1c5895e34",
+      "41601307411690025f237992517bff7147b23b78d2d0ee0cb5732d079b2288ad": "f45cd1903471d98452843fedfc414584c0faf7cd",
+      "44bbc16bcee72059745516a6ecd9b1bbebb89311059b136dddd25c3f2fea1eba": "2b5d01c9b2ddb274e8506696472870e11a265b1a",
+      "486de8ea4d05fba77a65cf851a396b655160323974ec50dd2d0c2e7da24ff743": "df9dd55bb1ba8434418cbc0185ef951a21efcad8",
+      "49da987d9fde15956eae6ec96d860c1138801d8f6caa8b4cfe7395e5d26d8641": "12ef15ba83d0dab7b5d511060704bf21cb250a0a",
+      "4c287483218ba093b3047e39b3ae4fea854205d2ba29d92ecf63dea70aa90086": "148e16ba330327487ceb484fd609a29dd584a0eb",
+      "4efd4a050fac894f209c81dab31d0c1a36909f1725a593f610145fac659ba91e": "bdc06f4924087500ce1f33af6f9b66e9f4071359",
+      "5bd83f7fa44433cf224552d2983aed3ebf614883114e40b1d3e78366c6c1d5e4": "a5cfc1849f93593f216e5a1e1e73e6f45a198869",
+      "6c9fd769ca2546164aa833266a2eb273549bc42ed73b399fa521b0e28057b160": "8a674b49ed9056d9c41c4e1a85c5235bb730cf6c",
+      "6cc8d3e780e39db9b08efa0b6aa58426f081d972ed2a421ae92a7356dc09f443": "572c89e902160a8daa4576229a01000a98b53dff",
+      "6d80b2d539f089530094c32f7ef3df5552702a446efe7af70cc82db9da59b29c": "e058e57144e7e11b4a593af57798ccc59ba7244c",
+      "72535fefe604209a10ea9099187fe6655e2916e2c454f4470ad35b172fef4a26": "110c9765101f01aec6a96aea02518c2141886d31",
+      "72e6842cdfd5139e94bb3ea2a13967bb3851b19e6533d9dbef145767c23c7c92": "f306d898284f334fca59ac79f644867488e551fe",
+      "753ba329bf41127fb5a91a044bfb31f75e142cd74d635371f69ca008b34b1f1b": "8d409557f945575ae8a8af546f47448f1d212b53",
+      "787bff69f0dfc9fbb7dd54577ba898b535add42fbf1c386733c9d13346eb726e": "f539de550807f8648c44308d0916d49d92a7289c",
+      "7bdddf6ec5dba35ab6e4fb546e4eca2ab8d78de28728111cec7ae704cd8e5f58": "90b9f7913bd1032af338985e6a9df94fa3b464dc",
+      "7d9bdb0b00a52f31c072e4501fd030e2c8621c744a593b63e1259541db603ed3": "9bceeb696ac082ea2ecb01ea3233f1b7fbca2efa",
+      "7dba406c9af1a1d3a6b57d0c466ca105f1a4d6caad49185fa25e31f75ffac9fd": "17458d31f1b9501d5471c822d9a0920e5a40de8b",
+      "7e9ce3f60b1e9c8466707fe462e0159131b955a019f8962e57dfa01eabc8d233": "b5d72a7006bf9450c3e05eda8bb48be759e5f085",
+      "82b976c968740bff538146eaa72b8eaaf3f54b98d762df9dabee8067408c18d9": "1db10a3abde8ee6205a67956eac0d9588f1b668e",
+      "87648c13a16bc86cc4bb0ce35820bd02f2bb2397b0863f5e63dc14ff33970700": "f03fbc1d2ebd65c74ae09bf3b5fc8d1d2d29b9c4",
+      "8a2598ad098085ebf595b135a01a43813267049ad587c4dfe4140b9841209245": "28f2da6a214a5f3cc944454ad727bd8defd4faab",
+      "8ab655c8769dbb0112a0c8fdd68d06ffe9294652c79f65a9f5089fcfa00dee05": "37e89a59d2029cc8fd7719722f14c53e2e0803f6",
+      "90ee262788f063532814a7f5c892149d56b28de228a6c4986948665d28285c7f": "80ce7770db84722fb0b00ce7283bdaf18a4b21b9",
+      "92853213fc3326f140dfbd9d347c080f7665a641b8f6a0cbf006b416179a16c3": "5e8946cba3e039fc7c9dec63560f5df1397ea8b5",
+      "974094f4e108a3356d1888dcce80d991373039f99c4cbf0bbf28e74ce0e89534": "cdfc35cc5bca7d5381561a5ba0432d4aad4de961",
+      "9eff2f6804ea3f983c5c3c497c81dc17bd18d280baed77f65d89d014bc95d304": "d5b9c1986bf189af8c1d740652236e21c454370d",
+      "a00b5f01bc4500da9a9d9818a7f7b479672194c9b70bb26b51f4f2d5f7ab4145": "16da4bb21e01a00b3f5b5e2569d30274a5f10e76",
+      "a02c239b49802b044790562c959d023a62ae4ead2774a30a49ac7c3ab442f192": "87a61eb14ed3a9ec047c05c06b3e110d5de12f03",
+      "a32847db9b0cf9f7efabdd3c30603308470b693cc4bd3d42abe704990c0e3567": "ad2082f27064d362ecae82bfeffe1767fc17a5da",
+      "a8cc98f6f9a4739a6a789b698283c3008597ea64cf041d8a24e4070c45fcdade": "7505dd1fa3cf713a279c4a0323e45f7048286350",
+      "affa2d7ae9ec647f490e7bf3d463fb2e7b0fc15f8b21036daae82c6dc53298c7": "efd0136acb3c4b3b5f6a7ec62a5323fa944f55d7",
+      "b15b659811ef7de8b7993cb432b79f365339e20fead9f2f3e153ed329824c5d2": "d5f95e6fa2f8ad94da4da4e519d71b81e2129b16",
+      "b76bd0c93b248138f1ce0166c3ea96e41b868de9d6f8a03156feaa07445f0c9f": "e774aeb73fdea2cbf14e871937eba5f2c9d11f26",
+      "c4b06de96950ee685acfd752a791bd5665e32dedb76c73202ae4906563b3a690": "1d20249eae701f3d270963114e8b3b407abf4d61",
+      "c8cb0725525c4d08f028a50813595e86ad6f027b49446d17d524d72bd56bda99": "0814c82bf8b32b586bbc6fcb34b8c55cafdb0f70",
+      "caa1dc407e2ced11e6af1f87f2996298bcb73496d6807404f789c02fa69389a2": "8ef028e3924d4c60899c404e08cd2ab84bb15bb8",
+      "cb5829e2219d0331d55a52df79946f738b3e025a258d042745831e7fd980652e": "893641330a1da144c05d75a5b5af4794dbb04123",
+      "cba9136aac8754049ad3288d464dd5d0e6ad1d7bb55d9a81b8c3e5dc232eb3af": "afd63b237d327d24355a8888d0cb05d43fa98ece",
+      "d0ddd681a2ba76cc0bcd6fb9b52b3022c64806025b9227e2ab0d8521b813f0de": "ae6d28610ece3a9c023682363e2ef146ce39751e",
+      "d1be8be7ce74ead3b60f3f90c5fd8269ee93bd35b36302a77640280d4876a42b": "0625f701ac621069fb61ba5514ec9aa70bed256a",
+      "d54e1ba17b8b35554d86e094d67385ce2b4985eb5427a907ac6f4e7c475910f3": "6ebbefe7e18adb6e27c4ffb553f31afa7719cf3b",
+      "d9a0f221a53d5ac2f7d84a38ef56d0f6555176d77bfd524453c78d81cca75c6c": "c263b8746f4fbba17f56eac017db2ab19b12192d",
+      "dcbb04903ce044b6280402462a834880047b55fac413c16f28722c3adec77eb4": "1a880383566e332105b8d04574a91b7846e21a0d",
+      "e2cb954133a38e7c5ada0869993d07c4a0bc771035323f622a9ef3ca61acca69": "6d4f186c5f12013a1b33cabf9f71262dfd7ecca4",
+      "ec7f033d1472632c5ffc710128ccf1458b8d25d08f47838bdf9c380ae004c410": "474b09c6d8c663d1654f3df2b3a52425c94ece93",
+      "eed8c84b2de3fab43b7172f2da81dbe117f7cbe6ac73ce1213979ef0245f0b2f": "6231c33c2a1045bb6d463b633e232568f364d71f",
+      "f3ae680b22e9b27c8a2b8b85602d9d8df12533270686ad26a3c5149cf09aeaee": "2faf98c96fe272568d5b63cdfc6a692797c12998",
+      "f414ab041a344b2b1017885c8fafe6875487bf99c87dfe3925ba6278f918ae4d": "c92a0333b08372a960ef5fc52f5c1d054226b129",
+      "f541674b35f259752b636719de7e335543eb27faf9c4be5141d3e5ef688fd433": "f61787983ca7f1ed95ec542af506e91d54c1acb8",
+      "f74b077cae00664aa161b0ba1c1e51d2285d3d35ba95a5a9fa88a01e9be1ad75": "9ff5f017c5f42b6295476f7dff0bea03cc88afea",
+      "f97e990b77c333f518a64eb4eb5829a699f8aa4442d6235ad231d8b9192a7701": "89d0da322b6ec4dc09e9fd996916b21a346bd220"
+    },
+    "commit": "f64e46dd898a3c4253577498388d38be3425cc4b",
+    "localVerification": "git-blob-sha256-size-dimensions-full-decode",
+    "originalArchiveVerification": "externally-verified-zip-and-members",
+    "tree": "e8425cadd61d77bbc02d87ac4738a894a2401263"
+  }
+}

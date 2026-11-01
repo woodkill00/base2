@@ -1,0 +1,213 @@
+{
+  "archiveSha256": "9ddc0914187578ca9da7841505284fdd1b0315aa295d9599220d6f388750c218",
+  "artifactId": 13075678280,
+  "attempt": 1,
+  "captures": [
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "unavailable-in-retained-inventory",
+          "member": "chromium-landscape-touch.zip",
+          "sha256": null
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-landscape-touch/current-media-library-viewport-0.png",
+          "sha256": "3553c6fde559a9353498f2f73dced6c9ce9f5e749d78710870bd226f4d3bf72a"
+        }
+      ],
+      "bytes": 532593,
+      "dimensions": [
+        1688,
+        780
+      ],
+      "identityBasis": "native-report",
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-landscape-touch/current-media-library-viewport-0.png",
+      "originalOutcome": "passed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "passed"
+        ],
+        "basis": "retained-native-report",
+        "project": "chromium-landscape-touch",
+        "title": "media library is accessible responsive and visually reviewed"
+      },
+      "project": "chromium-landscape-touch",
+      "role": "current",
+      "sha256": "3553c6fde559a9353498f2f73dced6c9ce9f5e749d78710870bd226f4d3bf72a",
+      "storage": "objects/3553c6fde559a9353498f2f73dced6c9ce9f5e749d78710870bd226f4d3bf72a.png",
+      "test": "media library is accessible responsive and visually reviewed",
+      "viewport": [
+        844,
+        390
+      ],
+      "viewportBasis": "native-project-config"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "unavailable-in-retained-inventory",
+          "member": "chromium-landscape-touch.zip",
+          "sha256": null
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-landscape-touch/current-media-library-viewport-2.png",
+          "sha256": "42bb029b3cb0892d1396ce03aba2ef209d044efd7a2f6a352add7cb359237203"
+        }
+      ],
+      "bytes": 521892,
+      "dimensions": [
+        1688,
+        780
+      ],
+      "identityBasis": "native-report",
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-landscape-touch/current-media-library-viewport-2.png",
+      "originalOutcome": "passed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "passed"
+        ],
+        "basis": "retained-native-report",
+        "project": "chromium-landscape-touch",
+        "title": "media library is accessible responsive and visually reviewed"
+      },
+      "project": "chromium-landscape-touch",
+      "role": "current",
+      "sha256": "42bb029b3cb0892d1396ce03aba2ef209d044efd7a2f6a352add7cb359237203",
+      "storage": "objects/42bb029b3cb0892d1396ce03aba2ef209d044efd7a2f6a352add7cb359237203.png",
+      "test": "media library is accessible responsive and visually reviewed",
+      "viewport": [
+        844,
+        390
+      ],
+      "viewportBasis": "native-project-config"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "unavailable-in-retained-inventory",
+          "member": "chromium-landscape-touch.zip",
+          "sha256": null
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-landscape-touch/current-media-library-viewport-4.png",
+          "sha256": "e0def62bd777dfcfc3cf47b16cc22cc6a750236e6cad52e53be2599d0002fb6c"
+        }
+      ],
+      "bytes": 585730,
+      "dimensions": [
+        1688,
+        780
+      ],
+      "identityBasis": "native-report",
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-landscape-touch/current-media-library-viewport-4.png",
+      "originalOutcome": "passed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "passed"
+        ],
+        "basis": "retained-native-report",
+        "project": "chromium-landscape-touch",
+        "title": "media library is accessible responsive and visually reviewed"
+      },
+      "project": "chromium-landscape-touch",
+      "role": "current",
+      "sha256": "e0def62bd777dfcfc3cf47b16cc22cc6a750236e6cad52e53be2599d0002fb6c",
+      "storage": "objects/e0def62bd777dfcfc3cf47b16cc22cc6a750236e6cad52e53be2599d0002fb6c.png",
+      "test": "media library is accessible responsive and visually reviewed",
+      "viewport": [
+        844,
+        390
+      ],
+      "viewportBasis": "native-project-config"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "unavailable-in-retained-inventory",
+          "member": "chromium-landscape-touch.zip",
+          "sha256": null
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-landscape-touch/current-media-library.png",
+          "sha256": "655f5f7b08373bf252e5da29335be3d3595fc93ba44db70cc88df3d205e0b8fd"
+        }
+      ],
+      "bytes": 1691890,
+      "dimensions": [
+        1688,
+        4964
+      ],
+      "identityBasis": "native-report",
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-landscape-touch/current-media-library.png",
+      "originalOutcome": "passed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "passed"
+        ],
+        "basis": "retained-native-report",
+        "project": "chromium-landscape-touch",
+        "title": "media library is accessible responsive and visually reviewed"
+      },
+      "project": "chromium-landscape-touch",
+      "role": "current",
+      "sha256": "655f5f7b08373bf252e5da29335be3d3595fc93ba44db70cc88df3d205e0b8fd",
+      "storage": "objects/655f5f7b08373bf252e5da29335be3d3595fc93ba44db70cc88df3d205e0b8fd.png",
+      "test": "media library is accessible responsive and visually reviewed",
+      "viewport": [
+        844,
+        390
+      ],
+      "viewportBasis": "native-project-config"
+    }
+  ],
+  "fixtureScope": "synthetic-project-tests",
+  "jobId": 124792843889,
+  "laterValidation": "pending",
+  "observations": [
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "unavailable-in-retained-inventory",
+          "member": "chromium-landscape-touch.zip",
+          "sha256": null
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-landscape-touch/media-viewport-observations.json",
+          "sha256": "2ccb0ebc56d00712a04ced0d957a663421ecef931c25689beda4d8b8f4c9ea8c"
+        }
+      ],
+      "bytes": 9278,
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-landscape-touch/media-viewport-observations.json",
+      "project": "chromium-landscape-touch",
+      "schemaVersion": 1,
+      "sha256": "2ccb0ebc56d00712a04ced0d957a663421ecef931c25689beda4d8b8f4c9ea8c",
+      "storage": "observations/2ccb0ebc56d00712a04ced0d957a663421ecef931c25689beda4d8b8f4c9ea8c.json"
+    }
+  ],
+  "originalOutcome": "failed",
+  "repository": "woodkill00/base2",
+  "requestedHead": "173c17eaf44e93850901f474be29b2fa7b83e2fb",
+  "runId": 41287894771,
+  "schemaVersion": 2,
+  "sourceCommit": "173c17eaf44e93850901f474be29b2fa7b83e2fb",
+  "sourceTree": "023cea326bf1cb1298dd60a0e1e9743af6746cae",
+  "technicalReview": "pending",
+  "transfer": {
+    "blobs": {
+      "2ccb0ebc56d00712a04ced0d957a663421ecef931c25689beda4d8b8f4c9ea8c": "a921310ed058edceb82707aaa56abf4990ff5f85",
+      "3553c6fde559a9353498f2f73dced6c9ce9f5e749d78710870bd226f4d3bf72a": "1557266d7f359c93dac994d5884e4081c49102cb",
+      "42bb029b3cb0892d1396ce03aba2ef209d044efd7a2f6a352add7cb359237203": "b352ce36710681226eacd13f412327077d90e1a4",
+      "655f5f7b08373bf252e5da29335be3d3595fc93ba44db70cc88df3d205e0b8fd": "6e8ee17193afa78cd6bfcd9427fe2bf104b1fbbc",
+      "e0def62bd777dfcfc3cf47b16cc22cc6a750236e6cad52e53be2599d0002fb6c": "46a82c93d1aa00f15d6a86ca856f8291917ab185"
+    },
+    "commit": "b062a60c1319fd21480c92022cf91d5da9bca62a",
+    "localVerification": "git-blob-sha256-size-dimensions-full-decode",
+    "originalArchiveVerification": "externally-verified-zip-and-members",
+    "tree": "b3f3d390dd5497330b862e6452e4c901c345a05f"
+  }
+}

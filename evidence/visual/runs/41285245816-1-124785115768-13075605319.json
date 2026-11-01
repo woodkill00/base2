@@ -1,0 +1,68 @@
+{
+  "archiveSha256": "2719989c4859fe2550fc8d37f2130466ea17b080ff4ceb3a9fba82b50982bbaf",
+  "artifactId": 13075605319,
+  "attempt": 1,
+  "captures": [
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "chromium-german.zip",
+          "sha256": "4ac1e4b54763297b042452bf99e3ad0c993dc756e580fb41c5d20cc2cfb05763"
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-german/current-operations-center-chromium-german.png",
+          "sha256": "e4b6a3e2c827ba46dab8fe196c7e62b115e3b8611a17a973e6b9b12c853eb105"
+        }
+      ],
+      "bytes": 644956,
+      "dimensions": [
+        1280,
+        2987
+      ],
+      "identityBasis": "native-report",
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-german/current-operations-center-chromium-german.png",
+      "originalOutcome": "passed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "passed"
+        ],
+        "basis": "retained-native-report",
+        "project": "chromium-german",
+        "title": "operations center is accessible responsive and visually stable"
+      },
+      "project": "chromium-german",
+      "role": "current",
+      "sha256": "e4b6a3e2c827ba46dab8fe196c7e62b115e3b8611a17a973e6b9b12c853eb105",
+      "storage": "objects/e4b6a3e2c827ba46dab8fe196c7e62b115e3b8611a17a973e6b9b12c853eb105.png",
+      "test": "operations center is accessible responsive and visually stable",
+      "viewport": [
+        1280,
+        900
+      ],
+      "viewportBasis": "native-project-config"
+    }
+  ],
+  "fixtureScope": "synthetic-project-tests",
+  "jobId": 124785115768,
+  "laterValidation": "pending",
+  "observations": [],
+  "originalOutcome": "passed",
+  "repository": "woodkill00/base2",
+  "requestedHead": "4e591455b1eb7491b81b53b01c8648a8ef2d2489",
+  "runId": 41285245816,
+  "schemaVersion": 2,
+  "sourceCommit": "4e591455b1eb7491b81b53b01c8648a8ef2d2489",
+  "sourceTree": "a04738b7d35e16a130a1fadb1d0440bdd411fefc",
+  "technicalReview": "pending",
+  "transfer": {
+    "blobs": {
+      "e4b6a3e2c827ba46dab8fe196c7e62b115e3b8611a17a973e6b9b12c853eb105": "4f640085bdf00f01a159e0051afd4d5ef86210af"
+    },
+    "commit": "cfd7012fc6e77f4567135cade3a349d26aae6dc4",
+    "localVerification": "git-blob-sha256-size-dimensions-full-decode",
+    "originalArchiveVerification": "externally-verified-zip-and-members",
+    "tree": "d3ab244c2c8dd0c696bbea2451297a21de7bb82c"
+  }
+}

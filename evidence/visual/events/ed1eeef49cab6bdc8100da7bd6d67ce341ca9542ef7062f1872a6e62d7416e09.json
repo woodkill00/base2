@@ -1,0 +1,52 @@
+{
+  "conclusion": "inconclusive",
+  "inspections": [
+    {
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-desktop/current-operations-center-cancel-confirmation.png",
+      "method": "individual-pixels",
+      "role": "current",
+      "sha256": "8f3f87091c57b41e99b7b45966795cd6f6f23033936ffb3412fe56a6e6eb0cd5"
+    },
+    {
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-desktop/current-operations-center-chromium-desktop.png",
+      "method": "individual-pixels",
+      "role": "current",
+      "sha256": "f4b8c3016ad4f54e3611515339a3353c682c7558ed36713b52d9607bbac4fee9"
+    },
+    {
+      "member": "operations-release-operati-84a1a-ul-empty-and-failure-states-chromium-desktop/current-operations-center-empty.png",
+      "method": "individual-pixels",
+      "role": "current",
+      "sha256": "f317be4c5f1268f70857c8dffce78999d4f64930ba29c870c6713baa98f8749d"
+    },
+    {
+      "member": "operations-release-operati-84a1a-ul-empty-and-failure-states-chromium-desktop/current-operations-center-error.png",
+      "method": "individual-pixels",
+      "role": "current",
+      "sha256": "e9137e2a2a18c4fdb6fa5f4ca824a8ec1376906c27e8f938a2043604cb3c04f5"
+    },
+    {
+      "member": "operations-release-operati-e5f8f-d-read-only-recovery-states-chromium-desktop/current-operations-center-partial.png",
+      "method": "individual-pixels",
+      "role": "current",
+      "sha256": "e59fd87e2c255c6408605b66bcdc7f7bc2d0c42c887960445ec91bc9ea7ad856"
+    },
+    {
+      "member": "operations-release-operati-e5f8f-d-read-only-recovery-states-chromium-desktop/current-operations-center-read-only.png",
+      "method": "individual-pixels",
+      "role": "current",
+      "sha256": "d7e6412f2a9ea106e5b90dc0f9e5432cd859cc3df269f12e45c0476abe465e2e"
+    },
+    {
+      "member": "operations-release-operati-e5f8f-d-read-only-recovery-states-chromium-desktop/current-operations-center-reauth.png",
+      "method": "individual-pixels",
+      "role": "current",
+      "sha256": "06dfce59165dcc73e5ddbd2c1ca9a755b5d177c5109cf80921d3e1e81b413e6d"
+    }
+  ],
+  "kind": "technical-review",
+  "manifest": "runs/41285245816-1-124785115768-13075071485.json",
+  "manifestSha256": "e68c23a3c349ce8e60a62e91414d18c434ebe9cd00766e2212d57f191a4097cf",
+  "notes": "Diagnostic review only; no baseline approval or whole-matrix acceptance. Original supplied pixel review retained; contact-sheet overview does not verify all fine text. Exact-byte matches refer to previously inspected images. Original metadata and all35 PNG member/hash chains recovered from the original run; original ZIP bytes externally verified, local Git bytes independently verified. Actual pixels reviewed; comparison-reference attachment hashes remain distinct from current actual PNG hashes. Static misleading footer wording and viewport-limited cancellation shade remain open. No full visual acceptance. Original source-after.json SHA256 85b0fa3ebca79ba76877f8fd11ff1cb969e50f06d152ed8e72c8c5d36486f163; proof commit 29d07bc26e4c4eba3c132e5802b1bdcc10c6150b.",
+  "schemaVersion": 2
+}

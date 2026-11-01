@@ -1,0 +1,16 @@
+{
+  "conclusion": "inconclusive",
+  "inspections": [
+    {
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-german/current-operations-center-chromium-german.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "e4b6a3e2c827ba46dab8fe196c7e62b115e3b8611a17a973e6b9b12c853eb105"
+    }
+  ],
+  "kind": "technical-review",
+  "manifest": "runs/41290418358-1-124800320642-13077515867.json",
+  "manifestSha256": "1246773ed6f9f687609baecbf26623aa74eeff5f5e9d6f46384bf575f4c6bd1d",
+  "notes": "Diagnostic review only; no baseline approval or whole-matrix acceptance. Original supplied pixel review retained; contact-sheet overview does not verify all fine text. Exact-byte matches refer to previously inspected images. Expected reference PNGs/diffs/traces/raw Playwright report absent from bounded archive; receipt identities and summary verified, no independent raw step replay. 20 declared skips are not executions; recovery states covered only in compact and Chromium/Firefox/WebKit desktop projects. Cancellation dialog full-page image has viewport-limited dimming; complete dialog visible, unseen viewport positions not proven. Generic footer System evidence current persists in unavailable/stale states; misleading-copy concern requires scope decision.",
+  "schemaVersion": 2
+}

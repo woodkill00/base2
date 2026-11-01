@@ -1,0 +1,6 @@
+tree 14a670e2b5049b6658e453d6307727cbf66670c4
+parent 2939e45fd409127bbcac56df4a5f1acb7f27fbaa
+author woodkill woodkill <thejunkmailvoid@gmail.com> 1793526750 +0000
+committer woodkill woodkill <thejunkmailvoid@gmail.com> 1793526750 +0000
+
+Reserve movement control space and retain bounded shell evidence

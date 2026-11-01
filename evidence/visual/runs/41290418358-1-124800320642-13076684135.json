@@ -1,0 +1,68 @@
+{
+  "archiveSha256": "268f2fd9cc9f12c7071d0e9064441349acc8897df777e679ead22e3f887f76de",
+  "artifactId": 13076684135,
+  "attempt": 1,
+  "captures": [
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "unavailable-in-retained-inventory",
+          "member": "chromium-tablet.zip",
+          "sha256": null
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-tablet/current-operations-center-chromium-tablet.png",
+          "sha256": "c09d8647ee6f7d4e818af242869cd9c655cb9952722162f030d717b18ddc0303"
+        }
+      ],
+      "bytes": 621709,
+      "dimensions": [
+        1024,
+        3116
+      ],
+      "identityBasis": "native-report",
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-tablet/current-operations-center-chromium-tablet.png",
+      "originalOutcome": "passed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "passed"
+        ],
+        "basis": "retained-native-report",
+        "project": "chromium-tablet",
+        "title": "operations center is accessible responsive and visually stable"
+      },
+      "project": "chromium-tablet",
+      "role": "current",
+      "sha256": "c09d8647ee6f7d4e818af242869cd9c655cb9952722162f030d717b18ddc0303",
+      "storage": "objects/c09d8647ee6f7d4e818af242869cd9c655cb9952722162f030d717b18ddc0303.png",
+      "test": "operations center is accessible responsive and visually stable",
+      "viewport": [
+        1024,
+        768
+      ],
+      "viewportBasis": "native-project-config"
+    }
+  ],
+  "fixtureScope": "synthetic-project-tests",
+  "jobId": 124800320642,
+  "laterValidation": "pending",
+  "observations": [],
+  "originalOutcome": "passed",
+  "repository": "woodkill00/base2",
+  "requestedHead": "2939e45fd409127bbcac56df4a5f1acb7f27fbaa",
+  "runId": 41290418358,
+  "schemaVersion": 2,
+  "sourceCommit": "2939e45fd409127bbcac56df4a5f1acb7f27fbaa",
+  "sourceTree": "ff51d9cad431505872f3ccb8a904b9a6809e6ff1",
+  "technicalReview": "pending",
+  "transfer": {
+    "blobs": {
+      "c09d8647ee6f7d4e818af242869cd9c655cb9952722162f030d717b18ddc0303": "0b1a42a2e6731d2cd03c3f5a35fcd5d1c2a4d8ce"
+    },
+    "commit": "2aaf20e2fbed13a2613bc6db276ed42994645fe2",
+    "localVerification": "git-blob-sha256-size-dimensions-full-decode",
+    "originalArchiveVerification": "externally-verified-zip-and-members",
+    "tree": "94354a1a0db2fe3af17918e7f7cfe0cb6da8d002"
+  }
+}

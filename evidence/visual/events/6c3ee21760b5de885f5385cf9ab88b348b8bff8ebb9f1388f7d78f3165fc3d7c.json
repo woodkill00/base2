@@ -1,0 +1,682 @@
+{
+  "conclusion": "inconclusive",
+  "inspections": [
+    {
+      "member": "settings/settings-release-release-p-27468-essible-and-visually-stable-chromium-400-percent-reflow/settings-release-before-axe.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "18b8cf1ce49f7378f106c79f05dbd12ddb446f53ae21ab095c495b1760db8c51"
+    },
+    {
+      "member": "settings/settings-release-release-p-27468-essible-and-visually-stable-chromium-high-contrast/settings-negative-controls-before-axe.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "ff1b6f2576feeaaf30fe276513df84bc94ec205587833e326dcd0223d36ba4cf"
+    },
+    {
+      "member": "settings/settings-release-release-p-27468-essible-and-visually-stable-chromium-high-contrast/settings-release-before-axe.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "5ba856d401bdbf3189d6d9a6fb70f8bca43e1479d0e58d212f22679a4da3ef67"
+    },
+    {
+      "member": "settings/settings-release-release-p-27468-essible-and-visually-stable-chromium-high-contrast/settings-release-restored-after-controls.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "26226f3ca31d69cb03947dbc97815aee342d71f6a24aaefdbaab2aa2c8523195"
+    },
+    {
+      "member": "settings/settings-release-release-p-27468-essible-and-visually-stable-chromium-high-contrast-light/settings-negative-controls-before-axe.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "dd3fc1d23484156e9cff40100b9d69b3f3977637c20f94675a2d4c83c77b4889"
+    },
+    {
+      "member": "settings/settings-release-release-p-27468-essible-and-visually-stable-chromium-high-contrast-light/settings-release-before-axe.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "b4b30292fa7e28cc0f3be4d1463ccaa7f1cc94b8108c722adce21eaeaaa26df2"
+    },
+    {
+      "member": "settings/settings-release-release-p-27468-essible-and-visually-stable-chromium-high-contrast-light/settings-release-restored-after-controls.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "c9c59287079c64ceaf9bd42ff9dd9793334296931a0f01aa1f713da2bb0dd447"
+    },
+    {
+      "member": "settings/settings-release-release-p-27468-essible-and-visually-stable-chromium-landscape-touch/settings-release-before-axe.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "005f85ae1cbc07d1536f7275705f983ba8d863c7acd035171960a1f5633ba1d7"
+    },
+    {
+      "member": "settings/settings-release-release-p-27468-essible-and-visually-stable-chromium-large-text/settings-release-before-axe.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "4a515b2bae06b0d3015b1dbda72c51fb7053221fd4f273cdcdc35db3eb767655"
+    },
+    {
+      "member": "settings/settings-release-release-p-27468-essible-and-visually-stable-chromium-light/settings-release-before-axe.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "a42f702b5107505dc64b7b5cf04f0c414339de9220ff828727a5aa220cc801f0"
+    },
+    {
+      "member": "settings/settings-release-release-p-27468-essible-and-visually-stable-chromium-phone-dpr3/settings-release-before-axe.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "f4a9b5774aab09ff04d4eb87d3cd88124bdf350b21ea6ffcde7503ba85f2eb31"
+    },
+    {
+      "member": "settings/settings-release-release-p-27468-essible-and-visually-stable-chromium-tablet/settings-release-before-axe.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "579cf0d96bc261e616fa20138b9511f3a825e3730714ef5fabfc5de5c576e70c"
+    },
+    {
+      "member": "volcano/volcano-preservation-Volcano-guest-route-about-at-390px-chromium/current-scrollport-top.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "259f4c42f904ea039ee0d2867a10e2b43405ac295c471d7c09f36b07d085e6b8"
+    },
+    {
+      "member": "volcano/volcano-preservation-Volcano-guest-route-about-at-390px-chromium/page.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "bc02c2e419e36d4f2cb9139fdd8dac23e802a6548822d5034a744eafe048da63"
+    },
+    {
+      "member": "volcano/volcano-preservation-Volcano-guest-route-ar-about-at-1440px-chromium/page.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "7a9621c2b47469554cfd7e5444c13fcc17d57e267ce07c5a372298b61601a0ee"
+    },
+    {
+      "member": "volcano/volcano-preservation-Volcano-guest-route-ar-about-at-390px-chromium/current-scrollport-footer.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "c08e39259bd33c376ed252d682ff42869c228f6bd212e1cb90a996749474de3c"
+    },
+    {
+      "member": "volcano/volcano-preservation-Volcano-guest-route-ar-about-at-390px-chromium/current-scrollport-middle.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "614da1f34bb09519d1ffa86d42a81f44de0e5d3bc3b34464b697bdb4bc2b96ca"
+    },
+    {
+      "member": "volcano/volcano-preservation-Volcano-guest-route-ar-about-at-390px-chromium/current-scrollport-top.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "259f4c42f904ea039ee0d2867a10e2b43405ac295c471d7c09f36b07d085e6b8"
+    },
+    {
+      "member": "volcano/volcano-preservation-Volcano-guest-route-ar-about-at-390px-chromium/page.png",
+      "method": "individual-pixels",
+      "role": "current",
+      "sha256": "cffe6d5ce1eec5b02488ca20150f320e110a4ef50bcf3addc88a7a3f402ebf0a"
+    },
+    {
+      "member": "volcano/volcano-preservation-Volcano-guest-route-blog-at-1440px-chromium/page.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "954046fd64dc99690b3978bda1a38ee3ad52822bdaac61911e5d3ed35edaa096"
+    },
+    {
+      "member": "volcano/volcano-preservation-Volcano-guest-route-blog-at-390px-chromium/current-scrollport-footer.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "c08e39259bd33c376ed252d682ff42869c228f6bd212e1cb90a996749474de3c"
+    },
+    {
+      "member": "volcano/volcano-preservation-Volcano-guest-route-blog-at-390px-chromium/current-scrollport-middle.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "a4f416cc524d7b7ad4c83eab72ce87c33932e3012a39477818dd09882acd805d"
+    },
+    {
+      "member": "volcano/volcano-preservation-Volcano-guest-route-blog-at-390px-chromium/current-scrollport-top.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "259f4c42f904ea039ee0d2867a10e2b43405ac295c471d7c09f36b07d085e6b8"
+    },
+    {
+      "member": "volcano/volcano-preservation-Volcano-guest-route-blog-at-390px-chromium/page.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "2d4a73fe27892f1d3be73e98611441672ac9ea7d66375412074a0217a59b1830"
+    },
+    {
+      "member": "volcano/volcano-preservation-Volcano-guest-route-contact-at-1440px-chromium/page.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "b5e0d4828e467fa7f3a93fd28d972c91e2768011cf6dd8c9e28787113fa81986"
+    },
+    {
+      "member": "volcano/volcano-preservation-Volcano-guest-route-contact-at-390px-chromium/current-scrollport-footer.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "c08e39259bd33c376ed252d682ff42869c228f6bd212e1cb90a996749474de3c"
+    },
+    {
+      "member": "volcano/volcano-preservation-Volcano-guest-route-contact-at-390px-chromium/current-scrollport-middle.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "a4f416cc524d7b7ad4c83eab72ce87c33932e3012a39477818dd09882acd805d"
+    },
+    {
+      "member": "volcano/volcano-preservation-Volcano-guest-route-contact-at-390px-chromium/current-scrollport-top.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "259f4c42f904ea039ee0d2867a10e2b43405ac295c471d7c09f36b07d085e6b8"
+    },
+    {
+      "member": "volcano/volcano-preservation-Volcano-guest-route-contact-at-390px-chromium/page.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "d92f0ec8aca62eb98027f6a785a97fff66e19d354308a7947e5e387110c247a9"
+    },
+    {
+      "member": "volcano/volcano-preservation-Volcano-guest-route-de-about-at-1440px-chromium/page.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "e6198750fc2cd1e6ee9d062f66d18a788c2b6afe0c2f15ebb0e4300b1c9a9f32"
+    },
+    {
+      "member": "volcano/volcano-preservation-Volcano-guest-route-de-about-at-390px-chromium/current-scrollport-footer.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "c08e39259bd33c376ed252d682ff42869c228f6bd212e1cb90a996749474de3c"
+    },
+    {
+      "member": "volcano/volcano-preservation-Volcano-guest-route-de-about-at-390px-chromium/current-scrollport-middle.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "bee5705f2ce7baaa32f386133c7dbd1e409e5490d2e2d83f94359415f824e1e8"
+    },
+    {
+      "member": "volcano/volcano-preservation-Volcano-guest-route-de-about-at-390px-chromium/current-scrollport-top.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "aeb0a5983c6046b3a9b86131edd281666f4d3f823c4121b2fd5e81684df74ebd"
+    },
+    {
+      "member": "volcano/volcano-preservation-Volcano-guest-route-de-about-at-390px-chromium/page.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "b6111e75c8eacb858e2c329c5bc5c4d5e17eb48ac44a6df75fbd69ee2271c4c4"
+    },
+    {
+      "member": "volcano/volcano-preservation-Volcano-guest-route-docs-at-1440px-chromium/page.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "899b02b2664de69618abb35adcfb4e99cc74c3ff8ade63c7e8e2765d87e9b330"
+    },
+    {
+      "member": "volcano/volcano-preservation-Volcano-guest-route-docs-at-390px-chromium/current-scrollport-footer.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "c08e39259bd33c376ed252d682ff42869c228f6bd212e1cb90a996749474de3c"
+    },
+    {
+      "member": "volcano/volcano-preservation-Volcano-guest-route-docs-at-390px-chromium/current-scrollport-middle.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "a4f416cc524d7b7ad4c83eab72ce87c33932e3012a39477818dd09882acd805d"
+    },
+    {
+      "member": "volcano/volcano-preservation-Volcano-guest-route-docs-at-390px-chromium/current-scrollport-top.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "2066fa91d5487ecacc7ae5987d5bb434d82ed8dfedea0e5bd710c44a69a0ce9b"
+    },
+    {
+      "member": "volcano/volcano-preservation-Volcano-guest-route-docs-at-390px-chromium/page.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "0af719d0c96cd52b08a9339244b8e8ddb256ed96b98408a4176290887364f1cc"
+    },
+    {
+      "member": "volcano/volcano-preservation-Volcano-guest-route-events-at-1440px-chromium/page.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "0e53f41e127861a85286a5f9bb0834e6d44f304e387475551ac0ea2f87c9eecd"
+    },
+    {
+      "member": "volcano/volcano-preservation-Volcano-guest-route-events-at-390px-chromium/current-scrollport-footer.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "c08e39259bd33c376ed252d682ff42869c228f6bd212e1cb90a996749474de3c"
+    },
+    {
+      "member": "volcano/volcano-preservation-Volcano-guest-route-events-at-390px-chromium/current-scrollport-middle.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "b54b07ccf2dc97eeb6f1b6f769cc56fa1275556a17fc18245af1f1591482ddb6"
+    },
+    {
+      "member": "volcano/volcano-preservation-Volcano-guest-route-events-at-390px-chromium/current-scrollport-top.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "259f4c42f904ea039ee0d2867a10e2b43405ac295c471d7c09f36b07d085e6b8"
+    },
+    {
+      "member": "volcano/volcano-preservation-Volcano-guest-route-events-at-390px-chromium/page.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "d41dba296717e33545702aeb934dadeb91030662129c0fc9dc6b555bb5ec5e84"
+    },
+    {
+      "member": "volcano/volcano-preservation-Volcano-guest-route-journal-at-1440px-chromium/page.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "ce55fd376596edd939e77b0d716ef443a88394c85d15b12cfef4fa2097b515bf"
+    },
+    {
+      "member": "volcano/volcano-preservation-Volcano-guest-route-journal-at-390px-chromium/current-scrollport-footer.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "c08e39259bd33c376ed252d682ff42869c228f6bd212e1cb90a996749474de3c"
+    },
+    {
+      "member": "volcano/volcano-preservation-Volcano-guest-route-journal-at-390px-chromium/current-scrollport-middle.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "f8c924e302dd65815593aa2d4d93d1e0be4dc93a1d70a82715ed9e679172b9db"
+    },
+    {
+      "member": "volcano/volcano-preservation-Volcano-guest-route-journal-at-390px-chromium/current-scrollport-top.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "17a23694e0bcf995e9b4c5bd83377756b51903b78e3245e51fafab2f77cb6696"
+    },
+    {
+      "member": "volcano/volcano-preservation-Volcano-guest-route-journal-at-390px-chromium/page.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "54fc629f5308c6bd16c2feaa36811c52c780aee90fd6a0c304912d26fc1544e6"
+    },
+    {
+      "member": "volcano/volcano-preservation-Volcano-guest-route-login-at-1440px-chromium/page.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "877dd8bc745b2c8b2fd9373b9ce00a53d5c4c48290057c0d704995f23d389342"
+    },
+    {
+      "member": "volcano/volcano-preservation-Volcano-guest-route-login-at-390px-chromium/current-scrollport-footer.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "74e9a5c630c356a31192f0978eb4e4faeb0eeeae9f7bf9c9a4e1040c8baee651"
+    },
+    {
+      "member": "volcano/volcano-preservation-Volcano-guest-route-login-at-390px-chromium/current-scrollport-middle.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "6a6fc305c84a57456425b66c9d706abd0e326854360a3183530555e07e2ac33e"
+    },
+    {
+      "member": "volcano/volcano-preservation-Volcano-guest-route-login-at-390px-chromium/current-scrollport-top.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "9411f0aa570ddaf51612f75f76779a67083391cbe6bf55d3c4ffb944756425d1"
+    },
+    {
+      "member": "volcano/volcano-preservation-Volcano-guest-route-login-at-390px-chromium/page.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "c7d6117f4eede73abec48576d36a31fba28446100c14ec4522aa861d01470c14"
+    },
+    {
+      "member": "volcano/volcano-preservation-Volcano-guest-route-portfolio-at-1440px-chromium/page.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "b33f6c9f8d8030abadac314e8e05b4e91b1dccddf21a7c5c6004fd0358148698"
+    },
+    {
+      "member": "volcano/volcano-preservation-Volcano-guest-route-portfolio-at-390px-chromium/current-scrollport-footer.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "c08e39259bd33c376ed252d682ff42869c228f6bd212e1cb90a996749474de3c"
+    },
+    {
+      "member": "volcano/volcano-preservation-Volcano-guest-route-portfolio-at-390px-chromium/current-scrollport-middle.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "928110206f3c6f2358dfeb5af588473c0db656c8feb6c53ef66ae830c36c68bf"
+    },
+    {
+      "member": "volcano/volcano-preservation-Volcano-guest-route-portfolio-at-390px-chromium/current-scrollport-top.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "259f4c42f904ea039ee0d2867a10e2b43405ac295c471d7c09f36b07d085e6b8"
+    },
+    {
+      "member": "volcano/volcano-preservation-Volcano-guest-route-portfolio-at-390px-chromium/page.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "9c584d8ab6723808ea5302862cdb2d752ec2cb10a0f8ca790d6a684dfbb0259f"
+    },
+    {
+      "member": "volcano/volcano-preservation-Volcano-guest-route-privacy-at-1440px-chromium/page.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "41ef8eac1cd4a206129d1ac5875916e62a9e7851b4a6fbcf320914c3351db4af"
+    },
+    {
+      "member": "volcano/volcano-preservation-Volcano-guest-route-privacy-at-390px-chromium/current-scrollport-footer.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "c08e39259bd33c376ed252d682ff42869c228f6bd212e1cb90a996749474de3c"
+    },
+    {
+      "member": "volcano/volcano-preservation-Volcano-guest-route-privacy-at-390px-chromium/current-scrollport-middle.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "a4f416cc524d7b7ad4c83eab72ce87c33932e3012a39477818dd09882acd805d"
+    },
+    {
+      "member": "volcano/volcano-preservation-Volcano-guest-route-privacy-at-390px-chromium/current-scrollport-top.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "259f4c42f904ea039ee0d2867a10e2b43405ac295c471d7c09f36b07d085e6b8"
+    },
+    {
+      "member": "volcano/volcano-preservation-Volcano-guest-route-privacy-at-390px-chromium/page.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "8612aacee7305a4b0f56b79f50d6ee7c28b03be49fcad1693ba96144efdb7881"
+    },
+    {
+      "member": "volcano/volcano-preservation-Volcano-guest-route-search-at-1440px-chromium/page.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "ca7eb6a4a768d34fdbc9ccec289a65872082a8314dfb2a3bc0c2472094ef80e9"
+    },
+    {
+      "member": "volcano/volcano-preservation-Volcano-guest-route-search-at-390px-chromium/current-scrollport-footer.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "c08e39259bd33c376ed252d682ff42869c228f6bd212e1cb90a996749474de3c"
+    },
+    {
+      "member": "volcano/volcano-preservation-Volcano-guest-route-search-at-390px-chromium/current-scrollport-middle.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "1535a46c5a1eb7517022fdecabc498a50f5b202dfdf1da888c9cc5d37bc1d8a1"
+    },
+    {
+      "member": "volcano/volcano-preservation-Volcano-guest-route-search-at-390px-chromium/current-scrollport-top.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "ecbde17c4713eb8b07917dddd6bdcf2f2f349ff2d1a2bf78c22bd62f225e6fd4"
+    },
+    {
+      "member": "volcano/volcano-preservation-Volcano-guest-route-search-at-390px-chromium/page.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "5bfa4793da7056e1eb6bb17bc3e411c2aed0b97987bf25a5fc50520e1387ad98"
+    },
+    {
+      "member": "volcano/volcano-preservation-Volcano-guest-route-signup-at-1440px-chromium/page.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "d2278825826b9a983e0c1c744b5945f6a6383947b688f4ef2f607e635659cc32"
+    },
+    {
+      "member": "volcano/volcano-preservation-Volcano-guest-route-signup-at-390px-chromium/current-scrollport-footer.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "c08e39259bd33c376ed252d682ff42869c228f6bd212e1cb90a996749474de3c"
+    },
+    {
+      "member": "volcano/volcano-preservation-Volcano-guest-route-signup-at-390px-chromium/current-scrollport-middle.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "bee5705f2ce7baaa32f386133c7dbd1e409e5490d2e2d83f94359415f824e1e8"
+    },
+    {
+      "member": "volcano/volcano-preservation-Volcano-guest-route-signup-at-390px-chromium/current-scrollport-top.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "aeb0a5983c6046b3a9b86131edd281666f4d3f823c4121b2fd5e81684df74ebd"
+    },
+    {
+      "member": "volcano/volcano-preservation-Volcano-guest-route-signup-at-390px-chromium/page.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "cc24537045995e938c97a669bb3cdcdc8ea1d56013d89aab40f3de1503e8eb8c"
+    },
+    {
+      "member": "volcano/volcano-preservation-Volcano-guest-route-terms-at-1440px-chromium/page.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "024556ca3c92a566f2421ee85305ca131c6706afa9f2901860a134a8af8fdb26"
+    },
+    {
+      "member": "volcano/volcano-preservation-Volcano-guest-route-terms-at-390px-chromium/current-scrollport-footer.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "c08e39259bd33c376ed252d682ff42869c228f6bd212e1cb90a996749474de3c"
+    },
+    {
+      "member": "volcano/volcano-preservation-Volcano-guest-route-terms-at-390px-chromium/current-scrollport-middle.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "4416d71881aa943d567fa612ffbe38d9dc2524c3f16ecd3260a49d377689ea07"
+    },
+    {
+      "member": "volcano/volcano-preservation-Volcano-guest-route-terms-at-390px-chromium/current-scrollport-top.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "2066fa91d5487ecacc7ae5987d5bb434d82ed8dfedea0e5bd710c44a69a0ce9b"
+    },
+    {
+      "member": "volcano/volcano-preservation-Volcano-guest-route-terms-at-390px-chromium/page.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "6708ec85dcbd07e11c28c93edd25c1ab9456d5135c41123233c16ccfa6e1d908"
+    },
+    {
+      "member": "volcano/volcano-preservation-reserved-movement-space-compact-chromium/current-scrollport-footer.png",
+      "method": "individual-pixels",
+      "role": "current",
+      "sha256": "bf5f99078648b1e25622a977200aaeffd9a2a01957473f8373a39d37ca7637e3"
+    },
+    {
+      "member": "volcano/volcano-preservation-reserved-movement-space-compact-chromium/current-scrollport-middle.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "b49494bbf1a8bad8a3963685b21f1c6fcbf98f30313ae76f7ba46b541c8448fa"
+    },
+    {
+      "member": "volcano/volcano-preservation-reserved-movement-space-compact-chromium/current-scrollport-top.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "cc310d608d5efaaff39306e02adc1baffa55566ca96eee19b243ed50b4ecda1f"
+    },
+    {
+      "member": "volcano/volcano-preservation-reserved-movement-space-compact-chromium/movement-compact-0.5.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "c8b6ebe7b57f3e69964b8a1b88059f76fac9137ca91f2f220fc2f927c58b08fc"
+    },
+    {
+      "member": "volcano/volcano-preservation-reserved-movement-space-compact-chromium/movement-compact-0.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "90383f4386907f0be2b8ee707c6046eae45173517033872ba6938d09a4fbd47e"
+    },
+    {
+      "member": "volcano/volcano-preservation-reserved-movement-space-compact-chromium/movement-compact-1.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "e2ed8de3dc6793501491dedcc95c8ca302060852a4f65a473d830baaf62abb72"
+    },
+    {
+      "member": "volcano/volcano-preservation-reserved-movement-space-desktop-chromium/movement-desktop-0.5.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "de6826761e9b39eb301fb4ba5cdfc75d7f6df68d4671cd52ad7ed7dcbcdcbed2"
+    },
+    {
+      "member": "volcano/volcano-preservation-reserved-movement-space-desktop-chromium/movement-desktop-0.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "2c16ee2b6f76ae9a2ab81afe00a48d91b4a7993da32b1c914f04f5dd45b90a56"
+    },
+    {
+      "member": "volcano/volcano-preservation-reserved-movement-space-desktop-chromium/movement-desktop-1.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "468c5bd3ba3fa06cf9df15093e0acda02af493356123b60c14c277fd866c20c1"
+    },
+    {
+      "member": "volcano/volcano-preservation-reserved-movement-space-forced-chromium/current-scrollport-footer.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "83c91952fdd70e771ba9d6f8589b9c6addbbe4bff5ec271a0bf028c0157ecbde"
+    },
+    {
+      "member": "volcano/volcano-preservation-reserved-movement-space-forced-chromium/current-scrollport-middle.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "5835b55b6368ffb025f46b9a6b9df0f923060b40b884380f23a652b03388dbb7"
+    },
+    {
+      "member": "volcano/volcano-preservation-reserved-movement-space-forced-chromium/current-scrollport-top.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "e876597dfe56be261b55d9fd62c2cbdbb63459895a7a0c68b34fdd0cd43d1257"
+    },
+    {
+      "member": "volcano/volcano-preservation-reserved-movement-space-forced-chromium/movement-forced-0.5.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "e312fe7cacf3081d16461fe23a71c4e4c1bce4f2581d31b9c807b43637c8401e"
+    },
+    {
+      "member": "volcano/volcano-preservation-reserved-movement-space-forced-chromium/movement-forced-0.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "4c9491274eab206c0b09c1dbed69d44c510bf60d3c7338a276446eb5bd345014"
+    },
+    {
+      "member": "volcano/volcano-preservation-reserved-movement-space-forced-chromium/movement-forced-1.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "a0ee6d636b299d885503e418f713a63d98b37ac98fbfc38774d28ce5d4fd7ff6"
+    },
+    {
+      "member": "volcano/volcano-preservation-reserved-movement-space-landscape-chromium/current-scrollport-footer.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "a38707eb799c5e6eb2bf2587a6f33300308301c175d72e8942925275030479d4"
+    },
+    {
+      "member": "volcano/volcano-preservation-reserved-movement-space-landscape-chromium/current-scrollport-middle.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "649e74f4a9cdc1c8698cd1d2d263246f646a1839525bfc0c7502d30cff6d29df"
+    },
+    {
+      "member": "volcano/volcano-preservation-reserved-movement-space-landscape-chromium/current-scrollport-top.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "8568a56d43894427155a7a2b8c9511cf47d4f3e60b0b31d3ec1876e9c15c6c1c"
+    },
+    {
+      "member": "volcano/volcano-preservation-reserved-movement-space-landscape-chromium/movement-landscape-0.5.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "b4eff9a11d5b1b251d8d85713e68a9fc0baab4ed521036febfac69832cfec2ee"
+    },
+    {
+      "member": "volcano/volcano-preservation-reserved-movement-space-landscape-chromium/movement-landscape-0.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "75b576d82688ada81d827172b53a49143d98bde487c27fa97dfdb9ad7e5cb878"
+    },
+    {
+      "member": "volcano/volcano-preservation-reserved-movement-space-landscape-chromium/movement-landscape-1.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "a991d2e0210710006f541c70e62cc47ff83a66b00cf767fd5aa32d1df609f884"
+    },
+    {
+      "member": "volcano/volcano-preservation-reserved-movement-space-rtl-chromium/current-scrollport-footer.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "dd5857c6d6bfe21bcdf5dc1f8aac5864af5ba8693e3ec824664797298db4872a"
+    },
+    {
+      "member": "volcano/volcano-preservation-reserved-movement-space-rtl-chromium/current-scrollport-middle.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "4229a4052bee65db342989720c4950e49553b2e84fd1c611b63f5a881c3eb7cd"
+    },
+    {
+      "member": "volcano/volcano-preservation-reserved-movement-space-rtl-chromium/current-scrollport-top.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "f4b5dc196f4184589d1a6d03b96e4e926f9ed03282547aefd1b86c10d48d877f"
+    },
+    {
+      "member": "volcano/volcano-preservation-reserved-movement-space-rtl-chromium/movement-rtl-0.5.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "4e09fbc54966e3cd6e635f3f13fe4fb379bdf2e7951e9c7b7ab9451e84f5a8e9"
+    },
+    {
+      "member": "volcano/volcano-preservation-reserved-movement-space-rtl-chromium/movement-rtl-0.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "979b5491419892f231d428d42c0fb0551ec45d89710d02bbf9314260a5046b20"
+    },
+    {
+      "member": "volcano/volcano-preservation-reserved-movement-space-rtl-chromium/movement-rtl-1.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "6c47249a1850d1d55997b4de9f7f57ec22d9a37fe7385b31aaa99f306f437985"
+    },
+    {
+      "member": "volcano/volcano-preservation-reserved-movement-space-zoom-chromium/current-scrollport-footer.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "f8aa4bdb46167095f09953fa324fd1584925c6324cc8ece207436811c477dfb3"
+    },
+    {
+      "member": "volcano/volcano-preservation-reserved-movement-space-zoom-chromium/current-scrollport-middle.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "86b2f9e4bc961c118e5a0f20a76e92deae5c7d96e63140cca229ca68b3dabca2"
+    },
+    {
+      "member": "volcano/volcano-preservation-reserved-movement-space-zoom-chromium/current-scrollport-top.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "4a0026b2ceee2611e576e371ac61c8479d0308e2ad15e9dce7854e3eeb177944"
+    },
+    {
+      "member": "volcano/volcano-preservation-reserved-movement-space-zoom-chromium/movement-zoom-0.5.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "23296d7c0bffdbca76dc22d309d277ca7bd118a3f0ad978feae6d11774dcf1f3"
+    },
+    {
+      "member": "volcano/volcano-preservation-reserved-movement-space-zoom-chromium/movement-zoom-0.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "d447a6d6085681904df54068e27a84bb96bf79e9f4d0714a7597214701a4808a"
+    },
+    {
+      "member": "volcano/volcano-preservation-reserved-movement-space-zoom-chromium/movement-zoom-1.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "50c54bc6b2533e527b572414e73e8ef3db81b5ae3509c8932655af5d3ddb32da"
+    }
+  ],
+  "kind": "technical-review",
+  "manifest": "runs/41295005783-1-124813891550-13078709025.json",
+  "manifestSha256": "02404927f4790b413edf72f6577d3f5d3967d887d66eaa4b8486b426ea87ffe0",
+  "notes": "Diagnostic review only; no baseline approval or whole-matrix acceptance. Original supplied pixel review retained; contact-sheet overview does not verify all fine text. Exact-byte matches refer to previously inspected images. Case identities describe producing test directories, not necessarily pictured routes; supplementary named-route captures may show Search. No reference promotion, acceptance, or uploads. Review method and uninspected images explicitly recorded. Full-page comparison in mobile inner scrollport is viewport-sized, not complete content. Standard supplementary captures may be after navigation; folder route is not proof of currently pictured route. Bounded collector excludes non-project PNGs per provenance; oversized original artifacts not fetched. No trace/browser or source causal check performed. Thumbnail overview of288 unique images does not amount to detailed acceptance of each full-length screenshot. Known modal/focus/toggle/opslarge-text/workspaceoverflow issues outside this child review scope. No baseline comparisons available in this subset; native success not inferred from screenshots. Scaled contact sheets establish overview review only; not detailed acceptance of every small text/control in tall full-page images.",
+  "schemaVersion": 2
+}

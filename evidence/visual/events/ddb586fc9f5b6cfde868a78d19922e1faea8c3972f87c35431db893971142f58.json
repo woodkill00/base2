@@ -1,0 +1,46 @@
+{
+  "conclusion": "inconclusive",
+  "inspections": [
+    {
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-firefox-desktop/current-operations-center-firefox-desktop.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "a094ae700e522cda919684a716238dc95496a9bb0cd610dcf8d9cf9e2535a043"
+    },
+    {
+      "member": "operations-release-operati-84a1a-ul-empty-and-failure-states-firefox-desktop/current-operations-center-empty.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "4c78c9d3387a5712fb94a8b313259afdeef01cc2d47bb7b1c73d1bfb3186c98e"
+    },
+    {
+      "member": "operations-release-operati-84a1a-ul-empty-and-failure-states-firefox-desktop/current-operations-center-error.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "c949335a66417e6caeb53cde2153420da7dbeb44089081ec4f4cfb81476a68ae"
+    },
+    {
+      "member": "operations-release-operati-e5f8f-d-read-only-recovery-states-firefox-desktop/current-operations-center-partial.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "ca087108927356421095f49e002bf2c28f6029c7835ea50b37fb1eec237dc60a"
+    },
+    {
+      "member": "operations-release-operati-e5f8f-d-read-only-recovery-states-firefox-desktop/current-operations-center-read-only.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "349733628a5bb172bbc1fb89f212692aeb44a3018d6952ddb915d004912b727b"
+    },
+    {
+      "member": "operations-release-operati-e5f8f-d-read-only-recovery-states-firefox-desktop/current-operations-center-reauth.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "8ce032506b066f61b6dc1ada4f4d076f737b75cf1f1d8bf455a1d07e14dfd6d9"
+    }
+  ],
+  "kind": "technical-review",
+  "manifest": "runs/41290418358-1-124800320642-13077595665.json",
+  "manifestSha256": "5ac7bde01286304f93132aa72412bab725bd2e3465a04c9f55241587dfd4a2da",
+  "notes": "Diagnostic review only; no baseline approval or whole-matrix acceptance. Original supplied pixel review retained; contact-sheet overview does not verify all fine text. Exact-byte matches refer to previously inspected images. Expected reference PNGs/diffs/traces/raw Playwright report absent from bounded archive; receipt identities and summary verified, no independent raw step replay. 20 declared skips are not executions; recovery states covered only in compact and Chromium/Firefox/WebKit desktop projects. Cancellation dialog full-page image has viewport-limited dimming; complete dialog visible, unseen viewport positions not proven. Generic footer System evidence current persists in unavailable/stale states; misleading-copy concern requires scope decision.",
+  "schemaVersion": 2
+}

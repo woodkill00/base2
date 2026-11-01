@@ -1,0 +1,34 @@
+{
+  "conclusion": "inconclusive",
+  "inspections": [
+    {
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-tablet/current-media-library-viewport-0.png",
+      "method": "individual-pixels",
+      "role": "current",
+      "sha256": "ff964acdde9e78a97a8711a257397834577b222694dd413e5280e90c55e834d8"
+    },
+    {
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-tablet/current-media-library-viewport-2.png",
+      "method": "individual-pixels",
+      "role": "current",
+      "sha256": "ff964acdde9e78a97a8711a257397834577b222694dd413e5280e90c55e834d8"
+    },
+    {
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-tablet/current-media-library-viewport-4.png",
+      "method": "individual-pixels",
+      "role": "current",
+      "sha256": "1906660bdb2a69cfdecaccd943295f4387eb5b7572a1ce4e67924b5fe67f992e"
+    },
+    {
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-tablet/current-media-library.png",
+      "method": "individual-pixels",
+      "role": "current",
+      "sha256": "90cf28b047654d10726d07851e37a8eea4baeec2b88286a288599adcb9d69be2"
+    }
+  ],
+  "kind": "technical-review",
+  "manifest": "runs/41287894771-1-124792843889-13075942164.json",
+  "manifestSha256": "44ff19682e658aac2c5fdc3b2eec99687625741108d89e7f1ad691a58cc24c4c",
+  "notes": "Diagnostic review only; no baseline approval or whole-matrix acceptance. Original supplied pixel review retained; contact-sheet overview does not verify all fine text. Exact-byte matches refer to previously inspected images. 12 declared skips; Chromium-only matrix. No raw traces or detailed Playwright step report in bounded metadata; source-after reports 20 passed,4 failed,12 skipped. Viewport observations sample three centered cards; cannot prove all-scroll/all-visible-target safety. Four desktop/light/HC/RTL detail top/completed states captured; compact and zoom remain unproven. Packaging missingReports lists operations-visual-runner.json (operations-specific receipt, not supplied for media).",
+  "schemaVersion": 2
+}

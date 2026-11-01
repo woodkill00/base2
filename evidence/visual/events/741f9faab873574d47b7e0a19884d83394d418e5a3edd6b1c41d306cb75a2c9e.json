@@ -1,0 +1,16 @@
+{
+  "conclusion": "inconclusive",
+  "inspections": [
+    {
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-light/current-operations-center-chromium-light.png",
+      "method": "individual-pixels",
+      "role": "current",
+      "sha256": "ef61d67b2780a6255dfe40cdb745a457205d180e7eb8d951ef950b6fd741f81d"
+    }
+  ],
+  "kind": "technical-review",
+  "manifest": "runs/41285245816-1-124785115768-13074752852.json",
+  "manifestSha256": "ff61183a0cc1f32ba3ab3780a0f9dc0508a93de71bf53aee7b9bb7f9742b41b7",
+  "notes": "Diagnostic review only; no baseline approval or whole-matrix acceptance. Original supplied pixel review retained; contact-sheet overview does not verify all fine text. Exact-byte matches refer to previously inspected images. Original metadata and all35 PNG member/hash chains recovered from the original run; original ZIP bytes externally verified, local Git bytes independently verified. Actual pixels reviewed; comparison-reference attachment hashes remain distinct from current actual PNG hashes. Static misleading footer wording and viewport-limited cancellation shade remain open. No full visual acceptance. Original source-after.json SHA256 85b0fa3ebca79ba76877f8fd11ff1cb969e50f06d152ed8e72c8c5d36486f163; proof commit 29d07bc26e4c4eba3c132e5802b1bdcc10c6150b.",
+  "schemaVersion": 2
+}

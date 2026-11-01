@@ -412,3 +412,249 @@ def test_ci_mode_rejects_missing_run_manifests(tmp_path):
     )
     assert result.returncode != 0
     assert "required archive has no run manifests" in result.stderr
+
+
+def v2_manifest(repo, data):
+    transfer_manifest(repo, data)
+    data.update(schemaVersion=2, observations=[])
+    for c in data["captures"]:
+        c["member"] = "case/unit-actual.png"
+        c.update(
+            archiveChain=[
+                {
+                    "member": "project.zip",
+                    "sha256": "a" * 64,
+                    "hashBasis": "externally-verified-original-member",
+                },
+                {
+                    "member": c["member"],
+                    "sha256": c["sha256"],
+                    "hashBasis": "externally-verified-original-member",
+                },
+            ],
+            identityBasis="native-report",
+            viewportBasis="native-project-config",
+            outcomeEvidence={
+                "basis": "retained-native-report",
+                "project": c["project"],
+                "title": c["test"],
+                "attemptStatuses": [c["originalOutcome"]],
+            },
+        )
+    return data
+
+
+def test_v2_roundtrip_nested_chain_and_unknown_remain_diagnostic(sample):
+    repo, _, data = sample
+    v2_manifest(repo, data)
+    c = data["captures"][0]
+    c.update(
+        originalOutcome="unknown",
+        identityBasis="archive-directory",
+        viewport=None,
+        viewportBasis="unavailable",
+        outcomeEvidence={"basis": "per-case-result-unavailable"},
+    )
+    target = archive.import_git_transfer(repo, data)
+    assert json.loads(target.read_bytes()) == data
+    assert archive.validate_archive(repo) == 1
+    assert data["laterValidation"] == data["technicalReview"] == "pending"
+    # Committed integrity does not need an unreferenced transfer object to survive.
+    data["transfer"]["commit"] = "f" * 40
+    target.write_bytes(archive.canonical(data))
+    assert archive.validate_archive(repo) == 1
+
+
+@pytest.mark.parametrize(
+    "fault", ["traversal", "leaf", "unknown", "mixed-role", "viewport", "missing-inner-hash"]
+)
+def test_v2_invalid_provenance_writes_no_manifest(sample, fault):
+    repo, _, data = sample
+    v2_manifest(repo, data)
+    c = data["captures"][0]
+    if fault == "traversal":
+        c["archiveChain"][0]["member"] = "../escape.zip"
+    if fault == "leaf":
+        c["archiveChain"][-1]["sha256"] = "b" * 64
+    if fault == "unknown":
+        c["originalOutcome"] = "unknown"
+    if fault == "mixed-role":
+        c["role"] = "expected"
+    if fault == "viewport":
+        c["viewportBasis"] = "unavailable"
+    if fault == "missing-inner-hash":
+        c["archiveChain"][0]["sha256"] = None
+    with pytest.raises(ValueError):
+        archive.import_git_transfer(repo, data)
+    assert not (repo / "evidence/visual/runs").exists()
+
+
+def test_v2_observation_import_exact_original_schema_tamper_and_private_rejected(sample, tmp_path):
+    from scripts.tests.test_visual_matrix_artifacts import media_observation_fixture
+
+    repo, _, data = sample
+    v2_manifest(repo, data)
+    _, _, _, observation, _ = media_observation_fixture(tmp_path)
+    raw = observation.read_bytes()
+    sha = archive.digest(raw)
+    path = repo / f"evidence/visual/observations/{sha}.json"
+    path.parent.mkdir(parents=True)
+    path.write_bytes(raw)
+    git(repo, "add", str(path.relative_to(repo)))
+    git(
+        repo,
+        "-c",
+        "user.name=Fixture",
+        "-c",
+        "user.email=fixture@example.invalid",
+        "-c",
+        "commit.gpgsign=false",
+        "-c",
+        "core.hooksPath=/dev/null",
+        "commit",
+        "-qm",
+        "unit geometry",
+    )
+    data["transfer"].update(
+        commit=git(repo, "rev-parse", "HEAD"), tree=git(repo, "rev-parse", "HEAD^{tree}")
+    )
+    data["transfer"]["blobs"][sha] = git(repo, "rev-parse", f"HEAD:{path.relative_to(repo)}")
+    c = data["captures"][0]
+    c["project"] = c["outcomeEvidence"]["project"] = "chromium-desktop"
+    item = dict(
+        member="case/media-viewport-observations.json",
+        sha256=sha,
+        bytes=len(raw),
+        storage=f"observations/{sha}.json",
+        project="chromium-desktop",
+        schemaVersion=1,
+        archiveChain=[
+            dict(
+                member="case/media-viewport-observations.json",
+                sha256=sha,
+                hashBasis="externally-verified-original-member",
+            )
+        ],
+    )
+    data["observations"] = [item]
+    path.unlink()
+    archive.import_git_transfer(repo, data)
+    assert path.read_bytes() == raw
+    assert archive.validate_archive(repo) == 1
+    path.write_bytes(raw + b" ")
+    with pytest.raises(ValueError, match="observation integrity"):
+        archive.validate_archive(repo)
+    private = json.loads(raw)
+    private["privateUrl"] = "secret"
+    altered = archive.canonical(private)
+    with pytest.raises(ValueError, match="observation schema"):
+        archive.validate_observation_bytes(
+            altered, {**item, "sha256": archive.digest(altered), "bytes": len(altered)}
+        )
+
+
+def test_v2_scoped_review_binds_members_roles_and_rejects_uninspected(sample):
+    repo, _, data = sample
+    v2_manifest(repo, data)
+    expected = copy.deepcopy(data["captures"][0])
+    expected.update(member="case/unit-expected.png", role="expected")
+    expected["archiveChain"][-1]["member"] = expected["member"]
+    data["captures"].append(expected)  # Deliberately identical unit bytes, distinct roles.
+    path = archive.import_git_transfer(repo, data)
+    c = data["captures"][0]
+    event = dict(
+        schemaVersion=2,
+        kind="technical-review",
+        manifest="runs/" + path.name,
+        manifestSha256=archive.digest(path.read_bytes()),
+        conclusion="inconclusive",
+        notes="Synthetic unit inspection subset; never native acceptance.",
+        inspections=[
+            dict(member=c["member"], sha256=c["sha256"], role="actual", method="individual-pixels")
+        ],
+    )
+    archive.append_event(repo, event)
+    assert archive.validate_archive(repo) == 1
+    bad = copy.deepcopy(event)
+    bad["inspections"][0]["role"] = "expected"
+    with pytest.raises(ValueError, match="mixed-role"):
+        archive.validate_event(repo, bad)
+    bad = copy.deepcopy(event)
+    bad["inspections"][0]["method"] = "uninspected"
+    with pytest.raises(ValueError, match="uninspected"):
+        archive.validate_event(repo, bad)
+    legacy = dict(
+        schemaVersion=1,
+        kind="technical-review",
+        manifest=event["manifest"],
+        manifestSha256=event["manifestSha256"],
+        captureHashes=[c["sha256"]],
+        conclusion="inconclusive",
+        notes=event["notes"],
+        evidence="actual-expected-diff-pixels-inspected",
+    )
+    with pytest.raises(ValueError, match="member-role"):
+        archive.validate_event(repo, legacy)
+
+
+def test_unknown_case_cannot_be_promoted_by_later_native_event(sample):
+    repo, _, data = sample
+    v2_manifest(repo, data)
+    c = data["captures"][0]
+    c.update(
+        originalOutcome="unknown",
+        identityBasis="archive-directory",
+        outcomeEvidence={"basis": "per-case-result-unavailable"},
+    )
+    target = archive.import_git_transfer(repo, data)
+    later = copy.deepcopy(data)
+    later["runId"] += 1
+    later["originalOutcome"] = "passed"
+    native = later["captures"][0]
+    native.update(
+        originalOutcome="passed",
+        identityBasis="native-report",
+        outcomeEvidence={
+            "basis": "retained-native-report",
+            "project": native["project"],
+            "title": native["test"],
+            "attemptStatuses": ["passed"],
+        },
+    )
+    validation = archive.import_git_transfer(repo, later)
+    event = dict(
+        schemaVersion=1,
+        kind="native-validation",
+        manifest="runs/" + target.name,
+        manifestSha256=archive.digest(target.read_bytes()),
+        captureHashes=[c["sha256"]],
+        conclusion="passed",
+        evidence="runs/" + validation.name,
+        notes="Synthetic rejection fixture.",
+    )
+    with pytest.raises(ValueError, match="unknown evidence"):
+        archive.append_event(repo, event)
+    assert not (repo / "evidence/visual/events").exists()
+
+
+def test_batch_review_rejects_all_before_writing_any(sample):
+    repo, _, data = sample
+    v2_manifest(repo, data)
+    target = archive.import_git_transfer(repo, data)
+    c = data["captures"][0]
+    event = dict(
+        schemaVersion=2,
+        kind="technical-review",
+        manifest="runs/" + target.name,
+        manifestSha256=archive.digest(target.read_bytes()),
+        conclusion="inconclusive",
+        notes="Synthetic batch; no native acceptance.",
+        inspections=[
+            dict(member=c["member"], sha256=c["sha256"], role=c["role"], method="individual-pixels")
+        ],
+    )
+    invalid = copy.deepcopy(event)
+    invalid["inspections"][0]["sha256"] = "0" * 64
+    with pytest.raises(ValueError):
+        archive.append_events(repo, [event, invalid])
+    assert not (repo / "evidence/visual/events").exists()

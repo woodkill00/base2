@@ -1,0 +1,70 @@
+{
+  "conclusion": "inconclusive",
+  "inspections": [
+    {
+      "member": "media-release-media-detail-fa505-age-and-consequence-context-chromium-high-contrast/current-media-detail-top.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "0a9844834b1c8d8e952680c1ae60bcfae21ec060cf150f75bb8ba39c2db5fb0f"
+    },
+    {
+      "member": "media-release-media-detail-fa505-age-and-consequence-context-chromium-high-contrast/test-failed-1.png",
+      "method": "contact-sheet-overview",
+      "role": "failure",
+      "sha256": "e45ef64d975754787ca8eb34bc2a86e4e27eef18e95144ed97f9351d696083f3"
+    },
+    {
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-high-contrast/current-media-library-viewport-0.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "ab7bf4b55eb1380f6f6b13d3286944604ec77fd9ffb0454f79f16de5629fd790"
+    },
+    {
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-high-contrast/current-media-library-viewport-2.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "ab7bf4b55eb1380f6f6b13d3286944604ec77fd9ffb0454f79f16de5629fd790"
+    },
+    {
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-high-contrast/current-media-library-viewport-4.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "434748161678c2b474a07d23955628a4b95a2fce7d4e5b09cc2ec1dc418e238c"
+    },
+    {
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-high-contrast/current-media-library.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "ded11fa2ffbe33de8d00f6748a246cfec4b1a008b7fcd45dc4db717e59ef2e16"
+    },
+    {
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-high-contrast/media-library-chromium-high-contrast-actual.png",
+      "method": "contact-sheet-overview",
+      "role": "actual",
+      "sha256": "ded11fa2ffbe33de8d00f6748a246cfec4b1a008b7fcd45dc4db717e59ef2e16"
+    },
+    {
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-high-contrast/test-failed-1.png",
+      "method": "contact-sheet-overview",
+      "role": "failure",
+      "sha256": "434748161678c2b474a07d23955628a4b95a2fce7d4e5b09cc2ec1dc418e238c"
+    },
+    {
+      "member": "media-release-media-picker-72bf8-ontained-in-a-real-workflow-chromium-high-contrast/current-media-picker-bottom.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "eccb3e18f1e71c5a8dcb4ee94949e3a242b90f90c72c16efc0d666cd07750a59"
+    },
+    {
+      "member": "media-release-media-picker-72bf8-ontained-in-a-real-workflow-chromium-high-contrast/current-media-picker.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "eccb3e18f1e71c5a8dcb4ee94949e3a242b90f90c72c16efc0d666cd07750a59"
+    }
+  ],
+  "kind": "technical-review",
+  "manifest": "runs/41295029086-1-124813961797-13078588237.json",
+  "manifestSha256": "e83723ef5ed3f27882962966f0fef143c4543c591792edc071f7baab054d30cd",
+  "notes": "Diagnostic review only; no baseline approval or whole-matrix acceptance. Original supplied pixel review retained; contact-sheet overview does not verify all fine text. Exact-byte matches refer to previously inspected images. No reference promotion, acceptance, or uploads. Review method and uninspected images explicitly recorded. Full-page comparison in mobile inner scrollport is viewport-sized, not complete content. Standard supplementary captures may be after navigation; folder route is not proof of currently pictured route. Bounded collector excludes non-project PNGs per provenance; oversized original artifacts not fetched. Scaled contact sheets establish overview review only; not detailed acceptance of every small text/control in tall full-page images.",
+  "schemaVersion": 2
+}

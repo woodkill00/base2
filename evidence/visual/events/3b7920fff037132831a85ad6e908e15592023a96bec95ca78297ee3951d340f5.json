@@ -1,0 +1,46 @@
+{
+  "conclusion": "inconclusive",
+  "inspections": [
+    {
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-firefox-desktop/workspace-records-firefox-desktop-actual.png",
+      "method": "contact-sheet-overview",
+      "role": "actual",
+      "sha256": "ce00d362e41ee2c3c2d980c7aa87614ceec9f346b7e7a3024663dc7c212e94ce"
+    },
+    {
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-webkit-mobile/current-scrollport-footer.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "c008b9db3aedc35e0a0072e34ba3c20c0e3a9a2af319e92bd6722faccfdb9286"
+    },
+    {
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-webkit-mobile/current-scrollport-middle.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "6148cb2799376b59f9c07b4b6400e56014ae51f8e5105582ea55a970f07ffada"
+    },
+    {
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-webkit-mobile/current-scrollport-top.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "13a6bf07c6a382efc2d79469a5f7fa886c9d505a2abea1a5ffd1748c484e06a8"
+    },
+    {
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-webkit-mobile/test-failed-1.png",
+      "method": "contact-sheet-overview",
+      "role": "failure",
+      "sha256": "b1c2770721660ac35cbe9464ef53144646e8ea89db23d64d89dc49893a527d3c"
+    },
+    {
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-webkit-mobile/workspace-records-webkit-mobile-actual.png",
+      "method": "contact-sheet-overview",
+      "role": "actual",
+      "sha256": "8327763a785bdad1a02ce8cc641033fce39532c5f8c81104408629ce41052352"
+    }
+  ],
+  "kind": "technical-review",
+  "manifest": "runs/41295005783-1-124813891550-13078649244.json",
+  "manifestSha256": "9c89b40f81a716ef095e7d4552a94f6cc0a6fd8286e1b45d258b629efe336775",
+  "notes": "Diagnostic review only; no baseline approval or whole-matrix acceptance. Original supplied pixel review retained; contact-sheet overview does not verify all fine text. Exact-byte matches refer to previously inspected images. Case identities describe producing test directories, not necessarily pictured routes; supplementary named-route captures may show Search. No reference promotion, acceptance, or uploads. Review method and uninspected images explicitly recorded. Full-page comparison in mobile inner scrollport is viewport-sized, not complete content. Standard supplementary captures may be after navigation; folder route is not proof of currently pictured route. Bounded collector excludes non-project PNGs per provenance; oversized original artifacts not fetched. No trace/browser or source causal check performed. Thumbnail overview of288 unique images does not amount to detailed acceptance of each full-length screenshot. Known modal/focus/toggle/opslarge-text/workspaceoverflow issues outside this child review scope. No baseline comparisons available in this subset; native success not inferred from screenshots. Scaled contact sheets establish overview review only; not detailed acceptance of every small text/control in tall full-page images.",
+  "schemaVersion": 2
+}

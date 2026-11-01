@@ -1,0 +1,16 @@
+{
+  "conclusion": "inconclusive",
+  "inspections": [
+    {
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-reduced-motion/current-operations-center-chromium-reduced-motion.png",
+      "method": "individual-pixels",
+      "role": "current",
+      "sha256": "4272cdcd9b0f397c42359d848dc24a78a45fe494b79a625d0326eaa9cbca361a"
+    }
+  ],
+  "kind": "technical-review",
+  "manifest": "runs/41285245816-1-124785115768-13075530560.json",
+  "manifestSha256": "5325f188c5b07ac5968af8f40f20428ea5e7c0a799807d01e77aeadeae294d5c",
+  "notes": "Diagnostic review only; no baseline approval or whole-matrix acceptance. Original supplied pixel review retained; contact-sheet overview does not verify all fine text. Exact-byte matches refer to previously inspected images. Original metadata and all35 PNG member/hash chains recovered from the original run; original ZIP bytes externally verified, local Git bytes independently verified. Actual pixels reviewed; comparison-reference attachment hashes remain distinct from current actual PNG hashes. Static misleading footer wording and viewport-limited cancellation shade remain open. No full visual acceptance. Original source-after.json SHA256 85b0fa3ebca79ba76877f8fd11ff1cb969e50f06d152ed8e72c8c5d36486f163; proof commit 29d07bc26e4c4eba3c132e5802b1bdcc10c6150b.",
+  "schemaVersion": 2
+}

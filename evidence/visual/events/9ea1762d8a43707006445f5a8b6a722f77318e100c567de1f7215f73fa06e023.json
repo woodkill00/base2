@@ -1,0 +1,16 @@
+{
+  "conclusion": "inconclusive",
+  "inspections": [
+    {
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-reduced-motion/operations-center-chromium-reduced-motion-actual.png",
+      "method": "individual-pixels",
+      "role": "actual",
+      "sha256": "c57977b51651b27789501a88dd8e73908f454f1562bd6c7beeb3149cc3d4efa9"
+    }
+  ],
+  "kind": "technical-review",
+  "manifest": "runs/41295038159-1-124813987490-13079155903.json",
+  "manifestSha256": "b6cf575907972ed70bedcb750eb1058f46b0ca56deffee8deb8aaf1299f2b134",
+  "notes": "Diagnostic review only; no baseline approval or whole-matrix acceptance. Original supplied pixel review retained; contact-sheet overview does not verify all fine text. Exact-byte matches refer to previously inspected images. Native1passed21failed20declaredskips. Failed comparisons do not imply all later steps executed. No current cancellation/modal screenshot or later error/reauth/read-only states captured: earlier comparison failures prevent those steps. Modal/backdrop positioning not validated here. Only bounded PNG and metadata evidence supplied; no raw trace or detailed native error report. All22main/empty/partial actual or passing captures and18supplementary scrollport images inspected; remaining references/diffs retained with explicit review status. No all-scroll hit-test receipt available in these operations bundles; visual separation is not proof of all-position safety.",
+  "schemaVersion": 2
+}

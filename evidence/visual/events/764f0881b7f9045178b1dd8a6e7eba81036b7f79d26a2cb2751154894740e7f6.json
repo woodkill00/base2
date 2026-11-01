@@ -1,0 +1,28 @@
+{
+  "conclusion": "inconclusive",
+  "inspections": [
+    {
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-large-text/operations-center-chromium-large-text-actual.png",
+      "method": "individual-pixels",
+      "role": "actual",
+      "sha256": "b74d6e19a8a4a7aa1f008cee9390d86c8e417f944d6ce5069a376f3aba8e6a65"
+    },
+    {
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-large-text/operations-center-chromium-large-text-diff.png",
+      "method": "individual-pixels",
+      "role": "diff",
+      "sha256": "4523abc3bf6cf1d724be5bdd56e42a67095ad08e5f1cf8118946ee9b76be5ea8"
+    },
+    {
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-large-text/operations-center-chromium-large-text-expected.png",
+      "method": "individual-pixels",
+      "role": "expected",
+      "sha256": "eeded87bd5855d0714b39ceee2deb7aa5a417b03c0dc7f06f3a0246424335212"
+    }
+  ],
+  "kind": "technical-review",
+  "manifest": "runs/41295038159-1-124813987490-13078958406.json",
+  "manifestSha256": "314477640075c18cd06ea31325a8bde3f5bcf273857b61d6b8b023250f5a1de6",
+  "notes": "Diagnostic review only; no baseline approval or whole-matrix acceptance. Original supplied pixel review retained; contact-sheet overview does not verify all fine text. Exact-byte matches refer to previously inspected images. Native1passed21failed20declaredskips. Failed comparisons do not imply all later steps executed. No current cancellation/modal screenshot or later error/reauth/read-only states captured: earlier comparison failures prevent those steps. Modal/backdrop positioning not validated here. Only bounded PNG and metadata evidence supplied; no raw trace or detailed native error report. All22main/empty/partial actual or passing captures and18supplementary scrollport images inspected; remaining references/diffs retained with explicit review status. No all-scroll hit-test receipt available in these operations bundles; visual separation is not proof of all-position safety.",
+  "schemaVersion": 2
+}

@@ -1,0 +1,68 @@
+{
+  "archiveSha256": "e02143fc47f377a64e03b60031ff38a4bdbbebac24da89c0167c93b609bca543",
+  "artifactId": 13076599306,
+  "attempt": 1,
+  "captures": [
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "unavailable-in-retained-inventory",
+          "member": "chromium-high-contrast.zip",
+          "sha256": null
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-high-contrast/current-operations-center-chromium-high-contrast.png",
+          "sha256": "1b4baf43e6ff33ebfeb30c8734940b33bf9367bfdc9ede4f11bac7763d962576"
+        }
+      ],
+      "bytes": 533560,
+      "dimensions": [
+        1280,
+        2949
+      ],
+      "identityBasis": "native-report",
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-high-contrast/current-operations-center-chromium-high-contrast.png",
+      "originalOutcome": "passed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "passed"
+        ],
+        "basis": "retained-native-report",
+        "project": "chromium-high-contrast",
+        "title": "operations center is accessible responsive and visually stable"
+      },
+      "project": "chromium-high-contrast",
+      "role": "current",
+      "sha256": "1b4baf43e6ff33ebfeb30c8734940b33bf9367bfdc9ede4f11bac7763d962576",
+      "storage": "objects/1b4baf43e6ff33ebfeb30c8734940b33bf9367bfdc9ede4f11bac7763d962576.png",
+      "test": "operations center is accessible responsive and visually stable",
+      "viewport": [
+        1280,
+        900
+      ],
+      "viewportBasis": "native-project-config"
+    }
+  ],
+  "fixtureScope": "synthetic-project-tests",
+  "jobId": 124800320642,
+  "laterValidation": "pending",
+  "observations": [],
+  "originalOutcome": "passed",
+  "repository": "woodkill00/base2",
+  "requestedHead": "2939e45fd409127bbcac56df4a5f1acb7f27fbaa",
+  "runId": 41290418358,
+  "schemaVersion": 2,
+  "sourceCommit": "2939e45fd409127bbcac56df4a5f1acb7f27fbaa",
+  "sourceTree": "ff51d9cad431505872f3ccb8a904b9a6809e6ff1",
+  "technicalReview": "pending",
+  "transfer": {
+    "blobs": {
+      "1b4baf43e6ff33ebfeb30c8734940b33bf9367bfdc9ede4f11bac7763d962576": "ef84596407fb12323ca7763fdc448e31fcfc5492"
+    },
+    "commit": "2aaf20e2fbed13a2613bc6db276ed42994645fe2",
+    "localVerification": "git-blob-sha256-size-dimensions-full-decode",
+    "originalArchiveVerification": "externally-verified-zip-and-members",
+    "tree": "94354a1a0db2fe3af17918e7f7cfe0cb6da8d002"
+  }
+}

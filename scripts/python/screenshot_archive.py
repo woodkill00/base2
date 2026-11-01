@@ -83,9 +83,190 @@ def storage_bytes(repo: Path, storage: str) -> bytes:
     return safe_path(repo / "evidence/visual", storage).read_bytes()
 
 
+def validate_chain(item: dict) -> None:
+    chain = item["archiveChain"]
+    require(isinstance(chain, list) and 1 <= len(chain) <= 3, "invalid archive chain")
+    for index, link in enumerate(chain):
+        require(set(link) == {"member", "sha256", "hashBasis"}, "invalid chain fields")
+        member = link["member"]
+        safe_path(Path("."), member)
+        require(
+            str(PurePosixPath(member)) == member and not any(ord(x) < 32 for x in member),
+            "noncanonical member",
+        )
+        last = index == len(chain) - 1
+        require(
+            member.endswith(".png" if item["storage"].endswith(".png") else ".json")
+            if last
+            else member.endswith(".zip"),
+            "invalid chain type",
+        )
+        if link["sha256"] is None:
+            require(
+                not last and link["hashBasis"] == "unavailable-in-retained-inventory",
+                "missing member digest",
+            )
+        else:
+            require(
+                isinstance(link["sha256"], str)
+                and bool(HEX.fullmatch(link["sha256"]))
+                and link["hashBasis"] == "externally-verified-original-member",
+                "invalid member digest",
+            )
+        if last:
+            require(
+                member == item["member"] and link["sha256"] == item["sha256"], "chain leaf mismatch"
+            )
+
+
+def validate_capture_provenance(c: dict) -> None:
+    validate_chain(c)
+    require(c["identityBasis"] in {"native-report", "archive-directory"}, "invalid identity basis")
+    require(
+        c["viewportBasis"] == ("unavailable" if c["viewport"] is None else "native-project-config"),
+        "invalid viewport basis",
+    )
+    evidence = c["outcomeEvidence"]
+    if c["originalOutcome"] == "unknown":
+        require(
+            evidence == {"basis": "per-case-result-unavailable"},
+            "unknown outcome must remain unavailable",
+        )
+    else:
+        require(
+            c["identityBasis"] == "native-report"
+            and set(evidence)
+            == (
+                {"basis", "project", "title", "attemptStatuses", "sourceSha256"}
+                if evidence.get("basis") == "retained-native-log"
+                else {"basis", "project", "title", "attemptStatuses"}
+            )
+            and evidence["basis"] in {"retained-native-report", "retained-native-log"}
+            and evidence["project"] == c["project"]
+            and evidence["title"] == c["test"]
+            and evidence["attemptStatuses"] == [c["originalOutcome"]],
+            "outcome lacks exact native identity",
+        )
+        if evidence["basis"] == "retained-native-log":
+            require(
+                isinstance(evidence["sourceSha256"], str)
+                and bool(HEX.fullmatch(evidence["sourceSha256"])),
+                "invalid native log digest",
+            )
+    name = PurePosixPath(c["member"]).name
+    explicit = next(
+        (role for role in ("actual", "expected", "diff") if name.endswith(f"-{role}.png")), None
+    )
+    if explicit:
+        require(c["role"] == explicit, "comparison role mismatch")
+    elif name.startswith("test-failed-"):
+        require(c["role"] == "failure", "failure role mismatch")
+    else:
+        require(c["role"] == "current", "diagnostic role mismatch")
+
+
+def validate_observation_inventory(data: dict, members: set) -> None:
+    items = data["observations"]
+    require(isinstance(items, list) and len(items) <= 64, "invalid observation inventory")
+    for item in items:
+        require(
+            set(item)
+            == {"member", "sha256", "bytes", "storage", "project", "schemaVersion", "archiveChain"},
+            "invalid observation fields",
+        )
+        require(
+            isinstance(item["sha256"], str)
+            and bool(HEX.fullmatch(item["sha256"]))
+            and type(item["bytes"]) is int
+            and 0 < item["bytes"] <= 65536
+            and item["storage"] == f"observations/{item['sha256']}.json"
+            and type(item["schemaVersion"]) is int
+            and item["schemaVersion"] in (1, 2, 3, 4),
+            "invalid observation identity",
+        )
+        require(
+            PurePosixPath(item["member"]).name == "media-viewport-observations.json"
+            and item["member"] not in members,
+            "unexpected/duplicate observation member",
+        )
+        members.add(item["member"])
+        require(
+            item["project"] in {c["project"] for c in data["captures"]},
+            "observation project not captured",
+        )
+        validate_chain(item)
+
+
+def validate_observation_bytes(raw: bytes, item: dict) -> None:
+    from scripts.python.visual_matrix_artifacts import observations
+
+    require(
+        len(raw) == item["bytes"] and digest(raw) == item["sha256"],
+        "observation integrity mismatch",
+    )
+    parsed = observations(raw, item["project"])
+    require(
+        parsed["schemaVersion"] == item["schemaVersion"], "original observation schema mismatch"
+    )
+
+
+def validate_scoped_review(repo: Path, event: dict) -> None:
+    require(
+        set(event)
+        == {
+            "schemaVersion",
+            "kind",
+            "manifest",
+            "manifestSha256",
+            "inspections",
+            "conclusion",
+            "notes",
+        }
+        and event["kind"] == "technical-review"
+        and event["conclusion"] in {"defect-found", "inconclusive", "intended-change"},
+        "invalid scoped review",
+    )
+    require(
+        isinstance(event["notes"], str)
+        and 0 < len(event["notes"]) <= 2000
+        and "://" not in event["notes"],
+        "invalid review notes",
+    )
+    require(
+        re.fullmatch(r"runs/[0-9]+-[0-9]+-[0-9]+-[0-9]+\.json", event["manifest"]) is not None,
+        "invalid event target",
+    )
+    raw = safe_path(repo / "evidence/visual", event["manifest"]).read_bytes()
+    require(digest(raw) == event["manifestSha256"], "event target mismatch")
+    manifest = json.loads(raw)
+    validate_manifest(manifest)
+    inventory = {(c["member"], c["sha256"], c["role"]) for c in manifest["captures"]}
+    items = event["inspections"]
+    require(isinstance(items, list) and 0 < len(items) <= 256, "invalid inspected subset")
+    seen = set()
+    for item in items:
+        require(set(item) == {"member", "sha256", "role", "method"}, "invalid inspection fields")
+        identity = (item["member"], item["sha256"], item["role"])
+        require(
+            identity in inventory and identity not in seen,
+            "uninspected/mixed-role capture reference",
+        )
+        seen.add(identity)
+        require(
+            item["method"]
+            in {
+                "individual-pixels",
+                "contact-sheet-overview",
+                "exact-byte-match-to-reviewed-capture",
+            },
+            "uninspected image cannot receive review",
+        )
+
+
 def validate_manifest(data: dict) -> None:
     require(
-        set(data) - {"transfer"}
+        set(data)
+        - ({"transfer", "observations"} if data.get("schemaVersion") == 2 else {"transfer"})
         == {
             "schemaVersion",
             "repository",
@@ -106,7 +287,7 @@ def validate_manifest(data: dict) -> None:
         "unexpected manifest fields",
     )
     require(
-        data["schemaVersion"] == 1 and data["repository"] == "woodkill00/base2",
+        data["schemaVersion"] in (1, 2) and data["repository"] == "woodkill00/base2",
         "wrong repository/schema",
     )
     require(
@@ -137,10 +318,17 @@ def validate_manifest(data: dict) -> None:
         isinstance(data["captures"], list) and 0 < len(data["captures"]) <= 256,
         "empty/oversized inventory",
     )
+    v2 = data["schemaVersion"] == 2
+    require(not v2 or "transfer" in data, "v2 requires explicit Git transfer")
     members = set()
     for c in data["captures"]:
         require(
             set(c)
+            - (
+                {"archiveChain", "identityBasis", "outcomeEvidence", "viewportBasis"}
+                if v2
+                else set()
+            )
             == {
                 "member",
                 "sha256",
@@ -168,7 +356,12 @@ def validate_manifest(data: dict) -> None:
         )
         require(c["role"] in {"actual", "expected", "diff", "current", "failure"}, "invalid role")
         require(
-            c["originalOutcome"] in {"passed", "failed", "timedOut", "interrupted"},
+            c["originalOutcome"]
+            in (
+                {"passed", "failed", "timedOut", "interrupted", "unknown"}
+                if v2
+                else {"passed", "failed", "timedOut", "interrupted"}
+            ),
             "invalid capture outcome",
         )
         for key in ("test", "project"):
@@ -179,6 +372,8 @@ def validate_manifest(data: dict) -> None:
                 "invalid test identity",
             )
         for key in ("viewport", "dimensions"):
+            if v2 and key == "viewport" and c[key] is None:
+                continue
             require(
                 isinstance(c[key], list)
                 and len(c[key]) == 2
@@ -193,7 +388,14 @@ def validate_manifest(data: dict) -> None:
             is not None,
             "invalid object path",
         )
-    require(sum(c["bytes"] for c in data["captures"]) <= MAX_BYTES, "inventory exceeds size limit")
+        if v2:
+            validate_capture_provenance(c)
+    if v2:
+        validate_observation_inventory(data, members)
+    require(
+        sum(c["bytes"] for c in data["captures"] + data.get("observations", [])) <= MAX_BYTES,
+        "inventory exceeds size limit",
+    )
 
     if "transfer" in data:
         transfer = data["transfer"]
@@ -215,7 +417,8 @@ def validate_manifest(data: dict) -> None:
             "invalid transfer verification scope",
         )
         require(
-            set(transfer["blobs"]) == {c["sha256"] for c in data["captures"]}
+            set(transfer["blobs"])
+            == {c["sha256"] for c in data["captures"] + data.get("observations", [])}
             and all(
                 isinstance(blob, str) and SHA.fullmatch(blob) for blob in transfer["blobs"].values()
             ),
@@ -339,8 +542,13 @@ def import_git_transfer(repo: Path, data: dict) -> Path:
         "immutable run manifest conflict",
     )
     payloads = {}
-    for c in data["captures"]:
-        path = f"evidence/visual/objects/{c['sha256']}.png"
+    for c in data["captures"] + data.get("observations", []):
+        observation = c in data.get("observations", [])
+        path = (
+            f"evidence/visual/observations/{c['sha256']}.json"
+            if observation
+            else f"evidence/visual/objects/{c['sha256']}.png"
+        )
         entry = subprocess.check_output(
             ["git", "ls-tree", commit, "--", path], cwd=repo, text=True, timeout=15
         ).strip()
@@ -355,9 +563,11 @@ def import_git_transfer(repo: Path, data: dict) -> Path:
         require(int(size) == c["bytes"], "transfer size mismatch")
         raw = subprocess.check_output(["git", "cat-file", "blob", blob], cwd=repo, timeout=15)
         require(
-            digest(raw) == c["sha256"] and png(raw) == c["dimensions"],
+            digest(raw) == c["sha256"] and (observation or png(raw) == c["dimensions"]),
             "transfer PNG integrity mismatch",
         )
+        if observation:
+            validate_observation_bytes(raw, c)
         if c["storage"].startswith("git:"):
             require(storage_bytes(repo, c["storage"]) == raw, "baseline reference mismatch")
         else:
@@ -397,6 +607,8 @@ def validate_archive(repo: Path) -> int:
                 and png(raw) == c["dimensions"],
                 "stored object integrity mismatch",
             )
+        for item in data.get("observations", []):
+            validate_observation_bytes(storage_bytes(repo, item["storage"]), item)
         count += 1
     for event_path in sorted((root / "events").glob("*.json")):
         raw = safe_path(root, str(event_path.relative_to(root))).read_bytes()
@@ -406,6 +618,9 @@ def validate_archive(repo: Path) -> int:
 
 
 def validate_event(repo: Path, event: dict) -> None:
+    if event.get("schemaVersion") == 2:
+        validate_scoped_review(repo, event)
+        return
     require(
         set(event)
         == {
@@ -448,6 +663,7 @@ def validate_event(repo: Path, event: dict) -> None:
         "invalid review notes",
     )
     if event["kind"] == "technical-review":
+        require(target["schemaVersion"] == 1, "v2 manifests require member-role scoped review")
         require(
             event["conclusion"] in {"intended-change", "defect-found", "inconclusive"},
             "invalid review conclusion",
@@ -470,6 +686,16 @@ def validate_event(repo: Path, event: dict) -> None:
         require(native["originalOutcome"] == event["conclusion"], "validation outcome mismatch")
         require(native["runId"] != target["runId"], "validation must be a later native run")
         require(native["runId"] > target["runId"], "validation predates original run")
+        require(
+            all(
+                c["originalOutcome"] != "unknown"
+                and c.get("identityBasis") != "archive-directory"
+                and c["viewport"] is not None
+                for c in target["captures"]
+                if c["sha256"] in hashes
+            ),
+            "unknown evidence cannot establish validation coverage",
+        )
         wanted = {
             (c["test"], c["project"], tuple(c["viewport"]))
             for c in target["captures"]
@@ -483,17 +709,28 @@ def validate_event(repo: Path, event: dict) -> None:
         require(wanted <= observed, "validation does not cover selected tests")
 
 
-def append_event(repo: Path, event: dict) -> Path:
+def append_events(repo: Path, events: list[dict]) -> list[Path]:
+    """Validate the complete batch before any immutable event write."""
     validate_archive(repo)
-    validate_event(repo, event)
-    raw = canonical(event)
-    path = safe_path(repo / "evidence/visual", f"events/{digest(raw)}.json")
-    path.parent.mkdir(parents=True, exist_ok=True)
-    require(not path.exists() or path.read_bytes() == raw, "event integrity conflict")
-    if not path.exists():
-        with path.open("xb") as stream:
-            stream.write(raw)
-    return path
+    payloads = {}
+    paths = []
+    for event in events:
+        validate_event(repo, event)
+        raw = canonical(event)
+        path = safe_path(repo / "evidence/visual", f"events/{digest(raw)}.json")
+        require(not path.exists() or path.read_bytes() == raw, "event integrity conflict")
+        payloads[path] = raw
+        paths.append(path)
+    for path, raw in payloads.items():
+        path.parent.mkdir(parents=True, exist_ok=True)
+        if not path.exists():
+            with path.open("xb") as stream:
+                stream.write(raw)
+    return paths
+
+
+def append_event(repo: Path, event: dict) -> Path:
+    return append_events(repo, [event])[0]
 
 
 def main() -> None:

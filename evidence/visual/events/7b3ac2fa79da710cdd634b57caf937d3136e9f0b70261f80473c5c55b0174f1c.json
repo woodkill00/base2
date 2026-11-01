@@ -1,0 +1,28 @@
+{
+  "conclusion": "inconclusive",
+  "inspections": [
+    {
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-firefox-desktop/operations-center-firefox-desktop-actual.png",
+      "method": "individual-pixels",
+      "role": "actual",
+      "sha256": "a2a4c9a958a4ae5c2ad8ecab0f7f87ddf0c2ae078c9228168f6034a3949845f3"
+    },
+    {
+      "member": "operations-release-operati-84a1a-ul-empty-and-failure-states-firefox-desktop/operations-center-empty-actual.png",
+      "method": "individual-pixels",
+      "role": "actual",
+      "sha256": "aa60e346e9821aa587724f9f272180c5fdaad76091598b927e1e15498ae300fb"
+    },
+    {
+      "member": "operations-release-operati-e5f8f-d-read-only-recovery-states-firefox-desktop/operations-center-partial-actual.png",
+      "method": "individual-pixels",
+      "role": "actual",
+      "sha256": "a63a27a5bd4e2fcf72d5b6861e32c425c5dec0a6a46e9cb48426aaea72413f5b"
+    }
+  ],
+  "kind": "technical-review",
+  "manifest": "runs/41295038159-1-124813987490-13078609580.json",
+  "manifestSha256": "451588e2ea84ecc364276e8b1845a727c90e0ca1b36d858448147ea541481ab4",
+  "notes": "Diagnostic review only; no baseline approval or whole-matrix acceptance. Original supplied pixel review retained; contact-sheet overview does not verify all fine text. Exact-byte matches refer to previously inspected images. Native1passed21failed20declaredskips. Failed comparisons do not imply all later steps executed. No current cancellation/modal screenshot or later error/reauth/read-only states captured: earlier comparison failures prevent those steps. Modal/backdrop positioning not validated here. Only bounded PNG and metadata evidence supplied; no raw trace or detailed native error report. All22main/empty/partial actual or passing captures and18supplementary scrollport images inspected; remaining references/diffs retained with explicit review status. No all-scroll hit-test receipt available in these operations bundles; visual separation is not proof of all-position safety.",
+  "schemaVersion": 2
+}

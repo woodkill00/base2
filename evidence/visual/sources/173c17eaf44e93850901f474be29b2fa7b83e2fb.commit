@@ -1,0 +1,6 @@
+tree 023cea326bf1cb1298dd60a0e1e9743af6746cae
+parent 4e591455b1eb7491b81b53b01c8648a8ef2d2489
+author woodkill woodkill <thejunkmailvoid@gmail.com> 1793520741 +0000
+committer woodkill woodkill <thejunkmailvoid@gmail.com> 1793520741 +0000
+
+fix(media): preserve counter readability and capture stable diagnostics

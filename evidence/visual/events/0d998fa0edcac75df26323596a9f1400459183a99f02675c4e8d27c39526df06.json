@@ -1,0 +1,70 @@
+{
+  "conclusion": "inconclusive",
+  "inspections": [
+    {
+      "member": "media-release-media-detail-fa505-age-and-consequence-context-chromium-desktop/current-media-detail-top.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "487318eb1bda0a8dcf2aa66884560b5d2cb123a900330a83bd59e1b997d98425"
+    },
+    {
+      "member": "media-release-media-detail-fa505-age-and-consequence-context-chromium-desktop/test-failed-1.png",
+      "method": "contact-sheet-overview",
+      "role": "failure",
+      "sha256": "679ed4fa7a9b4b705a4563dc4383778e0657a1bd68fec492390e2d6056adaa39"
+    },
+    {
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-desktop/current-media-library-viewport-0.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "853ae189a46946da8d3eb5543e69ebfd9143b61f438ef98817f9b71e612c2195"
+    },
+    {
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-desktop/current-media-library-viewport-2.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "853ae189a46946da8d3eb5543e69ebfd9143b61f438ef98817f9b71e612c2195"
+    },
+    {
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-desktop/current-media-library-viewport-4.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "df07dd94ae5a6be595b898a3624ac40f2defde8991d114b23a1229a0534e2a34"
+    },
+    {
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-desktop/current-media-library.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "d5cabc50b2d6bc31812114e4de353d16a1e1f238608ad914c9bbf8f0a168917e"
+    },
+    {
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-desktop/media-library-chromium-desktop-actual.png",
+      "method": "contact-sheet-overview",
+      "role": "actual",
+      "sha256": "d5cabc50b2d6bc31812114e4de353d16a1e1f238608ad914c9bbf8f0a168917e"
+    },
+    {
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-desktop/test-failed-1.png",
+      "method": "contact-sheet-overview",
+      "role": "failure",
+      "sha256": "df07dd94ae5a6be595b898a3624ac40f2defde8991d114b23a1229a0534e2a34"
+    },
+    {
+      "member": "media-release-media-picker-72bf8-ontained-in-a-real-workflow-chromium-desktop/current-media-picker-bottom.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "00b9afd0b734a6aabf7b54a37b785dd0cb94ae0076ae1feb76552bb82dcfeb9c"
+    },
+    {
+      "member": "media-release-media-picker-72bf8-ontained-in-a-real-workflow-chromium-desktop/current-media-picker.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "00b9afd0b734a6aabf7b54a37b785dd0cb94ae0076ae1feb76552bb82dcfeb9c"
+    }
+  ],
+  "kind": "technical-review",
+  "manifest": "runs/41295029086-1-124813961797-13077944306.json",
+  "manifestSha256": "0cefaa0ea80757affa0897b18822df9d9f3aba3a122fe05e63583c2c0cdc0779",
+  "notes": "Diagnostic review only; no baseline approval or whole-matrix acceptance. Original supplied pixel review retained; contact-sheet overview does not verify all fine text. Exact-byte matches refer to previously inspected images. No reference promotion, acceptance, or uploads. Review method and uninspected images explicitly recorded. Full-page comparison in mobile inner scrollport is viewport-sized, not complete content. Standard supplementary captures may be after navigation; folder route is not proof of currently pictured route. Bounded collector excludes non-project PNGs per provenance; oversized original artifacts not fetched. Scaled contact sheets establish overview review only; not detailed acceptance of every small text/control in tall full-page images.",
+  "schemaVersion": 2
+}

@@ -1,0 +1,273 @@
+{
+  "archiveSha256": "f548c0e39a109bf5dddf36e32bf4387f0ceb4508b6cda8fd4157a1e95bb46e81",
+  "artifactId": 13075136370,
+  "attempt": 1,
+  "captures": [
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "webkit-desktop.zip",
+          "sha256": "4c7c557e35a3da0e30842083a42462f3fb3e63ccf424bbaa8caf7f135e35ea76"
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "operations-release-operati-5407b-ponsive-and-visually-stable-webkit-desktop/current-operations-center-webkit-desktop.png",
+          "sha256": "abe63d9c637c95c207f8eb1c35a1092f1b702fe992cc17a93409829f27a8b042"
+        }
+      ],
+      "bytes": 1950047,
+      "dimensions": [
+        2860,
+        5850
+      ],
+      "identityBasis": "native-report",
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-webkit-desktop/current-operations-center-webkit-desktop.png",
+      "originalOutcome": "passed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "passed"
+        ],
+        "basis": "retained-native-report",
+        "project": "webkit-desktop",
+        "title": "operations center is accessible responsive and visually stable"
+      },
+      "project": "webkit-desktop",
+      "role": "current",
+      "sha256": "abe63d9c637c95c207f8eb1c35a1092f1b702fe992cc17a93409829f27a8b042",
+      "storage": "objects/abe63d9c637c95c207f8eb1c35a1092f1b702fe992cc17a93409829f27a8b042.png",
+      "test": "operations center is accessible responsive and visually stable",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "viewportBasis": "native-project-config"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "webkit-desktop.zip",
+          "sha256": "4c7c557e35a3da0e30842083a42462f3fb3e63ccf424bbaa8caf7f135e35ea76"
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "operations-release-operati-84a1a-ul-empty-and-failure-states-webkit-desktop/current-operations-center-empty.png",
+          "sha256": "9820a647d81f536df011408ecabbb539e04fdfdeabc740d84558dd4182de745f"
+        }
+      ],
+      "bytes": 1715099,
+      "dimensions": [
+        2860,
+        4480
+      ],
+      "identityBasis": "native-report",
+      "member": "operations-release-operati-84a1a-ul-empty-and-failure-states-webkit-desktop/current-operations-center-empty.png",
+      "originalOutcome": "passed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "passed"
+        ],
+        "basis": "retained-native-report",
+        "project": "webkit-desktop",
+        "title": "operations center shows truthful empty and failure states"
+      },
+      "project": "webkit-desktop",
+      "role": "current",
+      "sha256": "9820a647d81f536df011408ecabbb539e04fdfdeabc740d84558dd4182de745f",
+      "storage": "objects/9820a647d81f536df011408ecabbb539e04fdfdeabc740d84558dd4182de745f.png",
+      "test": "operations center shows truthful empty and failure states",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "viewportBasis": "native-project-config"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "webkit-desktop.zip",
+          "sha256": "4c7c557e35a3da0e30842083a42462f3fb3e63ccf424bbaa8caf7f135e35ea76"
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "operations-release-operati-84a1a-ul-empty-and-failure-states-webkit-desktop/current-operations-center-error.png",
+          "sha256": "9dbf219d770b1e188f73f38e5e1f94f3b38ee304155ce432c882e1981133e2ff"
+        }
+      ],
+      "bytes": 1780945,
+      "dimensions": [
+        2860,
+        4152
+      ],
+      "identityBasis": "native-report",
+      "member": "operations-release-operati-84a1a-ul-empty-and-failure-states-webkit-desktop/current-operations-center-error.png",
+      "originalOutcome": "passed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "passed"
+        ],
+        "basis": "retained-native-report",
+        "project": "webkit-desktop",
+        "title": "operations center shows truthful empty and failure states"
+      },
+      "project": "webkit-desktop",
+      "role": "current",
+      "sha256": "9dbf219d770b1e188f73f38e5e1f94f3b38ee304155ce432c882e1981133e2ff",
+      "storage": "objects/9dbf219d770b1e188f73f38e5e1f94f3b38ee304155ce432c882e1981133e2ff.png",
+      "test": "operations center shows truthful empty and failure states",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "viewportBasis": "native-project-config"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "webkit-desktop.zip",
+          "sha256": "4c7c557e35a3da0e30842083a42462f3fb3e63ccf424bbaa8caf7f135e35ea76"
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "operations-release-operati-e5f8f-d-read-only-recovery-states-webkit-desktop/current-operations-center-partial.png",
+          "sha256": "3fcc84d4b9009eb29ca94bed76fe278dd429b2acfa506d835d8960dfa792a5c3"
+        }
+      ],
+      "bytes": 2215513,
+      "dimensions": [
+        2860,
+        6224
+      ],
+      "identityBasis": "native-report",
+      "member": "operations-release-operati-e5f8f-d-read-only-recovery-states-webkit-desktop/current-operations-center-partial.png",
+      "originalOutcome": "passed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "passed"
+        ],
+        "basis": "retained-native-report",
+        "project": "webkit-desktop",
+        "title": "operations center exposes stale, reauthentication, and read-only recovery states"
+      },
+      "project": "webkit-desktop",
+      "role": "current",
+      "sha256": "3fcc84d4b9009eb29ca94bed76fe278dd429b2acfa506d835d8960dfa792a5c3",
+      "storage": "objects/3fcc84d4b9009eb29ca94bed76fe278dd429b2acfa506d835d8960dfa792a5c3.png",
+      "test": "operations center exposes stale, reauthentication, and read-only recovery states",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "viewportBasis": "native-project-config"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "webkit-desktop.zip",
+          "sha256": "4c7c557e35a3da0e30842083a42462f3fb3e63ccf424bbaa8caf7f135e35ea76"
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "operations-release-operati-e5f8f-d-read-only-recovery-states-webkit-desktop/current-operations-center-read-only.png",
+          "sha256": "469db4d246f7b06954281f008daf931ec8d74c6e9081f2b0ecbf6c24c62cd8b7"
+        }
+      ],
+      "bytes": 1920744,
+      "dimensions": [
+        2860,
+        5732
+      ],
+      "identityBasis": "native-report",
+      "member": "operations-release-operati-e5f8f-d-read-only-recovery-states-webkit-desktop/current-operations-center-read-only.png",
+      "originalOutcome": "passed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "passed"
+        ],
+        "basis": "retained-native-report",
+        "project": "webkit-desktop",
+        "title": "operations center exposes stale, reauthentication, and read-only recovery states"
+      },
+      "project": "webkit-desktop",
+      "role": "current",
+      "sha256": "469db4d246f7b06954281f008daf931ec8d74c6e9081f2b0ecbf6c24c62cd8b7",
+      "storage": "objects/469db4d246f7b06954281f008daf931ec8d74c6e9081f2b0ecbf6c24c62cd8b7.png",
+      "test": "operations center exposes stale, reauthentication, and read-only recovery states",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "viewportBasis": "native-project-config"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "webkit-desktop.zip",
+          "sha256": "4c7c557e35a3da0e30842083a42462f3fb3e63ccf424bbaa8caf7f135e35ea76"
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "operations-release-operati-e5f8f-d-read-only-recovery-states-webkit-desktop/current-operations-center-reauth.png",
+          "sha256": "5b2b4d898676926b04d0a2775cc64b5f46cfe4e951a0f1c1b900de8a8189a1d5"
+        }
+      ],
+      "bytes": 2213291,
+      "dimensions": [
+        2860,
+        6224
+      ],
+      "identityBasis": "native-report",
+      "member": "operations-release-operati-e5f8f-d-read-only-recovery-states-webkit-desktop/current-operations-center-reauth.png",
+      "originalOutcome": "passed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "passed"
+        ],
+        "basis": "retained-native-report",
+        "project": "webkit-desktop",
+        "title": "operations center exposes stale, reauthentication, and read-only recovery states"
+      },
+      "project": "webkit-desktop",
+      "role": "current",
+      "sha256": "5b2b4d898676926b04d0a2775cc64b5f46cfe4e951a0f1c1b900de8a8189a1d5",
+      "storage": "objects/5b2b4d898676926b04d0a2775cc64b5f46cfe4e951a0f1c1b900de8a8189a1d5.png",
+      "test": "operations center exposes stale, reauthentication, and read-only recovery states",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "viewportBasis": "native-project-config"
+    }
+  ],
+  "fixtureScope": "synthetic-project-tests",
+  "jobId": 124785115768,
+  "laterValidation": "pending",
+  "observations": [],
+  "originalOutcome": "passed",
+  "repository": "woodkill00/base2",
+  "requestedHead": "4e591455b1eb7491b81b53b01c8648a8ef2d2489",
+  "runId": 41285245816,
+  "schemaVersion": 2,
+  "sourceCommit": "4e591455b1eb7491b81b53b01c8648a8ef2d2489",
+  "sourceTree": "a04738b7d35e16a130a1fadb1d0440bdd411fefc",
+  "technicalReview": "pending",
+  "transfer": {
+    "blobs": {
+      "3fcc84d4b9009eb29ca94bed76fe278dd429b2acfa506d835d8960dfa792a5c3": "d1a3464ed3086fecac379aa02db4cb52c2bec589",
+      "469db4d246f7b06954281f008daf931ec8d74c6e9081f2b0ecbf6c24c62cd8b7": "f1db13f1f566805290a7bdf7f9418d895a1d7e71",
+      "5b2b4d898676926b04d0a2775cc64b5f46cfe4e951a0f1c1b900de8a8189a1d5": "816abaf254a0e39c61046c7b5612392a3b7971f4",
+      "9820a647d81f536df011408ecabbb539e04fdfdeabc740d84558dd4182de745f": "c5df4d5b30a5d79f0c2a9254f170f3bbda9d7785",
+      "9dbf219d770b1e188f73f38e5e1f94f3b38ee304155ce432c882e1981133e2ff": "f3d43bf7842f4a2afdd69257f8b641c393ebb1f8",
+      "abe63d9c637c95c207f8eb1c35a1092f1b702fe992cc17a93409829f27a8b042": "665a53649487a92ccbd648f364308e02c719b904"
+    },
+    "commit": "cfd7012fc6e77f4567135cade3a349d26aae6dc4",
+    "localVerification": "git-blob-sha256-size-dimensions-full-decode",
+    "originalArchiveVerification": "externally-verified-zip-and-members",
+    "tree": "d3ab244c2c8dd0c696bbea2451297a21de7bb82c"
+  }
+}

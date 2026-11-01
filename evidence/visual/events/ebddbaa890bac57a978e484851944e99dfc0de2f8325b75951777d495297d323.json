@@ -1,0 +1,16 @@
+{
+  "conclusion": "inconclusive",
+  "inspections": [
+    {
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-german/operations-center-chromium-german-actual.png",
+      "method": "individual-pixels",
+      "role": "actual",
+      "sha256": "e9645afa2d60dd0ab482be478a21a7437a9e135f6df9839f16b851819da0ff39"
+    }
+  ],
+  "kind": "technical-review",
+  "manifest": "runs/41295038159-1-124813987490-13078704456.json",
+  "manifestSha256": "b8142174c0a2607b9354c62e865c7c7b6321978e5e90b3ae80613f3119aa349b",
+  "notes": "Diagnostic review only; no baseline approval or whole-matrix acceptance. Original supplied pixel review retained; contact-sheet overview does not verify all fine text. Exact-byte matches refer to previously inspected images. Native1passed21failed20declaredskips. Failed comparisons do not imply all later steps executed. No current cancellation/modal screenshot or later error/reauth/read-only states captured: earlier comparison failures prevent those steps. Modal/backdrop positioning not validated here. Only bounded PNG and metadata evidence supplied; no raw trace or detailed native error report. All22main/empty/partial actual or passing captures and18supplementary scrollport images inspected; remaining references/diffs retained with explicit review status. No all-scroll hit-test receipt available in these operations bundles; visual separation is not proof of all-position safety.",
+  "schemaVersion": 2
+}

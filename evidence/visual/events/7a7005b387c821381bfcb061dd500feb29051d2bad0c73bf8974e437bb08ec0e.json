@@ -1,0 +1,28 @@
+{
+  "conclusion": "inconclusive",
+  "inspections": [
+    {
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-webkit-desktop/operations-center-webkit-desktop-actual.png",
+      "method": "individual-pixels",
+      "role": "actual",
+      "sha256": "86dd0166d894ec637ef19cba120c357776f297116e378020a20c6e306853cef3"
+    },
+    {
+      "member": "operations-release-operati-84a1a-ul-empty-and-failure-states-webkit-desktop/operations-center-empty-actual.png",
+      "method": "individual-pixels",
+      "role": "actual",
+      "sha256": "b8125790bbb6edcf32a68ab54e54a71751550d9e5e39c10048deb0caa8cd09cb"
+    },
+    {
+      "member": "operations-release-operati-e5f8f-d-read-only-recovery-states-webkit-desktop/operations-center-partial-actual.png",
+      "method": "individual-pixels",
+      "role": "actual",
+      "sha256": "d1852f12722fbeb5b1e3beeb7edbbf49e5617a25a860e6340e968941b942a04c"
+    }
+  ],
+  "kind": "technical-review",
+  "manifest": "runs/41295038159-1-124813987490-13079145963.json",
+  "manifestSha256": "1cb8f63ed28a5cdfe73713d6e126df521ad72308a9a6dc29aa97a2c3961e5dea",
+  "notes": "Diagnostic review only; no baseline approval or whole-matrix acceptance. Original supplied pixel review retained; contact-sheet overview does not verify all fine text. Exact-byte matches refer to previously inspected images. Native1passed21failed20declaredskips. Failed comparisons do not imply all later steps executed. No current cancellation/modal screenshot or later error/reauth/read-only states captured: earlier comparison failures prevent those steps. Modal/backdrop positioning not validated here. Only bounded PNG and metadata evidence supplied; no raw trace or detailed native error report. All22main/empty/partial actual or passing captures and18supplementary scrollport images inspected; remaining references/diffs retained with explicit review status. No all-scroll hit-test receipt available in these operations bundles; visual separation is not proof of all-position safety.",
+  "schemaVersion": 2
+}

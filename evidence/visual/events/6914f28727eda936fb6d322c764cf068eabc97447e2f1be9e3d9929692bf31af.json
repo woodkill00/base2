@@ -1,0 +1,46 @@
+{
+  "conclusion": "inconclusive",
+  "inspections": [
+    {
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-compact/current-operations-center-chromium-compact.png",
+      "method": "individual-pixels",
+      "role": "current",
+      "sha256": "1907582b2709f28198d91e111eab82580202b17803192406b961524bb95b05c7"
+    },
+    {
+      "member": "operations-release-operati-84a1a-ul-empty-and-failure-states-chromium-compact/current-operations-center-empty.png",
+      "method": "individual-pixels",
+      "role": "current",
+      "sha256": "b093c818214843eef98cf80709a27e726d54eb7b0607b77cb1f03d3004322230"
+    },
+    {
+      "member": "operations-release-operati-84a1a-ul-empty-and-failure-states-chromium-compact/current-operations-center-error.png",
+      "method": "individual-pixels",
+      "role": "current",
+      "sha256": "f91a0981f38aec19242204d0930c32ad6755870200e3449781348fb2376825ee"
+    },
+    {
+      "member": "operations-release-operati-e5f8f-d-read-only-recovery-states-chromium-compact/current-operations-center-partial.png",
+      "method": "individual-pixels",
+      "role": "current",
+      "sha256": "91280a65894d2655557886be20c5a6e861f23b22fac48d0d17e5ab7dbd1d1e63"
+    },
+    {
+      "member": "operations-release-operati-e5f8f-d-read-only-recovery-states-chromium-compact/current-operations-center-read-only.png",
+      "method": "individual-pixels",
+      "role": "current",
+      "sha256": "180e80cda06ffc00d5040a89fb9ecd7b9ec71b5cf2c10688afa0e14cd8bc5691"
+    },
+    {
+      "member": "operations-release-operati-e5f8f-d-read-only-recovery-states-chromium-compact/current-operations-center-reauth.png",
+      "method": "individual-pixels",
+      "role": "current",
+      "sha256": "bc09194320aa9c53ec490a811dc0ba2f3b9855bb386f462c420ea193ca77879c"
+    }
+  ],
+  "kind": "technical-review",
+  "manifest": "runs/41285245816-1-124785115768-13075086412.json",
+  "manifestSha256": "4f514705e0ea4315f2851f96290770e956cadf3a09d3144ac2c7e14558598893",
+  "notes": "Diagnostic review only; no baseline approval or whole-matrix acceptance. Original supplied pixel review retained; contact-sheet overview does not verify all fine text. Exact-byte matches refer to previously inspected images. Original metadata and all35 PNG member/hash chains recovered from the original run; original ZIP bytes externally verified, local Git bytes independently verified. Actual pixels reviewed; comparison-reference attachment hashes remain distinct from current actual PNG hashes. Static misleading footer wording and viewport-limited cancellation shade remain open. No full visual acceptance. Original source-after.json SHA256 85b0fa3ebca79ba76877f8fd11ff1cb969e50f06d152ed8e72c8c5d36486f163; proof commit 29d07bc26e4c4eba3c132e5802b1bdcc10c6150b.",
+  "schemaVersion": 2
+}

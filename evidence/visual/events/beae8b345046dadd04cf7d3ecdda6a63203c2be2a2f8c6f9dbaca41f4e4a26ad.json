@@ -1,0 +1,64 @@
+{
+  "conclusion": "inconclusive",
+  "inspections": [
+    {
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-tablet/current-media-library-viewport-0.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "776ff17ac024dca1e07166d38872c35ad0d781ea0f7401e2898236bf7958097b"
+    },
+    {
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-tablet/current-media-library-viewport-2.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "776ff17ac024dca1e07166d38872c35ad0d781ea0f7401e2898236bf7958097b"
+    },
+    {
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-tablet/current-media-library-viewport-4.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "0332eec98765aa2c60d31ae3d8411234320f00ff0dfecb91bcc12d58f923b47f"
+    },
+    {
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-tablet/current-media-library.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "6cc1d454cc48ac0ca926eb6192c75eca564f93f044f062945df37bb5e16bde4b"
+    },
+    {
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-tablet/current-scrollport-footer.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "698080744f23938b98bcd4ce37b17898b5e79eb45a5f4741c271b52a0031aa5a"
+    },
+    {
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-tablet/current-scrollport-middle.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "f3b00bbfb0da11b91d30babf96c14a8630035c8d2c7c33c0f13ced8c50e87f0b"
+    },
+    {
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-tablet/current-scrollport-top.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "51c8e70c9c80ec90fe3aea40ea1fb67ad7a6d91d8c474833b632eff8de21068f"
+    },
+    {
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-tablet/media-library-chromium-tablet-actual.png",
+      "method": "contact-sheet-overview",
+      "role": "actual",
+      "sha256": "6cc1d454cc48ac0ca926eb6192c75eca564f93f044f062945df37bb5e16bde4b"
+    },
+    {
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-tablet/test-failed-1.png",
+      "method": "contact-sheet-overview",
+      "role": "failure",
+      "sha256": "0332eec98765aa2c60d31ae3d8411234320f00ff0dfecb91bcc12d58f923b47f"
+    }
+  ],
+  "kind": "technical-review",
+  "manifest": "runs/41295029086-1-124813961797-13077934267.json",
+  "manifestSha256": "96c8632639702877a6f4cc6c48d0aea4351ee5e561f16a31b452832da0be5c53",
+  "notes": "Diagnostic review only; no baseline approval or whole-matrix acceptance. Original supplied pixel review retained; contact-sheet overview does not verify all fine text. Exact-byte matches refer to previously inspected images. No reference promotion, acceptance, or uploads. Review method and uninspected images explicitly recorded. Full-page comparison in mobile inner scrollport is viewport-sized, not complete content. Standard supplementary captures may be after navigation; folder route is not proof of currently pictured route. Bounded collector excludes non-project PNGs per provenance; oversized original artifacts not fetched. Scaled contact sheets establish overview review only; not detailed acceptance of every small text/control in tall full-page images.",
+  "schemaVersion": 2
+}

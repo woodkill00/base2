@@ -1,0 +1,497 @@
+{
+  "archiveSha256": "673f1e12f4b16281a932b5a383533658a63a10a5015da3abd2f28dcce257435a",
+  "artifactId": 13077934267,
+  "attempt": 1,
+  "captures": [
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "chromium-tablet.zip",
+          "sha256": "168a133638db4352033c6d6b753f3ef9a61a8165511927eca14622ca955b369a"
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-tablet/current-media-library-viewport-0.png",
+          "sha256": "776ff17ac024dca1e07166d38872c35ad0d781ea0f7401e2898236bf7958097b"
+        }
+      ],
+      "bytes": 364519,
+      "dimensions": [
+        1024,
+        768
+      ],
+      "identityBasis": "native-report",
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-tablet/current-media-library-viewport-0.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-report",
+        "project": "chromium-tablet",
+        "title": "media library is accessible responsive and visually reviewed"
+      },
+      "project": "chromium-tablet",
+      "role": "current",
+      "sha256": "776ff17ac024dca1e07166d38872c35ad0d781ea0f7401e2898236bf7958097b",
+      "storage": "objects/776ff17ac024dca1e07166d38872c35ad0d781ea0f7401e2898236bf7958097b.png",
+      "test": "media library is accessible responsive and visually reviewed",
+      "viewport": [
+        1024,
+        768
+      ],
+      "viewportBasis": "native-project-config"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "chromium-tablet.zip",
+          "sha256": "168a133638db4352033c6d6b753f3ef9a61a8165511927eca14622ca955b369a"
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-tablet/current-media-library-viewport-2.png",
+          "sha256": "776ff17ac024dca1e07166d38872c35ad0d781ea0f7401e2898236bf7958097b"
+        }
+      ],
+      "bytes": 364519,
+      "dimensions": [
+        1024,
+        768
+      ],
+      "identityBasis": "native-report",
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-tablet/current-media-library-viewport-2.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-report",
+        "project": "chromium-tablet",
+        "title": "media library is accessible responsive and visually reviewed"
+      },
+      "project": "chromium-tablet",
+      "role": "current",
+      "sha256": "776ff17ac024dca1e07166d38872c35ad0d781ea0f7401e2898236bf7958097b",
+      "storage": "objects/776ff17ac024dca1e07166d38872c35ad0d781ea0f7401e2898236bf7958097b.png",
+      "test": "media library is accessible responsive and visually reviewed",
+      "viewport": [
+        1024,
+        768
+      ],
+      "viewportBasis": "native-project-config"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "chromium-tablet.zip",
+          "sha256": "168a133638db4352033c6d6b753f3ef9a61a8165511927eca14622ca955b369a"
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-tablet/current-media-library-viewport-4.png",
+          "sha256": "0332eec98765aa2c60d31ae3d8411234320f00ff0dfecb91bcc12d58f923b47f"
+        }
+      ],
+      "bytes": 342024,
+      "dimensions": [
+        1024,
+        768
+      ],
+      "identityBasis": "native-report",
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-tablet/current-media-library-viewport-4.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-report",
+        "project": "chromium-tablet",
+        "title": "media library is accessible responsive and visually reviewed"
+      },
+      "project": "chromium-tablet",
+      "role": "current",
+      "sha256": "0332eec98765aa2c60d31ae3d8411234320f00ff0dfecb91bcc12d58f923b47f",
+      "storage": "objects/0332eec98765aa2c60d31ae3d8411234320f00ff0dfecb91bcc12d58f923b47f.png",
+      "test": "media library is accessible responsive and visually reviewed",
+      "viewport": [
+        1024,
+        768
+      ],
+      "viewportBasis": "native-project-config"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "chromium-tablet.zip",
+          "sha256": "168a133638db4352033c6d6b753f3ef9a61a8165511927eca14622ca955b369a"
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-tablet/current-media-library.png",
+          "sha256": "6cc1d454cc48ac0ca926eb6192c75eca564f93f044f062945df37bb5e16bde4b"
+        }
+      ],
+      "bytes": 322589,
+      "dimensions": [
+        1024,
+        768
+      ],
+      "identityBasis": "native-report",
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-tablet/current-media-library.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-report",
+        "project": "chromium-tablet",
+        "title": "media library is accessible responsive and visually reviewed"
+      },
+      "project": "chromium-tablet",
+      "role": "current",
+      "sha256": "6cc1d454cc48ac0ca926eb6192c75eca564f93f044f062945df37bb5e16bde4b",
+      "storage": "objects/6cc1d454cc48ac0ca926eb6192c75eca564f93f044f062945df37bb5e16bde4b.png",
+      "test": "media library is accessible responsive and visually reviewed",
+      "viewport": [
+        1024,
+        768
+      ],
+      "viewportBasis": "native-project-config"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "chromium-tablet.zip",
+          "sha256": "168a133638db4352033c6d6b753f3ef9a61a8165511927eca14622ca955b369a"
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-tablet/current-scrollport-footer.png",
+          "sha256": "698080744f23938b98bcd4ce37b17898b5e79eb45a5f4741c271b52a0031aa5a"
+        }
+      ],
+      "bytes": 154017,
+      "dimensions": [
+        1024,
+        768
+      ],
+      "identityBasis": "native-report",
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-tablet/current-scrollport-footer.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-report",
+        "project": "chromium-tablet",
+        "title": "media library is accessible responsive and visually reviewed"
+      },
+      "project": "chromium-tablet",
+      "role": "current",
+      "sha256": "698080744f23938b98bcd4ce37b17898b5e79eb45a5f4741c271b52a0031aa5a",
+      "storage": "objects/698080744f23938b98bcd4ce37b17898b5e79eb45a5f4741c271b52a0031aa5a.png",
+      "test": "media library is accessible responsive and visually reviewed",
+      "viewport": [
+        1024,
+        768
+      ],
+      "viewportBasis": "native-project-config"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "chromium-tablet.zip",
+          "sha256": "168a133638db4352033c6d6b753f3ef9a61a8165511927eca14622ca955b369a"
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-tablet/current-scrollport-middle.png",
+          "sha256": "f3b00bbfb0da11b91d30babf96c14a8630035c8d2c7c33c0f13ced8c50e87f0b"
+        }
+      ],
+      "bytes": 382627,
+      "dimensions": [
+        1024,
+        768
+      ],
+      "identityBasis": "native-report",
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-tablet/current-scrollport-middle.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-report",
+        "project": "chromium-tablet",
+        "title": "media library is accessible responsive and visually reviewed"
+      },
+      "project": "chromium-tablet",
+      "role": "current",
+      "sha256": "f3b00bbfb0da11b91d30babf96c14a8630035c8d2c7c33c0f13ced8c50e87f0b",
+      "storage": "objects/f3b00bbfb0da11b91d30babf96c14a8630035c8d2c7c33c0f13ced8c50e87f0b.png",
+      "test": "media library is accessible responsive and visually reviewed",
+      "viewport": [
+        1024,
+        768
+      ],
+      "viewportBasis": "native-project-config"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "chromium-tablet.zip",
+          "sha256": "168a133638db4352033c6d6b753f3ef9a61a8165511927eca14622ca955b369a"
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-tablet/current-scrollport-top.png",
+          "sha256": "51c8e70c9c80ec90fe3aea40ea1fb67ad7a6d91d8c474833b632eff8de21068f"
+        }
+      ],
+      "bytes": 322590,
+      "dimensions": [
+        1024,
+        768
+      ],
+      "identityBasis": "native-report",
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-tablet/current-scrollport-top.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-report",
+        "project": "chromium-tablet",
+        "title": "media library is accessible responsive and visually reviewed"
+      },
+      "project": "chromium-tablet",
+      "role": "current",
+      "sha256": "51c8e70c9c80ec90fe3aea40ea1fb67ad7a6d91d8c474833b632eff8de21068f",
+      "storage": "objects/51c8e70c9c80ec90fe3aea40ea1fb67ad7a6d91d8c474833b632eff8de21068f.png",
+      "test": "media library is accessible responsive and visually reviewed",
+      "viewport": [
+        1024,
+        768
+      ],
+      "viewportBasis": "native-project-config"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "chromium-tablet.zip",
+          "sha256": "168a133638db4352033c6d6b753f3ef9a61a8165511927eca14622ca955b369a"
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-tablet/media-library-chromium-tablet-actual.png",
+          "sha256": "6cc1d454cc48ac0ca926eb6192c75eca564f93f044f062945df37bb5e16bde4b"
+        }
+      ],
+      "bytes": 322589,
+      "dimensions": [
+        1024,
+        768
+      ],
+      "identityBasis": "native-report",
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-tablet/media-library-chromium-tablet-actual.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-report",
+        "project": "chromium-tablet",
+        "title": "media library is accessible responsive and visually reviewed"
+      },
+      "project": "chromium-tablet",
+      "role": "actual",
+      "sha256": "6cc1d454cc48ac0ca926eb6192c75eca564f93f044f062945df37bb5e16bde4b",
+      "storage": "objects/6cc1d454cc48ac0ca926eb6192c75eca564f93f044f062945df37bb5e16bde4b.png",
+      "test": "media library is accessible responsive and visually reviewed",
+      "viewport": [
+        1024,
+        768
+      ],
+      "viewportBasis": "native-project-config"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "chromium-tablet.zip",
+          "sha256": "168a133638db4352033c6d6b753f3ef9a61a8165511927eca14622ca955b369a"
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-tablet/media-library-chromium-tablet-diff.png",
+          "sha256": "3e51c8d21268f68bfc5322e9fc76e8012f6edcbc59983cdc60cf262234d18cad"
+        }
+      ],
+      "bytes": 240761,
+      "dimensions": [
+        1024,
+        2041
+      ],
+      "identityBasis": "native-report",
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-tablet/media-library-chromium-tablet-diff.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-report",
+        "project": "chromium-tablet",
+        "title": "media library is accessible responsive and visually reviewed"
+      },
+      "project": "chromium-tablet",
+      "role": "diff",
+      "sha256": "3e51c8d21268f68bfc5322e9fc76e8012f6edcbc59983cdc60cf262234d18cad",
+      "storage": "objects/3e51c8d21268f68bfc5322e9fc76e8012f6edcbc59983cdc60cf262234d18cad.png",
+      "test": "media library is accessible responsive and visually reviewed",
+      "viewport": [
+        1024,
+        768
+      ],
+      "viewportBasis": "native-project-config"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "chromium-tablet.zip",
+          "sha256": "168a133638db4352033c6d6b753f3ef9a61a8165511927eca14622ca955b369a"
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-tablet/media-library-chromium-tablet-expected.png",
+          "sha256": "90033ebcc1cb3489c4a17a965b0cdd62fd69ae19fa0b071809e367b076b0e1b9"
+        }
+      ],
+      "bytes": 642992,
+      "dimensions": [
+        1024,
+        2041
+      ],
+      "identityBasis": "native-report",
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-tablet/media-library-chromium-tablet-expected.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-report",
+        "project": "chromium-tablet",
+        "title": "media library is accessible responsive and visually reviewed"
+      },
+      "project": "chromium-tablet",
+      "role": "expected",
+      "sha256": "90033ebcc1cb3489c4a17a965b0cdd62fd69ae19fa0b071809e367b076b0e1b9",
+      "storage": "objects/90033ebcc1cb3489c4a17a965b0cdd62fd69ae19fa0b071809e367b076b0e1b9.png",
+      "test": "media library is accessible responsive and visually reviewed",
+      "viewport": [
+        1024,
+        768
+      ],
+      "viewportBasis": "native-project-config"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "chromium-tablet.zip",
+          "sha256": "168a133638db4352033c6d6b753f3ef9a61a8165511927eca14622ca955b369a"
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-tablet/test-failed-1.png",
+          "sha256": "0332eec98765aa2c60d31ae3d8411234320f00ff0dfecb91bcc12d58f923b47f"
+        }
+      ],
+      "bytes": 342024,
+      "dimensions": [
+        1024,
+        768
+      ],
+      "identityBasis": "native-report",
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-tablet/test-failed-1.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-report",
+        "project": "chromium-tablet",
+        "title": "media library is accessible responsive and visually reviewed"
+      },
+      "project": "chromium-tablet",
+      "role": "failure",
+      "sha256": "0332eec98765aa2c60d31ae3d8411234320f00ff0dfecb91bcc12d58f923b47f",
+      "storage": "objects/0332eec98765aa2c60d31ae3d8411234320f00ff0dfecb91bcc12d58f923b47f.png",
+      "test": "media library is accessible responsive and visually reviewed",
+      "viewport": [
+        1024,
+        768
+      ],
+      "viewportBasis": "native-project-config"
+    }
+  ],
+  "fixtureScope": "synthetic-project-tests",
+  "jobId": 124813961797,
+  "laterValidation": "pending",
+  "observations": [
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "chromium-tablet.zip",
+          "sha256": "168a133638db4352033c6d6b753f3ef9a61a8165511927eca14622ca955b369a"
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-tablet/media-viewport-observations.json",
+          "sha256": "436801174d3be92c5571476c061977d55b45f99ea40e22c67d808b84b6362214"
+        }
+      ],
+      "bytes": 28609,
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-tablet/media-viewport-observations.json",
+      "project": "chromium-tablet",
+      "schemaVersion": 3,
+      "sha256": "436801174d3be92c5571476c061977d55b45f99ea40e22c67d808b84b6362214",
+      "storage": "observations/436801174d3be92c5571476c061977d55b45f99ea40e22c67d808b84b6362214.json"
+    }
+  ],
+  "originalOutcome": "failed",
+  "repository": "woodkill00/base2",
+  "requestedHead": "cb674560dc15de030d39491367646b2a15276be7",
+  "runId": 41295029086,
+  "schemaVersion": 2,
+  "sourceCommit": "cb674560dc15de030d39491367646b2a15276be7",
+  "sourceTree": "14a670e2b5049b6658e453d6307727cbf66670c4",
+  "technicalReview": "pending",
+  "transfer": {
+    "blobs": {
+      "0332eec98765aa2c60d31ae3d8411234320f00ff0dfecb91bcc12d58f923b47f": "40b06429345be78a94b1b7aa6d92b2aebb4a3f76",
+      "3e51c8d21268f68bfc5322e9fc76e8012f6edcbc59983cdc60cf262234d18cad": "05038afb65d7ad19eb01f55f82521600d3cbe8f5",
+      "436801174d3be92c5571476c061977d55b45f99ea40e22c67d808b84b6362214": "a4957cc72a6b813f2ad1e6b5677244b0c9c876ca",
+      "51c8e70c9c80ec90fe3aea40ea1fb67ad7a6d91d8c474833b632eff8de21068f": "9bca03e412f7b4ba94f6b8acee3b331a61a32f6c",
+      "698080744f23938b98bcd4ce37b17898b5e79eb45a5f4741c271b52a0031aa5a": "62cf7f2172e1490cac8ab6f54b400069edb4860e",
+      "6cc1d454cc48ac0ca926eb6192c75eca564f93f044f062945df37bb5e16bde4b": "763168685121839929775beb624844f592488cc9",
+      "776ff17ac024dca1e07166d38872c35ad0d781ea0f7401e2898236bf7958097b": "4887cf9f3f8b8fd9cf70fb55e6b71835e5fe6f89",
+      "90033ebcc1cb3489c4a17a965b0cdd62fd69ae19fa0b071809e367b076b0e1b9": "a9e8b307e6df47bbb9ee08be4fd6e4fe16690db6",
+      "f3b00bbfb0da11b91d30babf96c14a8630035c8d2c7c33c0f13ced8c50e87f0b": "6ad83bb48c7c80e45b7c3a092582527faaf2fd1f"
+    },
+    "commit": "f64e46dd898a3c4253577498388d38be3425cc4b",
+    "localVerification": "git-blob-sha256-size-dimensions-full-decode",
+    "originalArchiveVerification": "externally-verified-zip-and-members",
+    "tree": "e8425cadd61d77bbc02d87ac4738a894a2401263"
+  }
+}
