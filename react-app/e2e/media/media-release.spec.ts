@@ -1,3 +1,4 @@
+import { captureContinuousScroll } from '../continuous-scroll';
 import { captureScrollportExtent } from '../scroll-target';
 import { scrollPageTo } from '../scroll-target';
 import { assertForcedColorState, assertForcedSystemControl } from '../forced-color-state';
@@ -195,6 +196,7 @@ test('media detail preserves safe preview usage and consequence context', async 
   await expect(page.locator('.volcano-header-frame')).toHaveJSProperty('inert', true);
   await expect(page.locator('.volcano-footer-frame')).toHaveJSProperty('inert', true);
   await expect(page.getByTestId('base2-obsidian-navigation')).toHaveJSProperty('inert', true);
+  await captureContinuousScroll(page, testInfo, 'media-detail-ready', dialog);
   await expect(dialog.getByRole('heading', { name: 'Usage and references' })).toBeVisible();
   await expect(dialog.getByText('article · hero · draft')).toBeVisible();
   await dialog.getByRole('button', { name: 'Preview consequences' }).click();
@@ -284,6 +286,7 @@ test('media detail preserves safe preview usage and consequence context', async 
     caret: 'hide',
   });
   await assertForcedColorState(page, testInfo);
+  await captureContinuousScroll(page, testInfo, 'media-detail-pending', dialog);
   releaseLifecycle();
   await expect(dialog.getByRole('heading', { name: 'Archive and deletion safety' })).toBeFocused();
   await expect(dialog.getByRole('status')).toContainText('soft deleted completed.');
@@ -301,6 +304,7 @@ test('media detail preserves safe preview usage and consequence context', async 
     animations: 'disabled',
     caret: 'hide',
   });
+  await captureContinuousScroll(page, testInfo, 'media-detail-deleted', dialog);
   await dialog.getByRole('button', { name: 'Prepare restore' }).click();
   await expect(confirmation.getByRole('button', { name: 'Confirm action' })).toBeFocused();
   await confirmation.getByRole('button', { name: 'Confirm action' }).click();
@@ -314,6 +318,7 @@ test('media detail preserves safe preview usage and consequence context', async 
     { target: 'soft_deleted', ifMatch: '"1"' },
     { target: 'ready', ifMatch: '"2"' },
   ]);
+  await captureContinuousScroll(page, testInfo, 'media-detail-restored', dialog);
   const restoredStatus = dialog.getByRole('status');
   await restoredStatus.scrollIntoViewIfNeeded();
   await expect(restoredStatus).toBeInViewport({ ratio: 1 });
@@ -390,6 +395,7 @@ test('media picker is visually and keyboard contained in a real workflow', async
   await expect(useSelected).toBeInViewport({ ratio: 1 });
   await expect(picker.getByRole('checkbox').last()).toBeInViewport({ ratio: 1 });
   await assertForcedColorState(page, testInfo);
+  await captureContinuousScroll(page, testInfo, 'media-picker', picker);
   await picker.screenshot({
     path: testInfo.outputPath('current-media-picker-bottom.png'),
     animations: 'disabled',

@@ -1,3 +1,4 @@
+import { captureContinuousScroll } from '../continuous-scroll';
 import { captureScrollportExtent } from '../scroll-target';
 import { scrollPageTo, pageScrollTop } from '../scroll-target';
 import { assertForcedColorState, assertForcedSystemControl } from '../forced-color-state';
@@ -403,6 +404,7 @@ test('operations center is accessible responsive and visually stable', async ({
     name: label.cancelTitle,
   });
   await expect(cancelHeading).toBeFocused();
+  await captureContinuousScroll(page, testInfo, 'operations-cancel', page.getByRole('dialog'));
   if (testInfo.project.name === 'chromium-desktop') {
     await captureCurrentRun(page, testInfo, 'operations-center-cancel-confirmation.png', 0.02);
   }

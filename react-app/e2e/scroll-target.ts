@@ -1,4 +1,55 @@
+import { captureContinuousScroll } from './continuous-scroll';
 import { expect, type Page } from '@playwright/test';
+
+export type FocusPaint = {
+  outlineStyle: string;
+  outlineWidth: string;
+  outlineOffset: string;
+  outlineColor: string;
+  borderStyle: string;
+  borderWidth: string;
+  borderColor: string;
+  boxShadow: string;
+};
+export function readFocusPaint(node: Element): FocusPaint {
+  const s = getComputedStyle(node);
+  return {
+    outlineStyle: s.outlineStyle,
+    outlineWidth: s.outlineWidth,
+    outlineOffset: s.outlineOffset,
+    outlineColor: s.outlineColor,
+    borderStyle: s.borderStyle,
+    borderWidth: s.borderWidth,
+    borderColor: s.borderColor,
+    boxShadow: s.boxShadow,
+  };
+}
+export function focusPaintChanged(before: FocusPaint, after: FocusPaint) {
+  const visibleColor = (color: string) =>
+    color !== 'transparent' && !/rgba\([^)]*,\s*0(?:\.0+)?\)$/.test(color);
+  const outline =
+    after.outlineStyle !== 'none' &&
+    after.outlineStyle !== 'hidden' &&
+    parseFloat(after.outlineWidth) > 0 &&
+    visibleColor(after.outlineColor) &&
+    (['outlineStyle', 'outlineWidth', 'outlineOffset', 'outlineColor'] as const).some(
+      (key) => before[key] !== after[key]
+    );
+  const border =
+    after.borderStyle !== 'none' &&
+    after.borderStyle !== 'hidden' &&
+    parseFloat(after.borderWidth) > 0 &&
+    visibleColor(after.borderColor) &&
+    (['borderStyle', 'borderWidth', 'borderColor'] as const).some(
+      (key) => before[key] !== after[key]
+    );
+  const shadowColors = after.boxShadow.match(/rgba?\([^)]*\)/g) || [];
+  const shadow = after.boxShadow !== before.boxShadow && shadowColors.some(visibleColor);
+  return outline || border || shadow;
+}
+export function movementToggleName(rtl: boolean) {
+  return rtl ? 'تبديل أزرار تنقل Base2' : 'Toggle Base2 movement buttons';
+}
 
 export async function scrollPageTo(page: Page, top: number, left = 0) {
   await page.evaluate(
@@ -34,6 +85,7 @@ export async function captureScrollportExtent(
     '.volcano-layout[data-movement-layout="bottom"] .volcano-content-scrollport'
   );
   if (!(await port.count()) || (await page.getByRole('dialog').count())) return;
+  await captureContinuousScroll(page, testInfo, state || 'current');
   const saved = await pageScrollPosition(page);
   let originalFailure = false;
   let failure: unknown;

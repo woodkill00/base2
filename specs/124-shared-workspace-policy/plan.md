@@ -793,3 +793,48 @@ failure does not hide later parts; failures remain fatal. Original full artifact
 and separate metadata upload remain unchanged. At most 480 parts are uploaded,
 leaving headroom beneath GitHub's per-job artifact limit; overflow fails explicitly.
 This is transport preparation, not native validation or visual acceptance.
+
+### Follow-up scope after da4d0a72 native validation
+
+Two separately accounted slices: functional scroll/history/focus ownership and
+continuous diagnostic capture. Source remains unpublished until independent review.
+No local browser or Docker execution; native evidence is required for final fixes.
+The continuous collector retains raw overlapping frames and strict synthetic
+provenance, validates complete unobscured interval coverage and final reachability,
+and preserves legacy evidence. No stitching or automatic baseline promotion.
+
+Continuous evidence implementation scope: the content target is the bounded mobile
+scrollport; document-scrolling desktop and controls-disabled layouts retain their
+existing full-page evidence and are not claimed continuously swept. Explicit dialog
+sweeps include media ready/pending/deleted/restored/picker and operations cancellation
+on every supported main-test project, including mobile and WebKit. Up to 64 untouched
+viewport frames per state overlap by 25% of visible height. Interval-union, route,
+extent, progress and end checks fail incomplete coverage. Per-project transport
+permits 16 receipts / 1024 continuous frames separately from the original 256 PNG
+budget; unchanged deterministic 28 MiB payload / 30 MiB ZIP partition limits apply.
+The shell collector retains its 4096-member and 16-shard ceilings, failing excess
+rather than dropping frames. JSON records never approve a comparison reference.
+
+Functional diagnoses: initial closed-menu restoration stole body focus on mount;
+restoration now follows only an actual close. A deterministic delayed-scroll POP
+regression reproduces losing the final outgoing offset, now captured before router
+reconciliation with ordinary late-event ownership checks retained. Native causality
+still needs confirmation. Zoom's logged offset 5 was below the unchanged >12 ascend
+availability boundary; preserve the >0 toggle-retention check, then explicitly enter
+180 before exercising Ascend and the unchanged exact-zero assertion. Original timeout
+and late teardown logs remain failed evidence, not proof the action completed.
+
+New review concerns stay explicit: RTL /ar/about and light 200% RTL now get all-four
+control focus-outline separation and hit-target checks before any spacing change.
+Current workspace images show empty inspector placeholders, not selected-record edit
+containment. Historical collector exclusions (84 layout, 1 Volcano, 15 settings) stay
+unresolved until their exact member inventory is available; do not infer that every
+excluded PNG is a legitimate producer or broaden collection to arbitrary filenames.
+
+Full-unit cross-check preserved two existing POP/hashchange failures introduced by
+an unconditional outgoing snapshot. The revised capture refuses to save once an
+already observed scroll has lost entry ownership. A genuine delayed outgoing scroll
+delivered after key change but before popstate is indistinguishable from an incoming
+restoration and conservatively retains the last owned value; that exact ordering is
+covered and remains a limitation. Native compact Forward is still unresolved until
+fresh CI establishes behavior; static repair is not a blanket restoration guarantee.

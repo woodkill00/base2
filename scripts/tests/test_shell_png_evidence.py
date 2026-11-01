@@ -116,7 +116,7 @@ def test_workflow_preserves_original_suites_artifacts_and_failure_status():
     steps = yaml.safe_load(text)['jobs']['frontend']['steps']
     stage = next(s for s in steps if s.get('id') == 'shell_png')
     assert stage['if'].startswith('always()')
-    assert stage['run'] == 'python3 scripts/python/shell_png_evidence.py'
+    assert stage['run'] == 'python3 -m scripts.python.shell_png_evidence'
     assert len(stage['env']) == 5
     uploads = [s for s in steps if s.get('name', '').startswith('Retain bounded shell PNG shard')]
     assert len(uploads) == 16

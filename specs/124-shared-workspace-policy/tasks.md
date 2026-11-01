@@ -1150,3 +1150,19 @@ native failure. Strict focus diagnostics export only allowlisted tags/roles/IDs.
       path, interrupted packaging and failure-preserving upload behavior. Original
       WebKit packaging failure in run 41314740935 remains preserved. Native
       transport validation and current pixel review are still required.
+
+### Native functional and continuous evidence batch on da4d0a72 (held)
+
+Original standard 41316879851 remains 423 passed / 20 failed; media 41316950722
+12 passed / 12 failed / 12 declared skips; operations 41316938996 1 passed /
+21 failed / 20 declared skips. No reference acceptance is implied.
+
+- [ ] T76 Reproduce keyed Forward 100-versus-180 ownership loss, Firefox Tab
+      returning to descend, and zoom timeout after completed movement checks;
+      retain exact offset/focus/time limits and establish causes before repair.
+- [ ] T77 Add bounded overlapping native viewport sweeps with interval-union,
+      route/state/target binding, attempted frames before fatal assertions and
+      failure-preserving cleanup. Cover nested pages and dialogs explicitly;
+      count/byte ceilings fail incomplete evidence rather than truncate it.
+- [ ] T78 Review both slices independently, run complete unit/tooling/contracts,
+      types/lint/archive validation, and hold publication for parent review.

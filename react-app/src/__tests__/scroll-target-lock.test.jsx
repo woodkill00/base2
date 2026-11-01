@@ -129,3 +129,56 @@ test('immediate POP restoration disconnects retry observers without starting the
     view.unmount();
   } finally { vi.unstubAllGlobals(); }
 });
+
+test('POP snapshots outgoing offset before delayed scroll delivery loses ownership', () => {
+  let top = 100,
+    owner = 'delayed-first';
+  const listeners = new Set();
+  const target = {
+    element: document.createElement('div'),
+    metrics: () => ({ top, max: 2000 }),
+    scrollTo: (value) => {
+      top = value;
+    },
+    subscribe: (fn) => {
+      listeners.add(fn);
+      return () => listeners.delete(fn);
+    },
+  };
+  const first = () => owner === 'delayed-first',
+    second = () => owner === 'delayed-second';
+  function Entry({ entryKey, kind, owns }) {
+    useScrollTargetHistory(entryKey, kind, target, true, owns);
+    return null;
+  }
+  const view = render(<Entry entryKey="delayed-first" kind="PUSH" owns={first} />);
+  owner = 'delayed-second';
+  view.rerender(<Entry entryKey="delayed-second" kind="PUSH" owns={second} />);
+  top = 180; // Browser updated the DOM, but its scroll event has not dispatched.
+  owner = 'delayed-first'; // Native history updates state before popstate.
+  fireEvent.popState(window);
+  view.rerender(<Entry entryKey="delayed-first" kind="POP" owns={first} />);
+  expect(top).toBe(100);
+  owner = 'delayed-second';
+  fireEvent.popState(window);
+  view.rerender(<Entry entryKey="delayed-second" kind="POP" owns={second} />);
+  expect(top).toBe(180);
+  view.unmount();
+});
+
+test('an already observed foreign scroll cannot overwrite the outgoing history record', () => {
+  let top = 100, owned = true;
+  const listeners = new Set();
+  const target = { element: document.createElement('div'), metrics: () => ({ top, max: 2000 }), scrollTo: (value) => { top = value; }, subscribe: (fn) => { listeners.add(fn); return () => listeners.delete(fn); } };
+  const owns = () => owned;
+  function Entry({ entryKey, kind }) { useScrollTargetHistory(entryKey, kind, target, true, owns); return null; }
+  const view = render(<Entry entryKey="foreign-scroll-first" kind="PUSH" />);
+  // Even if this is a delayed outgoing update, it arrived after ownership ended;
+  // indistinguishable incoming restoration must never poison the retained record.
+  owned = false; top = 180; listeners.forEach((fn) => fn());
+  fireEvent.popState(window);
+  owned = true; view.rerender(<Entry entryKey="foreign-scroll-second" kind="PUSH" />);
+  view.rerender(<Entry entryKey="foreign-scroll-first" kind="POP" />);
+  expect(top).toBe(100);
+  view.unmount();
+});

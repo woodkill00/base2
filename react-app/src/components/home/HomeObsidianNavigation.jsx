@@ -775,9 +775,12 @@ const HomeObsidianNavigation = ({
     }
   }, [activeSection, isLeftOpen, normalizeSectionSlot, sectionItems]);
 
+  const previousLeftOpen = useRef(false);
   useEffect(() => {
-    if (isLeftOpen) return;
-    window.requestAnimationFrame(() => {
+    const wasOpen = previousLeftOpen.current;
+    previousLeftOpen.current = isLeftOpen;
+    if (isLeftOpen || !wasOpen) return;
+    const frame = window.requestAnimationFrame(() => {
       if (
         document.activeElement === document.body ||
         document.activeElement?.closest?.('[data-testid="base2-left-command-menu"]')
@@ -785,6 +788,7 @@ const HomeObsidianNavigation = ({
         leftToggleRef.current?.focus?.();
       }
     });
+    return () => window.cancelAnimationFrame(frame);
   }, [isLeftOpen]);
 
   useEffect(() => {

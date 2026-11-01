@@ -11,6 +11,8 @@ import zipfile
 from pathlib import Path
 from typing import Any
 
+from scripts.python import continuous_evidence
+
 PNG_BUDGET = 28 * 1024 * 1024
 ZIP_BUDGET = 30 * 1024 * 1024
 METADATA_BUDGET = 2 * 1024 * 1024
@@ -254,6 +256,7 @@ def stage(source: Path, output: Path) -> dict:
     results = source / "test-results"
     grouped: dict[str, list[Path]] = {p: [] for p in projects}
     diagnostics: dict[str, list[Path]] = {p: [] for p in projects}
+    sweeps: dict[str, list[Path]] = {p: [] for p in projects}
     try:
         safe(results)
         if results.exists():
@@ -273,6 +276,8 @@ def stage(source: Path, output: Path) -> dict:
                         if not PNG_NAME.fullmatch(path.name):
                             raise ValueError("unrecognized PNG capture name")
                         grouped[matches[0]].append(path)
+                    elif continuous_evidence.NAME.fullmatch(path.name):
+                        sweeps[matches[0]].append(path)
                     elif path.name == OBSERVATION_NAME:
                         project = matches[0]
                         declared = any(t["project"] == project and t.get("title") == MEDIA_TEST
@@ -297,7 +302,8 @@ def stage(source: Path, output: Path) -> dict:
         }
         inventory["projects"][project] = entry
         try:
-            if len(paths) > 256:
+            continuous_count = sum(bool(continuous_evidence.FRAME.fullmatch(p.name)) for p in paths)
+            if continuous_count > 1024 or len(sweeps[project]) > 16 or len(paths) - continuous_count > 256:
                 raise ValueError("project capture count exceeded")
             members = {}
             for path in paths:
@@ -309,6 +315,23 @@ def stage(source: Path, output: Path) -> dict:
                 entry["captures"].append({
                     "path": name, "bytes": len(raw), "sha256": hashlib.sha256(raw).hexdigest()
                 })
+            bound_frames = set()
+            for receipt in sweeps[project]:
+                raw = read(receipt, continuous_evidence.BUDGET)
+                data = continuous_evidence.validate(raw, receipt, before['sourceCommit'], before['sourceTree'], project, str(before['runId']), str(before['attempt']))
+                if data['test'] not in {t['title'] for t in before['expectedTests'] if t['project'] == project}:
+                    raise ValueError('continuous receipt outside declared test')
+                for row in data['segments']:
+                    name = (receipt.parent / row['file']).relative_to(results).as_posix()
+                    if name not in members or name in bound_frames:
+                        raise ValueError('missing or duplicate continuous frame binding')
+                    bound_frames.add(name)
+                name = receipt.relative_to(results).as_posix()
+                members[name] = receipt
+                entry['diagnostics'].append({'path': name, 'bytes': len(raw), 'sha256': hashlib.sha256(raw).hexdigest(),
+                                             'complete': data['complete'], 'kind': 'continuous-viewports'})
+            if {name for name in members if continuous_evidence.FRAME.fullmatch(Path(name).name)} != bound_frames:
+                raise ValueError('unbound continuous frame')
             if len(diagnostics[project]) > 1:
                 raise ValueError("duplicate project observation file")
             for path in diagnostics[project]:

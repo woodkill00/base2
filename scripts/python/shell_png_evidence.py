@@ -9,6 +9,8 @@ import shutil
 import subprocess
 from pathlib import Path
 
+from scripts.python import continuous_evidence
+
 BUDGET = 28 * 1024 * 1024
 SLOTS = 16
 MAX_FILES = 4096
@@ -18,12 +20,13 @@ LAYOUT_CASES = ('appearance-preferences', 'interaction-contract', 'representativ
                 'route-families', 'settings-interruption', 'workspace-policy-settings',
                 'workspace-review', 'volcano-preservation', 'accessible-layout',
                 'google-security-policy', 'home-controls', 'negative-controls')
-COMMON = r'(?:current-scrollport-(?:top|middle|footer)|test-failed-[0-9]+)'
+COMMON = r'(?:current-scrollport-(?:top|middle|footer)|current-continuous-[a-z0-9-]{1,90}-[0-9]{3}|test-failed-[0-9]+)'
 LAYOUT_NAMES = re.compile(
     rf'(?:{COMMON}|page|viewport|zoom|empty-auth-errors|light-zoom|'
     r'volcano-(?:390|1440)-(?:home|left|right|palette)-(?:actual|expected|diff)|'
     r'appearance-(?:default|saved)-[0-9]+|settings-leave-(?:en|ar)-forced-colors|'
-    r'movement-(?:compact|landscape|desktop|rtl|forced|zoom)-(?:0|0\.5|1))\.png')
+    r'dock-focus-(?:compact|landscape|desktop|rtl|rtl-large-text|forced|zoom)-base2-(?:left-menu-toggle|right-utility-toggle|scroll-ascend|scroll-descend)|'
+    r'movement-(?:compact|landscape|desktop|rtl|rtl-large-text|forced|zoom)-(?:0|0\.5|1))\.png')
 SETTINGS_NAMES = re.compile(
     rf'(?:{COMMON}|settings-release-before-axe|settings-negative-controls-before-axe|'
     r'settings-release-restored-after-controls|settings-release-[a-z0-9-]+-(?:actual|expected|diff))\.png')
@@ -49,6 +52,8 @@ def allowed(suite: str, relative: Path) -> bool:
 
 
 def image_role(name: str) -> str:
+    if continuous_evidence.NAME.fullmatch(name):
+        return 'continuous-diagnostic-receipt'
     for role in ('actual', 'expected', 'diff'):
         if name.endswith(f'-{role}.png'):
             return f'comparison-{role}'
@@ -74,6 +79,7 @@ def stage(sources: dict[str, Path], output: Path, provenance: dict) -> None:
         if not re.fullmatch('[0-9]+', provenance[field]):
             raise ValueError('invalid run identity')
     members = []
+    bound_frames = set()
     states = {}
     # No generic JSON, report HTML, traces, video, fixtures or source trees are copied.
     for suite, source in sources.items():
@@ -86,6 +92,22 @@ def stage(sources: dict[str, Path], output: Path, provenance: dict) -> None:
             raise ValueError('source must be a directory')
         for path in sorted(source.rglob('*')):
             safe(path)
+            if continuous_evidence.NAME.fullmatch(path.name):
+                # Reuse the exact producer directory allowlist, not arbitrary JSON.
+                probe = path.relative_to(source).with_name('current-scrollport-top.png')
+                if not allowed(suite, probe):
+                    continue
+                if not path.is_file() or path.stat().st_size > continuous_evidence.BUDGET:
+                    raise ValueError('oversized continuous receipt')
+                raw = path.read_bytes()
+                data = continuous_evidence.validate(raw, path, provenance['sourceCommit'], provenance['sourceTree'], run=str(provenance['runId']), attempt=str(provenance['attempt']))
+                for row in data['segments']:
+                    frame = path.parent / row['file']
+                    if frame in bound_frames:
+                        raise ValueError('duplicate continuous frame binding')
+                    bound_frames.add(frame)
+                members.append((path, f'{suite}/{path.relative_to(source).as_posix()}', len(raw), hashlib.sha256(raw).hexdigest()))
+                continue
             if not allowed(suite, path.relative_to(source)):
                 if path.suffix == '.png' and path.is_file():
                     states[suite]['excludedPngCount'] += 1
@@ -100,6 +122,12 @@ def stage(sources: dict[str, Path], output: Path, provenance: dict) -> None:
             states[suite]['captures'] += 1
             if len(members) > MAX_FILES:
                 raise ValueError('capture inventory exceeds bound')
+    # Every continuous frame must have a validated original receipt in the same
+    # producer directory. Unknown PNGs remain excluded and counted separately.
+    if {item[0] for item in members if continuous_evidence.FRAME.fullmatch(item[0].name)} != bound_frames:
+        raise ValueError('unbound continuous frame')
+    if len(members) > MAX_FILES:
+        raise ValueError('capture and receipt inventory exceeds bound')
     buckets: list[list] = [[] for _ in range(SLOTS)]
     slot = 0
     size = 0
@@ -114,13 +142,17 @@ def stage(sources: dict[str, Path], output: Path, provenance: dict) -> None:
     # Every shard includes overall completeness, including empty/missing suites.
     # Outcome is recorded verbatim, never converted into visual acceptance.
     for index, bucket in enumerate(buckets):
-        metadata = {**provenance, 'schemaVersion': 1, 'shard': index, 'shards': SLOTS,
-                    'suites': states, 'captureCount': len(members),
+        metadata = {**provenance, 'schemaVersion': 2, 'shard': index, 'shards': SLOTS,
+                    'suites': states, 'captureCount': sum(p.suffix == '.png' for p, *_ in members),
+                    'diagnosticReceiptCount': sum(p.suffix == '.json' for p, *_ in members),
                     'scope': 'Synthetic diagnostic PNG copies; not approved references or visual acceptance. PNG bytes hashed, not decoded by packager.',
                     'captures': [{'path': name, 'bytes': count, 'sha256': digest,
                                   'sourceRoot': name.split('/')[0],
                                   'role': image_role(Path(name).name)}
-                                 for _, name, count, digest in bucket]}
+                                 for _, name, count, digest in bucket if Path(name).suffix == '.png'],
+                    'diagnostics': [{'path': name, 'bytes': count, 'sha256': digest,
+                                     'sourceRoot': name.split('/')[0], 'role': 'continuous-diagnostic-receipt'}
+                                    for _, name, count, digest in bucket if Path(name).suffix == '.json']}
         encoded = (json.dumps(metadata, indent=2) + '\n').encode()
         if len(encoded) > MAX_METADATA:
             raise ValueError('metadata exceeds bound')

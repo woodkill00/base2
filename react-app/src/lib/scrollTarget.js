@@ -87,37 +87,65 @@ export function createScrollTarget(element = null, headerInset = () => 0) {
 // Session-local, bounded positions keyed by router history entry, not by URL.
 const historyPositions = new Map();
 const currentEntry = () => true;
-export function useScrollTargetHistory(key, navigationType, target, ready, ownsEntry = currentEntry) {
+export function useScrollTargetHistory(
+  key,
+  navigationType,
+  target,
+  ready,
+  ownsEntry = currentEntry
+) {
   // BrowserRouter uses 'default' for every native null-state fragment entry.
   // These entries have no unique identity: never read/write a shared offset slot.
   const identity = key && key !== 'default' ? key : null;
   const restored = useRef(null);
   const initial = useRef({ identity, hasPosition: historyPositions.has(identity) });
-  if (initial.current.identity !== identity) initial.current = { identity, hasPosition: historyPositions.has(identity) };
+  if (initial.current.identity !== identity)
+    initial.current = { identity, hasPosition: historyPositions.has(identity) };
   useEffect(() => {
     if (!identity) return;
     const previous = window.history.scrollRestoration;
     window.history.scrollRestoration = 'manual';
-    return () => { window.history.scrollRestoration = previous; };
+    return () => {
+      window.history.scrollRestoration = previous;
+    };
   }, [identity]);
   useLayoutEffect(() => {
-    if (!identity) { restored.current = null; return; }
+    if (!identity) {
+      restored.current = null;
+      return;
+    }
     if (!ready) return;
-    let pending = restored.current !== identity && navigationType === 'POP' && initial.current.hasPosition;
+    let pending =
+      restored.current !== identity && navigationType === 'POP' && initial.current.hasPosition;
     const desired = historyPositions.get(identity) || 0;
-    let resize = null, mutations = null, timeout = null;
+    let resize = null,
+      mutations = null,
+      timeout = null;
     const stopRetry = () => {
       resize?.disconnect();
       mutations?.disconnect();
       if (timeout !== null) window.clearTimeout(timeout);
       timeout = null;
     };
-    const remember = () => {
-      if (pending || !ownsEntry()) return;
+    const save = () => {
+      if (pending) return;
       historyPositions.delete(identity);
       historyPositions.set(identity, target.metrics().top);
-      if (historyPositions.size > 128) historyPositions.delete(historyPositions.keys().next().value);
+      if (historyPositions.size > 128)
+        historyPositions.delete(historyPositions.keys().next().value);
     };
+    let foreignScrollObserved = false;
+    const remember = () => {
+      if (ownsEntry()) save();
+      else foreignScrollObserved = true;
+    };
+    // Native traversal changes history.state before dispatching popstate, but
+    // the outgoing DOM still owns this target during capture. Snapshot it before
+    // the router commits the destination, even when the final scroll event is queued.
+    const beforeTraversal = () => {
+      if (!foreignScrollObserved) save();
+    };
+    window.addEventListener('popstate', beforeTraversal, true);
     const attempt = () => {
       if (!pending || !ownsEntry() || target.metrics().max < desired) return;
       target.scrollTo(desired);
@@ -134,7 +162,10 @@ export function useScrollTargetHistory(key, navigationType, target, ready, ownsE
       for (const child of root.children) resize?.observe(child);
       attempt();
     };
-    mutations = pending && typeof MutationObserver === 'function' ? new MutationObserver(observeContent) : null;
+    mutations =
+      pending && typeof MutationObserver === 'function'
+        ? new MutationObserver(observeContent)
+        : null;
     if (pending) {
       observeContent();
       if (pending) mutations?.observe(root, { childList: true, subtree: true });
@@ -154,6 +185,7 @@ export function useScrollTargetHistory(key, navigationType, target, ready, ownsE
     remember();
     return () => {
       unsubscribe();
+      window.removeEventListener('popstate', beforeTraversal, true);
       stopRetry();
       events.forEach((event) => window.removeEventListener(event, userInput));
     };

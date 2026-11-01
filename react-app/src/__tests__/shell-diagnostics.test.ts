@@ -1,5 +1,9 @@
 import { expect, test, vi } from 'vitest';
-import { captureScrollportExtent } from '../../e2e/scroll-target';
+import {
+  captureScrollportExtent,
+  focusPaintChanged,
+  movementToggleName,
+} from '../../e2e/scroll-target';
 import { safeFocusSnapshot } from '../../e2e/shell-diagnostics';
 
 test('focus diagnostic has exact allowlisted shape and cannot expose arbitrary identifiers or text', () => {
@@ -26,6 +30,9 @@ test('focus diagnostic has exact allowlisted shape and cannot expose arbitrary i
     safeFocusSnapshot({ tag: 'MAIN', id: 'main-content', role: 'main', testId: '', inert: true })
   ).toMatchObject({ tag: 'MAIN', id: 'main-content', role: 'main', testId: '', inert: true });
 });
+
+// Continuous sweeps have their own flow tests; preserve this legacy failure-order contract.
+vi.mock('../../e2e/continuous-scroll', () => ({ captureContinuousScroll: async () => {} }));
 
 const evidenceOrder = vi.hoisted(() => [] as string[]);
 const originalOverlap = vi.hoisted(() => new Error('original sampled overlap'));
@@ -93,3 +100,47 @@ test.each([
     }
   }
 );
+
+test('permanent decorative focus paint cannot satisfy a focus-state change', () => {
+  const resting = {
+    outlineStyle: 'solid',
+    outlineWidth: '2px',
+    outlineOffset: '2px',
+    outlineColor: 'rgb(255, 255, 255)',
+    borderStyle: 'solid',
+    borderWidth: '1px',
+    borderColor: 'rgb(0, 0, 0)',
+    boxShadow: 'rgb(100, 0, 100) 0px 0px 8px',
+  };
+  expect(focusPaintChanged(resting, { ...resting })).toBe(false);
+  expect(focusPaintChanged(resting, { ...resting, outlineStyle: 'none', boxShadow: 'none' })).toBe(
+    false
+  );
+  expect(focusPaintChanged(resting, { ...resting, outlineColor: 'transparent' })).toBe(false);
+  expect(focusPaintChanged(resting, { ...resting, outlineWidth: '3px' })).toBe(true);
+  expect(focusPaintChanged(resting, { ...resting, borderColor: 'rgb(255, 0, 0)' })).toBe(true);
+  expect(
+    focusPaintChanged(resting, { ...resting, boxShadow: 'rgb(255, 255, 255) 0px 0px 3px' })
+  ).toBe(true);
+});
+
+test('RTL movement fixtures use the authored Arabic accessible identity', () => {
+  expect(movementToggleName(true)).toBe('تبديل أزرار تنقل Base2');
+  expect(movementToggleName(false)).toBe('Toggle Base2 movement buttons');
+});
+
+test('a changed fully transparent shadow is not a visible focus indicator', () => {
+  const paint = {
+    outlineStyle: 'none',
+    outlineWidth: '0px',
+    outlineOffset: '0px',
+    outlineColor: 'transparent',
+    borderStyle: 'none',
+    borderWidth: '0px',
+    borderColor: 'transparent',
+    boxShadow: 'none',
+  };
+  expect(focusPaintChanged(paint, { ...paint, boxShadow: 'rgba(0, 0, 0, 0) 0px 0px 8px' })).toBe(
+    false
+  );
+});

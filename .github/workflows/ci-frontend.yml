@@ -313,7 +313,7 @@ jobs:
           SHELL_VOLCANO_OUTCOME: ${{ steps.volcano_acceptance.outcome }}
           SHELL_SETTINGS_OUTCOME: ${{ steps.settings_acceptance.outcome }}
           SHELL_WORKSPACE_OUTCOME: ${{ steps.workspace_acceptance.outcome }}
-        run: python3 scripts/python/shell_png_evidence.py
+        run: python3 -m scripts.python.shell_png_evidence
 
       - name: Retain bounded shell PNG shard 00
         if: always() && steps.scope.outputs.mode == 'full' && steps.shell_png.outcome == 'success'

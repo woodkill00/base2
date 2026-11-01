@@ -19,6 +19,10 @@
       "collection": "pending-bounded-adapter"
     },
     {
+      "path": "react-app/e2e/continuous-scroll.ts",
+      "collection": "bounded-continuous-nested-scrollports-and-explicit-dialogs-pending-native-validation"
+    },
+    {
       "path": "react-app/e2e/experience/shared-experience.spec.ts",
       "collection": "pending-bounded-adapter"
     },

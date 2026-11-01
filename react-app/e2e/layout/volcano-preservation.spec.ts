@@ -1,4 +1,9 @@
-import { captureScrollportExtent } from '../scroll-target';
+import {
+  captureScrollportExtent,
+  readFocusPaint,
+  focusPaintChanged,
+  movementToggleName,
+} from '../scroll-target';
 import { pageScrollTop, scrollPageTo } from '../scroll-target';
 import { setSessionFixture, fulfillSessionFixture } from '../session-fixture';
 import { expect, test } from './fixtures';
@@ -238,6 +243,7 @@ for (const scenario of [
   { name: 'landscape', width: 844, height: 390 },
   { name: 'desktop', width: 1440, height: 900 },
   { name: 'rtl', width: 390, height: 844 },
+  { name: 'rtl-large-text', width: 390, height: 844 },
   { name: 'forced', width: 390, height: 844 },
   { name: 'zoom', width: 1280, height: 900 },
 ]) {
@@ -248,8 +254,22 @@ for (const scenario of [
       if (await fulfillSessionFixture(route, { appearanceDefaults: true })) return;
       return route.fulfill({ status: 503, json: { detail: 'Synthetic fixture unavailable' } });
     });
-    await page.goto(scenario.name === 'compact' ? '/signup#main-content' : '/signup');
-    if (scenario.name === 'rtl')
+    if (scenario.name === 'rtl-large-text')
+      await page
+        .context()
+        .addCookies([{ name: 'theme', value: 'light', domain: '127.0.0.1', path: '/' }]);
+    await page.goto(
+      scenario.name === 'compact'
+        ? '/signup#main-content'
+        : scenario.name.startsWith('rtl')
+          ? '/ar/about'
+          : '/signup'
+    );
+    if (scenario.name === 'rtl-large-text')
+      await page.locator('html').evaluate((node) => {
+        node.style.fontSize = '200%';
+      });
+    if (scenario.name.startsWith('rtl'))
       await page.locator('html').evaluate((node) => node.setAttribute('dir', 'rtl'));
     if (scenario.name === 'zoom')
       await page.locator('html').evaluate((node) => {
@@ -362,6 +382,125 @@ for (const scenario of [
       if (expectedMode === 'bottom')
         expect(geometry.contentBottom).toBeLessThanOrEqual(geometry.dockTop + 1);
     }
+    // Inspect actual focus outlines as well as all four persistent hit targets.
+    // Focus is not used to dismiss, move or hide any control.
+    const controlIds = [
+      'base2-left-menu-toggle',
+      'base2-right-utility-toggle',
+      'base2-scroll-ascend',
+      'base2-scroll-descend',
+    ];
+    const beforeFocusProof = await pageScrollTop(page);
+    await page.keyboard.press('Tab');
+    await scrollPageTo(page, 180);
+    await expect.poll(() => pageScrollTop(page)).toBe(180);
+    let focusProofFailure: unknown;
+    try {
+      for (const id of controlIds) {
+        const control = page.getByTestId(id);
+        await expect(control).toHaveCount(1);
+        await expect(control).toBeVisible();
+        // Explicitly leave this control before recording its decorative resting paint.
+        await control.evaluate((node) => (node as HTMLElement).blur());
+        await expect(control).not.toBeFocused();
+        await control.evaluate(async (node) => {
+          // Force style resolution after blur, then await only finite paint transitions.
+          getComputedStyle(node).boxShadow;
+          await Promise.all(
+            node
+              .getAnimations()
+              .filter(
+                (animation) =>
+                  animation instanceof window.CSSTransition &&
+                  /^(outline|border|box-shadow)/.test(animation.transitionProperty) &&
+                  Number.isFinite(animation.effect?.getComputedTiming().endTime)
+              )
+              .map((animation) => animation.finished.catch(() => undefined))
+          );
+        });
+        await expect(control).not.toBeFocused();
+        const unfocused = await control.evaluate(readFocusPaint);
+        let indicatorFailure: unknown;
+        await control.focus();
+        try {
+          await expect
+            .poll(
+              async () => focusPaintChanged(unfocused, await control.evaluate(readFocusPaint)),
+              { message: 'Focused control must expose an actual indicator change' }
+            )
+            .toBe(true);
+        } catch (error) {
+          indicatorFailure = error;
+        }
+        // Preserve the attempted focus state before propagating a failed poll.
+        try {
+          const spacing = await control.evaluate((node, ids) => {
+            const box = node.getBoundingClientRect(),
+              style = getComputedStyle(node);
+            const ring = Math.max(
+              0,
+              (parseFloat(style.outlineWidth) || 0) + (parseFloat(style.outlineOffset) || 0)
+            );
+            const overlaps = ids.filter((otherId) => {
+              const other = document.querySelector(`[data-testid="${otherId}"]`);
+              if (!other || other === node) return false;
+              const b = other.getBoundingClientRect();
+              return (
+                b.width > 0 &&
+                b.height > 0 &&
+                box.left - ring < b.right &&
+                box.right + ring > b.left &&
+                box.top - ring < b.bottom &&
+                box.bottom + ring > b.top
+              );
+            });
+            const hit = document.elementFromPoint(
+              box.left + box.width / 2,
+              box.top + box.height / 2
+            );
+            return {
+              overlaps,
+              centerHit: hit === node || node.contains(hit),
+              ring,
+              focused: document.activeElement === node,
+              focusVisible: node.matches(':focus-visible'),
+              outlineVisible: style.outlineStyle !== 'none' && parseFloat(style.outlineWidth) > 0,
+              shadowIndicator: style.boxShadow !== 'none',
+            };
+          }, controlIds);
+          await page.screenshot({
+            path: info.outputPath(`dock-focus-${scenario.name}-${id}.png`),
+            fullPage: false,
+          });
+          console.log('dock-focus-geometry', {
+            schemaVersion: 1,
+            scenario: scenario.name,
+            control: id,
+            ...spacing,
+          });
+          if (indicatorFailure) throw indicatorFailure;
+          expect(
+            spacing.overlaps,
+            'Focus outline must remain separate from other dock controls'
+          ).toEqual([]);
+          expect(spacing.centerHit).toBe(true);
+          expect(spacing.focused && spacing.focusVisible).toBe(true);
+          // The existing circles use a shadow/border indicator; do not invent an outline
+          // or mistake its diffuse decorative glow for a solid hit-target rectangle.
+          expect(spacing.outlineVisible || spacing.shadowIndicator).toBe(true);
+        } catch (error) {
+          throw indicatorFailure || error;
+        }
+      }
+    } catch (error) {
+      focusProofFailure = error;
+    }
+    try {
+      await scrollPageTo(page, beforeFocusProof);
+    } catch (error) {
+      if (!focusProofFailure) focusProofFailure = error;
+    }
+    if (focusProofFailure) throw focusProofFailure;
     console.log('movement-checkpoint', {
       schemaVersion: 1,
       scenario: scenario.name,
@@ -376,31 +515,69 @@ for (const scenario of [
     console.log(
       'movement-before-toggle',
       scenario.name,
-      await page.evaluate(() => {
-        const panel = document.querySelector('.home-left-command-menu')!;
-        const toggle = document.querySelector('[aria-label="Toggle Base2 movement buttons"]')!;
-        return {
-          panel: panel.getBoundingClientRect().toJSON(),
-          toggle: toggle.getBoundingClientRect().toJSON(),
-          viewport: [innerWidth, innerHeight],
-          panelHeight: panel.clientHeight,
-          panelScrollHeight: panel.scrollHeight,
-        };
-      })
+      await page.evaluate(
+        (toggleName) => {
+          const panel = document.querySelector('.home-left-command-menu')!;
+          const toggle = [
+            ...panel.querySelectorAll<HTMLInputElement>('input[type="checkbox"][aria-label]'),
+          ].find((node) => node.getAttribute('aria-label') === toggleName);
+          if (!toggle) throw new Error('Movement toggle missing');
+          return {
+            panel: panel.getBoundingClientRect().toJSON(),
+            toggle: toggle.getBoundingClientRect().toJSON(),
+            viewport: [innerWidth, innerHeight],
+            panelHeight: panel.clientHeight,
+            panelScrollHeight: panel.scrollHeight,
+          };
+        },
+        movementToggleName(scenario.name.startsWith('rtl'))
+      )
     );
-    await page.getByRole('checkbox', { name: 'Toggle Base2 movement buttons' }).uncheck();
+    await page
+      .getByRole('checkbox', {
+        name: movementToggleName(scenario.name.startsWith('rtl')),
+        exact: true,
+      })
+      .uncheck();
     await expect(shell).toHaveAttribute('data-movement-layout', 'off');
     await expect(
-      page.getByRole('checkbox', { name: 'Toggle Base2 movement buttons' })
+      page.getByRole('checkbox', {
+        name: movementToggleName(scenario.name.startsWith('rtl')),
+        exact: true,
+      })
     ).toBeFocused();
-    await page.getByRole('checkbox', { name: 'Toggle Base2 movement buttons' }).check();
+    await page
+      .getByRole('checkbox', {
+        name: movementToggleName(scenario.name.startsWith('rtl')),
+        exact: true,
+      })
+      .check();
     await expect(shell).toHaveAttribute('data-movement-layout', expectedMode);
     await page.keyboard.press('Escape');
     await expect(page.getByTestId('volcano-movement-dock')).not.toHaveAttribute('inert');
     await expect(page.getByTestId('base2-left-menu-toggle')).toBeFocused();
     await expect.poll(() => pageScrollTop(page)).toBeGreaterThan(0);
+    // Re-enter a real movable position after focus-preserving toggle migration.
+    // A residual 1..12px offset intentionally has no Ascend control.
+    await scrollPageTo(page, 180);
+    await expect.poll(() => pageScrollTop(page)).toBe(180);
+    await expect(page.getByTestId('base2-scroll-ascend')).toBeVisible();
+    await expect(page.getByTestId('base2-scroll-ascend')).not.toHaveAttribute(
+      'aria-disabled',
+      'true'
+    );
     console.log('movement-before-edge', scenario.name, await pageScrollTop(page));
+    console.log('movement-action', {
+      schemaVersion: 1,
+      action: 'ascend-double-click-start',
+      scenario: scenario.name,
+    });
     await page.getByTestId('base2-scroll-ascend').dblclick();
+    console.log('movement-action', {
+      schemaVersion: 1,
+      action: 'ascend-double-click-returned',
+      scenario: scenario.name,
+    });
     await expect.poll(() => pageScrollTop(page)).toBe(0);
     console.log('movement-edge-complete', scenario.name);
     if (scenario.name === 'compact') {
