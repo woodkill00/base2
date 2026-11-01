@@ -670,3 +670,20 @@ records its SHA256 and size under the native source/run identity. Missing diagno
 remain visible; original native failure and report bytes remain unchanged. Expected totals
 remain 36 declared / 24 supported / 12 skipped across 12 Chromium projects. Capture
 counts increase, but no additional browsers or automatic acceptance are introduced.
+
+The next bounded media repair follows native run 41287894771 on head 173c17ea.
+Compact and 400-zoom images confirm horizontal preview clipping; the mobile-only
+sizing correction retains visible content, minimum height and strict visibility.
+Supplementary scrolling now follows the original comparison to avoid perturbing
+floating controls in the light reference state. Hard comparison failures are preserved and rethrown after diagnostic evidence
+collection, including when a later diagnostic also fails. No references,
+thresholds or accepted manifests are renewed. Fresh native execution and pixel
+review remain pending; local source checks are not native layout validation.
+
+Further native review confirmed low-contrast inherited preview text in light mode
+and real floating-control overlap with non-centered card text. The preview gets an
+explicit accessible foreground while forced colors remain native. Observation
+schema version 2 measures every visible relevant card target (bounded five-card
+fixture), retaining version 1 validation and safe geometry-only export. Shared
+floating-control placement is an open usability defect; no product placement change
+is included in this slice. Fresh native evidence must verify the new assertions.

@@ -50,7 +50,7 @@ def observations(raw: bytes, project: str) -> dict:
     data = json.loads(raw, object_pairs_hook=unique)
     require(isinstance(data, dict) and set(data) == {
         "schemaVersion", "fixtureScope", "project", "test", "scope", "viewportObservations"})
-    require(type(data["schemaVersion"]) is int and data["schemaVersion"] == 1)
+    require(type(data["schemaVersion"]) is int and data["schemaVersion"] in (1, 2))
     require(data["fixtureScope"] == "synthetic-project-tests" and data["project"] == project)
     require(data["test"] == MEDIA_TEST)
     require(data["scope"] == "Diagnostic viewport observations; not visual acceptance.")
@@ -71,10 +71,19 @@ def observations(raw: bytes, project: str) -> dict:
             ids.append(control["id"])
             rect(control["rect"])
         require(len(set(ids)) == len(ids))
-        require(isinstance(row["targets"], list) and len(row["targets"]) == 5)
+        require(isinstance(row["targets"], list) and
+                (len(row["targets"]) == 5 if data["schemaVersion"] == 1 else 0 <= len(row["targets"]) <= 25))
+        identities = set()
         for target in row["targets"]:
             require(isinstance(target, dict) and set(target) ==
-                    {"kind", "rect", "centerInViewport", "centerUnobstructed", "overlappingControls"})
+                    ({"kind", "rect", "centerInViewport", "centerUnobstructed", "overlappingControls"}
+                     | ({"cardIndex", "targetIndex"} if data["schemaVersion"] == 2 else set())))
+            if data["schemaVersion"] == 2:
+                require(type(target["cardIndex"]) is int and 0 <= target["cardIndex"] < 5)
+                require(type(target["targetIndex"]) is int and 0 <= target["targetIndex"] < 5)
+                identity = (target["cardIndex"], target["targetIndex"])
+                require(identity not in identities)
+                identities.add(identity)
             require(target["kind"] in ("filename", "metadata", "status", "action"))
             rect(target["rect"])
             require(type(target["centerInViewport"]) is bool

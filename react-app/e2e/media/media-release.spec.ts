@@ -132,6 +132,43 @@ test('media detail preserves safe preview usage and consequence context', async 
   await expect(
     dialog.getByRole('img', { name: 'Safe preview placeholder for Aurora landscape.png' })
   ).toBeInViewport({ ratio: 1 });
+  if (testInfo.project.name !== 'chromium-high-contrast') {
+    const previewContrast = await dialog.locator('.media-safe-preview').evaluate((node) => {
+      const style = getComputedStyle(node);
+      const luminance = (color: string) => {
+        const channels = color
+          .match(/[\d.]+/g)!
+          .slice(0, 3)
+          .map(Number)
+          .map((value) => {
+            const channel = value / 255;
+            return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+          });
+        return channels[0] * 0.2126 + channels[1] * 0.7152 + channels[2] * 0.0722;
+      };
+      const foreground = luminance(style.color);
+      const stops = style.backgroundImage.match(/rgb\([^)]*\)/g) || [];
+      return stops.map((stop) => {
+        const background = luminance(stop);
+        return (
+          (Math.max(foreground, background) + 0.05) / (Math.min(foreground, background) + 0.05)
+        );
+      });
+    });
+    expect(previewContrast).toHaveLength(2);
+    expect(Math.min(...previewContrast)).toBeGreaterThanOrEqual(4.5);
+  }
+  const previewLayout = await dialog.evaluate((node) => {
+    const preview = node.querySelector('.media-safe-preview')!;
+    const box = preview.getBoundingClientRect();
+    const dialogBox = node.getBoundingClientRect();
+    return {
+      dialogOverflow: node.scrollWidth - node.clientWidth,
+      previewFitsInline: box.left >= dialogBox.left && box.right <= dialogBox.right,
+    };
+  });
+  expect(previewLayout.dialogOverflow).toBeLessThanOrEqual(1);
+  expect(previewLayout.previewFitsInline).toBe(true);
   await assertForcedColorState(page, testInfo);
   await dialog.screenshot({
     path: testInfo.outputPath('current-media-detail-top.png'),
@@ -456,125 +493,157 @@ test('media library is accessible responsive and visually reviewed', async ({ pa
   await expect(shellHeader).toHaveCSS('position', 'sticky');
   const appNavigation = page.getByRole('navigation', { name: 'Public header' });
   await expect(appNavigation).toHaveCount(1);
-  // Observe real viewports with the genuine sticky header and floating controls.
-  // Intersection/hit-test data is diagnostic; overlap is not presumed a defect.
-  const viewportObservations = [];
-  const cards = page.locator('.media-asset-card');
-  const cardCount = await cards.count();
-  expect(cardCount).toBe(assets.length);
-  for (const index of [...new Set([0, Math.floor(cardCount / 2), cardCount - 1])]) {
-    const card = cards.nth(index);
-    await card.locator('.media-asset-copy strong').evaluate((node) => {
-      node.scrollIntoView({ behavior: 'instant', block: 'center', inline: 'nearest' });
-    });
-    await page.evaluate(
-      () =>
-        new Promise<void>((resolve) =>
-          requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
-        )
-    );
-    const observation = await card.evaluate((node) => {
-      const controls = [
-        ...document.querySelectorAll(
-          '[data-testid="base2-scroll-ascend"], [data-testid="base2-scroll-descend"]'
-        ),
-      ];
-      return {
-        scrollY,
-        viewport: [innerWidth, innerHeight],
-        controls: controls.map((control) => ({
-          id: control.getAttribute('data-testid'),
-          rect: control.getBoundingClientRect().toJSON(),
-        })),
-        targets: [
-          ...node.querySelectorAll(
-            '.media-asset-copy strong, .media-asset-copy > span, .media-card-actions button'
-          ),
-        ].map((target) => {
-          const rect = target.getBoundingClientRect();
-          const x = rect.x + rect.width / 2;
-          const y = rect.y + rect.height / 2;
-          const hit = document.elementFromPoint(x, y);
-          return {
-            kind:
-              target.tagName === 'BUTTON'
-                ? 'action'
-                : target.tagName === 'STRONG'
-                  ? 'filename'
-                  : target.classList.contains('media-status')
-                    ? 'status'
-                    : 'metadata',
-            rect: rect.toJSON(),
-            centerInViewport: x >= 0 && x < innerWidth && y >= 0 && y < innerHeight,
-            centerUnobstructed: !!hit && (hit === target || target.contains(hit)),
-            overlappingControls: controls
-              .filter((control) => {
-                const box = control.getBoundingClientRect();
-                return (
-                  box.width > 0 &&
-                  box.height > 0 &&
-                  box.left < rect.right &&
-                  box.right > rect.left &&
-                  box.top < rect.bottom &&
-                  box.bottom > rect.top
-                );
-              })
-              .map((control) => control.getAttribute('data-testid')),
-          };
-        }),
-      };
-    });
-    viewportObservations.push({ cardIndex: index, ...observation });
-    await assertForcedColorState(page, testInfo);
-    await page.screenshot({
-      path: testInfo.outputPath(`current-media-library-viewport-${index}.png`),
-      fullPage: false,
-      animations: 'disabled',
-      caret: 'hide',
-    });
-  }
-  const observationBytes = Buffer.from(
-    JSON.stringify(
-      {
-        schemaVersion: 1,
-        fixtureScope: 'synthetic-project-tests',
-        project: testInfo.project.name,
-        test: testInfo.title,
-        scope: 'Diagnostic viewport observations; not visual acceptance.',
-        viewportObservations,
-      },
-      null,
-      2
-    ) + '\n'
-  );
-  // Geometry and fixed enums only: no card text, DOM bodies or arbitrary JSON.
-  writeFileSync(testInfo.outputPath('media-viewport-observations.json'), observationBytes, {
-    flag: 'wx',
-  });
-  await testInfo.attach('media-viewport-observations', {
-    body: observationBytes,
-    contentType: 'application/json',
-  });
+  // Preserve the hard comparison failure while collecting supplementary diagnostics.
   await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }));
   // Full-page screenshots are stitched from multiple viewports. Chromium otherwise
   // paints sticky content at an arbitrary stitch boundary, obscuring document order.
-  await page.addStyleTag({
+  const screenshotHeaderStyle = await page.addStyleTag({
     content: '.volcano-header-frame { position: static !important; }',
   });
   await assertForcedColorState(page, testInfo);
-  await expect(page).toHaveScreenshot(`media-library-${testInfo.project.name}.png`, {
-    fullPage: true,
-    animations: 'disabled',
-    caret: 'hide',
-    maxDiffPixelRatio: 0.01,
-  });
-  await page.screenshot({
-    path: testInfo.outputPath('current-media-library.png'),
-    fullPage: true,
-    animations: 'disabled',
-    caret: 'hide',
-  });
-  await assertForcedColorState(page, testInfo);
+  let comparisonFailure: unknown;
+  try {
+    await expect(page).toHaveScreenshot(`media-library-${testInfo.project.name}.png`, {
+      fullPage: true,
+      animations: 'disabled',
+      caret: 'hide',
+      maxDiffPixelRatio: 0.01,
+    });
+  } catch (error) {
+    comparisonFailure = error;
+  }
+  try {
+    await page.screenshot({
+      path: testInfo.outputPath('current-media-library.png'),
+      fullPage: true,
+      animations: 'disabled',
+      caret: 'hide',
+    });
+    await assertForcedColorState(page, testInfo);
+    await screenshotHeaderStyle.evaluate((node) => node.parentNode?.removeChild(node));
+    await expect(shellHeader).toHaveCSS('position', 'sticky');
+    // Observe real viewports with the genuine sticky header and floating controls.
+    // Intersection/hit-test data is diagnostic; overlap is not presumed a defect.
+    const viewportObservations = [];
+    const cards = page.locator('.media-asset-card');
+    const cardCount = await cards.count();
+    expect(cardCount).toBe(assets.length);
+    for (const index of [...new Set([0, Math.floor(cardCount / 2), cardCount - 1])]) {
+      const card = cards.nth(index);
+      await card.locator('.media-asset-copy strong').evaluate((node) => {
+        node.scrollIntoView({ behavior: 'instant', block: 'center', inline: 'nearest' });
+      });
+      await page.evaluate(
+        () =>
+          new Promise<void>((resolve) =>
+            requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
+          )
+      );
+      const observation = await cards.evaluateAll((nodes) => {
+        const controls = [
+          ...document.querySelectorAll(
+            '[data-testid="base2-scroll-ascend"], [data-testid="base2-scroll-descend"]'
+          ),
+        ];
+        return {
+          scrollY,
+          viewport: [innerWidth, innerHeight],
+          controls: controls.map((control) => ({
+            id: control.getAttribute('data-testid'),
+            rect: control.getBoundingClientRect().toJSON(),
+          })),
+          targets: nodes
+            .flatMap((node, cardIndex) =>
+              [
+                ...node.querySelectorAll(
+                  '.media-asset-copy strong, .media-asset-copy > span, .media-card-actions button'
+                ),
+              ].map((target, targetIndex) => ({ target, cardIndex, targetIndex }))
+            )
+            .filter(({ target }) => {
+              const box = target.getBoundingClientRect();
+              return (
+                box.width > 0 &&
+                box.height > 0 &&
+                box.right > 0 &&
+                box.left < innerWidth &&
+                box.bottom > 0 &&
+                box.top < innerHeight
+              );
+            })
+            .map(({ target, cardIndex, targetIndex }) => {
+              const rect = target.getBoundingClientRect();
+              const x = rect.x + rect.width / 2;
+              const y = rect.y + rect.height / 2;
+              const hit = document.elementFromPoint(x, y);
+              return {
+                cardIndex,
+                targetIndex,
+                kind:
+                  target.tagName === 'BUTTON'
+                    ? 'action'
+                    : target.tagName === 'STRONG'
+                      ? 'filename'
+                      : target.classList.contains('media-status')
+                        ? 'status'
+                        : 'metadata',
+                rect: rect.toJSON(),
+                centerInViewport: x >= 0 && x < innerWidth && y >= 0 && y < innerHeight,
+                centerUnobstructed: !!hit && (hit === target || target.contains(hit)),
+                overlappingControls: controls
+                  .filter((control) => {
+                    const box = control.getBoundingClientRect();
+                    return (
+                      box.width > 0 &&
+                      box.height > 0 &&
+                      box.left < rect.right &&
+                      box.right > rect.left &&
+                      box.top < rect.bottom &&
+                      box.bottom > rect.top
+                    );
+                  })
+                  .map((control) => control.getAttribute('data-testid')),
+              };
+            }),
+        };
+      });
+      viewportObservations.push({ cardIndex: index, ...observation });
+      await assertForcedColorState(page, testInfo);
+      await page.screenshot({
+        path: testInfo.outputPath(`current-media-library-viewport-${index}.png`),
+        fullPage: false,
+        animations: 'disabled',
+        caret: 'hide',
+      });
+    }
+    const observationBytes = Buffer.from(
+      JSON.stringify(
+        {
+          schemaVersion: 2,
+          fixtureScope: 'synthetic-project-tests',
+          project: testInfo.project.name,
+          test: testInfo.title,
+          scope: 'Diagnostic viewport observations; not visual acceptance.',
+          viewportObservations,
+        },
+        null,
+        2
+      ) + '\n'
+    );
+    // Geometry and fixed enums only: no card text, DOM bodies or arbitrary JSON.
+    writeFileSync(testInfo.outputPath('media-viewport-observations.json'), observationBytes, {
+      flag: 'wx',
+    });
+    await testInfo.attach('media-viewport-observations', {
+      body: observationBytes,
+      contentType: 'application/json',
+    });
+  } catch (diagnosticFailure) {
+    // A later diagnostic error must never replace the original comparison failure.
+    if (comparisonFailure) throw comparisonFailure;
+    throw diagnosticFailure;
+  }
+  if (comparisonFailure) throw comparisonFailure;
 });
 
 declare global {

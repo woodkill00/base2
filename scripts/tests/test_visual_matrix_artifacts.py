@@ -259,3 +259,51 @@ def test_native_persists_same_safe_observation_as_attachment():
     assert "fixtureScope: 'synthetic-project-tests'" in source
     assert "text: target.textContent" not in source
     assert "name: control.getAttribute('aria-label')" not in source
+
+
+def test_v2_visible_other_card_geometry_is_retained_but_bounded(tmp_path):
+    source, case, output, observation, body = media_observation_fixture(tmp_path)
+    body['schemaVersion'] = 2
+    for row in body['viewportObservations']:
+        row['targets'] = [{**target, 'cardIndex': card, 'targetIndex': index}
+                          for card in range(5) for index, target in enumerate(row['targets'])]
+    observation.write_text(json.dumps(body))
+    result = module.stage(source, output)
+    assert not result['errors']
+    assert len(module.observations(observation.read_bytes(), 'chromium-desktop')['viewportObservations'][0]['targets']) == 25
+
+
+@pytest.mark.parametrize('mutation', ['duplicate', 'card', 'target', 'private', 'overflow'])
+def test_v2_rejects_invalid_visible_card_identity(tmp_path, mutation):
+    _, _, _, _, body = media_observation_fixture(tmp_path)
+    body['schemaVersion'] = 2
+    for row in body['viewportObservations']:
+        row['targets'] = [{**target, 'cardIndex': 4, 'targetIndex': index}
+                          for index, target in enumerate(row['targets'])]
+    targets = body['viewportObservations'][0]['targets']
+    if mutation == 'duplicate':
+        targets.append(targets[0].copy())
+    elif mutation == 'card':
+        targets[0]['cardIndex'] = 5
+    elif mutation == 'target':
+        targets[0]['targetIndex'] = -1
+    elif mutation == 'private':
+        targets[0]['filename'] = 'must-not-export'
+    else:
+        targets.extend([targets[0]] * 26)
+    with pytest.raises(ValueError):
+        module.observations(json.dumps(body).encode(), 'chromium-desktop')
+
+
+def test_clear_center_does_not_erase_control_corner_overlap(tmp_path):
+    _, _, _, _, body = media_observation_fixture(tmp_path)
+    body['schemaVersion'] = 2
+    for row in body['viewportObservations']:
+        row['targets'] = [{**target, 'cardIndex': 4, 'targetIndex': index,
+                           'kind': 'action', 'centerUnobstructed': True}
+                          for index, target in enumerate(row['targets'])]
+    checked = module.observations(json.dumps(body).encode(), 'chromium-desktop')
+    for row in checked['viewportObservations']:
+        assert all(target['centerUnobstructed'] is True for target in row['targets'])
+        assert all(target['overlappingControls'] == ['base2-scroll-ascend']
+                   for target in row['targets'])

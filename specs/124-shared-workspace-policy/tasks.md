@@ -1035,3 +1035,35 @@ visual acceptance is pending technical review. No complete gate was executed.
       64 KiB limit, package it only with the corresponding project/case viewport
       PNGs and record byte/hash provenance. Exclude arbitrary/private JSON and
       preserve missing-data visibility and original native failure outcomes.
+
+### Native media follow-up on head 173c17ea
+
+- [x] T57 Diagnose run 41287894771 compact/400-zoom preview failures: native
+      images confirm right-edge horizontal clipping. Constrain the existing mobile
+      grid and preview inline size; preserve 14rem minimum height and ratio-1 check.
+- [x] T58 Move supplementary viewport scrolling after the established full-page
+      comparison/current capture. Keep hard comparison failures and rethrow them after diagnostics, remove screenshot-only header style, and verify authored sticky
+      positioning before viewport diagnostics. Light mismatch was floating-control
+      placement; no light baseline update is authorized by that failure.
+- [ ] T59 Obtain independent review and fresh native validation for this narrow
+      follow-up. Preserve the original 20 passed / 12 declared skips / 4 failures.
+      Large-text counter reflow is intentional but references remain unchanged
+      pending fresh pixel review. Centered hit tests in four reviewed projects
+      do not establish absence of obstruction at every scroll position.
+- [x] T60 Set an explicit light foreground on the authored dark preview gradient;
+      verify computed foreground contrast against both stops in non-forced modes.
+      Keep native forced-color adjustment and existing accessibility checks.
+- [x] T61 Extend bounded viewport observations to all visible card targets, using
+      version 2 with explicit card/target indices, maximum 25 unique targets per
+      sampled viewport, unchanged 64 KiB limit and backward validation of version 1.
+- [ ] T62 Resolve confirmed floating-control overlap with non-centered card text.
+      Existing centered-only observations missed this defect. Review a responsive
+      control placement strategy before changing shared navigation or references.
+
+Native review further confirms landscape-touch ascend intersections with first
+card-action rectangles on cards 0, 2 and 4 despite clear center hit tests; pixels
+show circles covering button corners. Desktop, high-contrast, reduced-motion, RTL
+and phone-DPR3 viewport samples 0/2 also obscure neighboring-card filenames omitted
+by the former centered-card observations. Version 2 enumerates all visible targets
+and retains rectangle intersections independently of center hits. A clear center
+must never certify an unobstructed action or erase a corner-overlap finding.
