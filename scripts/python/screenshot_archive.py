@@ -764,4 +764,10 @@ def main() -> None:
 
 
 if __name__ == "__main__":
+    # Direct CLI execution must resolve sibling package imports independently of
+    # the caller's cwd, --repo target, or an ambient PYTHONPATH.
+    if not __package__:
+        import sys
+
+        sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
     main()

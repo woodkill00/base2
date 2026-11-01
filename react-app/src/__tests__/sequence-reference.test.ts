@@ -9,6 +9,7 @@ import {
   rmSync,
   existsSync,
   symlinkSync,
+  truncateSync,
 } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
@@ -26,6 +27,9 @@ import {
   sequenceBinding,
   validateReference,
   safeRead,
+  systemFontIdentity,
+  compareSequenceWithContext,
+  FontIdentityError,
 } from '../../e2e/sequence-reference';
 import { deriveGeometry } from '../../e2e/sequence-geometry';
 const matcher = vi.hoisted(() => ({ allow: false, calls: 0 }));
@@ -44,6 +48,68 @@ vi.mock('@playwright/test', () => ({
   },
 }));
 const dirs: string[] = [];
+test('installed font aliases stay inside their root while reference aliases remain forbidden', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'font-identity-'));
+  dirs.push(dir);
+  const root = join(dir, 'fonts');
+  mkdirSync(root);
+  mkdirSync(join(root, 'real'));
+  writeFileSync(join(root, 'real', 'unit.ttf'), 'synthetic unit font bytes');
+  symlinkSync('real/unit.ttf', join(root, 'alias.ttf'));
+  symlinkSync('real', join(root, 'alias-directory'));
+  // Exact old runtime reader failure, retained alongside the corrected reader.
+  expect(() => safeRead(join(root, 'alias.ttf'), 1024)).toThrow('sequence symlink');
+  const identity = systemFontIdentity(join(root, 'alias.ttf'), [root]);
+  expect(identity).toMatchObject({alias: '0/alias.ttf', canonical: '0/real/unit.ttf', sha256: digest('synthetic unit font bytes')});
+  expect(systemFontIdentity(join(root, 'alias-directory/unit.ttf'), [root]).sha256).toBe(identity.sha256);
+  writeFileSync(join(dir, 'outside.ttf'), 'outside');
+  symlinkSync('../outside.ttf', join(root, 'escaped.ttf'));
+  expect(() => systemFontIdentity(join(root, 'escaped.ttf'), [root])).toThrow('font-root-escape');
+  symlinkSync('missing.ttf', join(root, 'dangling.ttf'));
+  expect(() => systemFontIdentity(join(root, 'dangling.ttf'), [root])).toThrow('unresolved-font');
+  expect(() => systemFontIdentity(join(dir, 'outside.ttf'), [root])).toThrow('outside-font-root');
+  writeFileSync(join(root, 'private.json'), '{}');
+  expect(() => systemFontIdentity(join(root, 'private.json'), [root])).toThrow('unsupported-font-name');
+  symlinkSync('private.json', join(root, 'private.ttf'));
+  expect(() => systemFontIdentity(join(root, 'private.ttf'), [root])).toThrow('unsupported-font-name');
+  mkdirSync(join(root, 'directory.ttf'));
+  expect(() => systemFontIdentity(join(root, 'directory.ttf'), [root])).toThrow('invalid-font-bytes');
+  writeFileSync(join(root, 'oversized.ttf'), '');
+  truncateSync(join(root, 'oversized.ttf'), 32 * 1024 * 1024 + 1);
+  expect(() => systemFontIdentity(join(root, 'oversized.ttf'), [root])).toThrow('invalid-font-bytes');
+});
+
+test('runtime identity failure leaves captured originals and allows later ready states while fatal', async () => {
+  const f = fixture();
+  const original = readFileSync(f.info.outputPath(f.input.segments[0].file));
+  const output = vi.spyOn(console, 'log').mockImplementation(() => {});
+  try {
+    let laterState = false;
+    await compareSequenceWithContext(f.info as never, f.input as never, () => {
+      throw new FontIdentityError('unresolved-font', '0/alias.ttf');
+    }, 0);
+    laterState = true;
+    expect(laterState).toBe(true);
+    expect(errors).toHaveLength(1);
+    expect(matcher.calls).toBe(0);
+    expect(readFileSync(f.info.outputPath(f.input.segments[0].file))).toEqual(original);
+    expect(existsSync(f.info.outputPath(`sequence-${f.input.state}.json`))).toBe(false);
+    expect(output).toHaveBeenCalledWith('sequence-candidate-unavailable', JSON.stringify({
+      schemaVersion: 1, state: f.input.state, candidateAvailable: false,
+      category: 'unresolved-font', font: '0/alias.ttf',
+    }));
+  } finally { output.mockRestore(); }
+});
+test('runtime failure boundary never softens incomplete captures or snapshot-write mode', async () => {
+  const f = fixture();
+  const context = vi.fn(() => { throw new Error('private path must never be emitted'); });
+  await expect(compareSequenceWithContext(f.info as never, {...f.input, complete: false} as never, context, 0))
+    .rejects.toThrow('cannot compare incomplete sequence');
+  await expect(compareSequenceWithContext({...f.info, config: {updateSnapshots: 'all'}} as never, f.input as never, context, 0))
+    .rejects.toThrow('snapshot updates forbidden');
+  expect(context).not.toHaveBeenCalled();
+  expect(errors).toHaveLength(0);
+});
 afterEach(() => {
   dirs.splice(0).forEach((p) => rmSync(p, { recursive: true, force: true }));
   errors.length = 0;

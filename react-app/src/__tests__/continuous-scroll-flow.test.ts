@@ -9,8 +9,13 @@ vi.mock('node:child_process', () => {
   return { execFileSync, default: { execFileSync } };
 });
 const original = vi.hoisted(() => new Error('original continuous validation'));
+const infrastructureErrors = vi.hoisted(() => [] as string[]);
+vi.mock('../../e2e/sequence-reference', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../e2e/sequence-reference')>()),
+  sequenceRuntime: () => { throw new Error('synthetic unavailable runtime identity'); },
+}));
 vi.mock('@playwright/test', () => ({
-  expect: (actual: unknown) => ({
+  expect: Object.assign((actual: unknown) => ({
     toBe: (wanted: unknown) => {
       if (actual !== wanted) throw original;
     },
@@ -20,10 +25,13 @@ vi.mock('@playwright/test', () => ({
     toBeGreaterThan: (n: number) => {
       if (Number(actual) <= n) throw original;
     },
-  }),
+  }), {soft: (actual: unknown, message: string) => ({toBe: (wanted: unknown) => {
+    if (actual !== wanted) infrastructureErrors.push(message);
+  }})}),
 }));
 const directories: string[] = [];
 afterEach(() => {
+  infrastructureErrors.length = 0;
   directories.splice(0).forEach((directory) => rmSync(directory, { recursive: true, force: true }));
   document.querySelectorAll('[data-continuous-unit]').forEach((node) => node.remove());
 });
@@ -66,6 +74,7 @@ function fixture({
   document.body.append(focusedNode);
   focusedNode.focus();
   const page = {
+    context: () => ({browser: () => ({version: () => 'synthetic-unit-version'})}),
     url: () => 'http://127.0.0.1/media',
     evaluateHandle: async () => ({
       evaluate: async (fn: (_node: HTMLElement) => unknown) => {
@@ -93,7 +102,8 @@ function fixture({
   };
   const info = {
     title: 'synthetic unit case',
-    project: { name: 'chromium-compact' },
+    project: { name: 'chromium-compact', use: {} },
+    config: {updateSnapshots: 'none'},
     outputPath: (name: string) => join(directory, name),
     snapshotPath: (name: string) => join(directory, 'approved-' + name),
   };
@@ -115,6 +125,21 @@ test('complete unit sweep restores position and writes overlapping interval prov
   expect(document.activeElement).toBe(f.focusedNode);
   expect(data.segments.map((s: { offset: number }) => s.offset)).toEqual([0, 300, 600]);
   expect(f.node.scrollTop).toBe(20);
+});
+
+test('capture flow retains originals and reaches later ready state after fatal runtime identity error', async () => {
+  const f = fixture();
+  const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+  try {
+    await captureContinuousScroll(f.page as never, f.info as never, 'unit', f.target as never, 0);
+    f.events.push('later-ready-state');
+    expect(f.events.at(-1)).toBe('later-ready-state');
+    expect(infrastructureErrors).toEqual(['Sequence unit: runtime identity unavailable; no candidate']);
+    const receipt = JSON.parse(readFileSync(join(f.directory, 'continuous-unit.json'), 'utf8'));
+    expect(receipt.complete).toBe(true);
+    expect(receipt.segments).toHaveLength(3);
+    expect(log).toHaveBeenCalledWith('sequence-candidate-unavailable', expect.any(String));
+  } finally { log.mockRestore(); }
 });
 test('nonprogress saves attempted frame and cleanup cannot replace original failure', async () => {
   const f = fixture({ stalled: true, cleanupFails: true });

@@ -1,6 +1,8 @@
 """Bounded shell collection never mutates test inputs or native outcomes."""
 import hashlib
 import json
+import re
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -9,6 +11,51 @@ import yaml
 from scripts.python import shell_png_evidence as collector
 
 PNG = b'\x89PNG\r\n\x1a\n' + b'unit fixture, not native evidence'
+
+
+def journey_producers():
+    """Bind ASCII fixture titles to the inspected, pinned Playwright 1.58.2 algorithm."""
+    root = Path(__file__).resolve().parents[2] / 'react-app'
+    packages = json.loads((root / 'package-lock.json').read_text())['packages']
+    for package in ['@playwright/test', 'playwright', 'playwright-core']:
+        assert packages['node_modules/' + package]['version'] == '1.58.2'
+    rows = []
+    for file in ['public-journeys', 'operations-media-journeys', 'workspace-journeys']:
+        source = (root / 'e2e/journeys' / (file + '.spec.ts')).read_text()
+        assert 'for (const width of [390, 1440])' in source
+        tests = list(re.finditer(r"\btest\('([^']+)'", source))
+        for index, match in enumerate(tests):
+            body = source[match.end():tests[index+1].start() if index+1 < len(tests) else len(source)]
+            names = re.findall(r"capture\(page, info, '([^']+)'\)", body)
+            names += re.findall(r"info\.outputPath\('([^']+)\.png'\)", body)
+            if not names:
+                continue
+            groups = list(re.finditer(r'test\.describe\(`([^`]+)`', source[:match.start()]))
+            for width in ([390, 1440] if groups else [None]):
+                prefix = groups[-1][1].replace('${width}', str(width)) + ' ' if groups else ''
+                rows.append([file, prefix + match[1], sorted(set(n + '.png' for n in names))])
+    source = (root / 'e2e/journeys/password-visibility.spec.ts').read_text()
+    assert 'for (const width of [390, 1440])' in source
+    assert "test(`password controls ${route} ${width}`" in source
+    routes = re.search(r"for \(const route of \[([^]]+)\]", source)[1]
+    names = re.findall(r"info\.outputPath\('([^']+\.png)'\)", source)
+    for route in re.findall(r"'([^']+)'", routes):
+        for width in [390, 1440]:
+            rows.append(['password-visibility', f'password controls {route} {width}', names])
+    return [[journey_stem(file, title), names] for file, title, names in rows]
+
+
+def journey_stem(file, title):
+    # Playwright 1.58.2 testInfo.js: basename + sanitized title; util.js:
+    # windowsFilesystemFriendlyLength=60; 26 prefix + '-' + SHA1[:5] + '-' + 27 suffix.
+    # Restrict to this fixture's ASCII titles rather than approximate JS UTF-16 slicing.
+    assert file.isascii() and title.isascii()
+    sanitized = re.sub(r'[\x00-\x2c\x2e-\x2f\x3a-\x40\x5b-\x60\x7b-\x7f]+', '-', title)
+    value = file + '-' + sanitized
+    if len(value) <= 60:
+        return value
+    return value[:26] + '-' + hashlib.sha1(value.encode()).hexdigest()[:5] + '-' + value[-27:]
+
 
 
 def setup(tmp_path):
@@ -111,6 +158,77 @@ def test_known_producers_allowed():
                 'workspace': ('workspace-release-case-chromium-high-contrast', 'workspace-records-chromium-high-contrast-diff.png')}
     for suite, parts in examples.items():
         assert collector.allowed(suite, Path(*parts))
+
+
+def test_journey_literal_captures_match_exact_current_producers():
+    rows = journey_producers()
+    expected = {stem: frozenset(names) for stem, names in rows}
+    assert len(expected) == len(rows)  # No title/width directory collisions.
+    assert expected == collector.JOURNEY_CAPTURES
+    for stem, names in rows:
+        for project in ['chromium', 'firefox', 'webkit']:
+            for name in names:
+                assert collector.allowed('journeys', Path(stem + '-' + project) / name)
+                assert not collector.allowed('layout', Path(stem + '-' + project) / name)
+                assert not collector.allowed('journeys', Path(stem + '-unknown') / name)
+                assert not collector.allowed('journeys', Path('private-' + stem + '-' + project) / name)
+                assert not collector.allowed('journeys', Path(stem + '-' + project) / 'private.png')
+                assert not collector.allowed('journeys', Path(stem + '-' + project) / 'nested' / name)
+    password = next(stem for stem in expected if stem.startswith('password-visibility-'))
+    assert not collector.allowed('journeys', Path(password + '-chromium') / 'contact-failed.png')
+    contact = next(stem for stem, names in expected.items() if 'contact-failed.png' in names)
+    assert not collector.allowed('journeys', Path(contact + '-chromium') / 'invitation-accepted.png')
+
+
+def test_journey_producer_contract_needs_no_installed_frontend_or_subprocess(tmp_path, monkeypatch):
+    source = Path(__file__).resolve().parents[2] / 'react-app'
+    isolated = tmp_path / 'repo'
+    frontend = isolated / 'react-app'
+    fixtures = frontend / 'e2e/journeys'
+    fixtures.mkdir(parents=True)
+    for name in ['public-journeys', 'operations-media-journeys', 'workspace-journeys', 'password-visibility']:
+        (fixtures / f'{name}.spec.ts').write_bytes((source / f'e2e/journeys/{name}.spec.ts').read_bytes())
+    (frontend / 'package-lock.json').write_bytes((source / 'package-lock.json').read_bytes())
+    monkeypatch.setitem(journey_producers.__globals__, '__file__', str(isolated / 'scripts/tests/test_shell_png_evidence.py'))
+    def forbidden(*args, **kwargs):
+        raise AssertionError('producer source contract must not launch a subprocess')
+    monkeypatch.setattr(subprocess, 'run', forbidden)
+    assert not (frontend / 'node_modules').exists()
+    assert dict((stem, frozenset(names)) for stem, names in journey_producers()) == collector.JOURNEY_CAPTURES
+
+
+@pytest.mark.parametrize(('file', 'title', 'stem'), [
+    ('password-visibility', 'password controls /login 390', 'password-visibility-password-controls-login-390'),
+    ('password-visibility', 'password controls /reset-password?token=synthetic-only 390',
+     'password-visibility-passwo-3d2f7-rd-token-synthetic-only-390'),
+    ('public-journeys', 'public journeys 390px contact missing service fails visibly and retry sends exactly once',
+     'public-journeys-public-jou-844ca-nd-retry-sends-exactly-once'),
+])
+def test_pinned_directory_examples(file, title, stem):
+    assert journey_stem(file, title) == stem
+
+
+def test_journey_new_outputs_retain_exact_bytes_without_disclosing_unknown_names(tmp_path):
+    sources, output, provenance = setup(tmp_path)
+    original = {}
+    for stem, names in journey_producers():
+        for name in names:
+            path = put(sources['journeys'], stem + '-chromium/' + name)
+            original[path.relative_to(sources['journeys']).as_posix()] = path.read_bytes()
+    put(sources['journeys'], 'private-sensitive-case/private-person.png')
+    collector.stage(sources, output, provenance)
+    receipts = [json.loads(path.read_text()) for path in output.rglob('provenance.json')]
+    captures = [row for receipt in receipts for row in receipt['captures']]
+    assert len(captures) == len(original)
+    for row in captures:
+        name = row['path'].removeprefix('journeys/')
+        assert row['sha256'] == hashlib.sha256(original[name]).hexdigest()
+        copies = list(output.glob('*/' + row['path']))
+        assert len(copies) == 1 and copies[0].read_bytes() == original[name]
+        assert (sources['journeys'] / name).read_bytes() == original[name]
+    assert receipts[0]['suites']['journeys']['unknownExcludedCount'] == 1
+    assert 'private-person' not in json.dumps(receipts)
+    assert 'private-sensitive' not in json.dumps(receipts)
 
 
 def test_workflow_preserves_original_suites_artifacts_and_failure_status():

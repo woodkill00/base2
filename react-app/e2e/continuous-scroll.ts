@@ -5,7 +5,7 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, writeFileSync } from 'node:fs';
 import { deriveGeometry } from './sequence-geometry';
 import {
-  compareSequence,
+  compareSequenceWithContext,
   approvedSequenceTarget,
   digest,
   sequenceDependencies,
@@ -333,10 +333,10 @@ export async function captureContinuousScroll(
   if (failed) throw failure;
   if (comparisonRatio !== undefined && captured) {
     const use = info.project.use;
-    await compareSequence(
+    await compareSequenceWithContext(
       info,
       captured,
-      {
+      () => ({
         routeStateHash: digest(initialRouteState),
         environmentHash: digest(
           JSON.stringify({
@@ -353,7 +353,7 @@ export async function captureContinuousScroll(
         ),
         fixtureVersion: 'synthetic-v1',
         dependencyHash: sequenceDependencies(),
-      },
+      }),
       comparisonRatio
     );
   }

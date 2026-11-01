@@ -513,6 +513,33 @@ for (const scenario of [
     await page.getByTestId('base2-left-menu-toggle').click();
     await expect(page.getByTestId('volcano-movement-dock')).toHaveAttribute('inert');
     if (expectedMode === 'bottom') await expect(port).toHaveCSS('overflow', 'hidden');
+    const transitionCheckpoint = async (action: string) => {
+      const geometry = await page.evaluate(() => {
+        const root = document.querySelector<HTMLElement>('.volcano-layout')!;
+        const port = root.querySelector<HTMLElement>('.volcano-content-scrollport')!;
+        const header = root.querySelector<HTMLElement>('.volcano-header-frame')!;
+        const headerBottom = header.getBoundingClientRect().bottom;
+        const candidates = [...root.querySelectorAll<HTMLElement>(
+          'main h1, main h2, main p, main label, .media-asset-card, .volcano-footer-frame p, .volcano-footer-frame a'
+        )];
+        const index = candidates.findIndex((node) => node.getBoundingClientRect().bottom > headerBottom);
+        const rect = index < 0 ? null : candidates[index].getBoundingClientRect();
+        const active = document.activeElement;
+        const id = active?.getAttribute('data-testid');
+        return {
+          mode: root.getAttribute('data-movement-layout'),
+          document: [scrollY, innerHeight, document.documentElement.scrollHeight],
+          port: [port.scrollTop, port.clientHeight, port.scrollHeight],
+          scale: port.getBoundingClientRect().height / port.offsetHeight,
+          headerBottom, anchorIndex: index,
+          anchorRect: rect ? [rect.x, rect.y, rect.width, rect.height] : null,
+          activeTag: active?.tagName || null,
+          activeControl: ['base2-left-menu-toggle', 'base2-right-utility-toggle', 'base2-scroll-ascend', 'base2-scroll-descend'].includes(id || '') ? id : null,
+        };
+      });
+      console.log('movement-transition', { schemaVersion: 1, scenario: scenario.name, action, ...geometry });
+    };
+    await transitionCheckpoint('before-disable');
     console.log(
       'movement-before-toggle',
       scenario.name,
@@ -541,6 +568,7 @@ for (const scenario of [
       })
       .uncheck();
     await expect(shell).toHaveAttribute('data-movement-layout', 'off');
+    await transitionCheckpoint('after-disable');
     await expect(
       page.getByRole('checkbox', {
         name: movementToggleName(scenario.name.startsWith('rtl')),
@@ -554,9 +582,11 @@ for (const scenario of [
       })
       .check();
     await expect(shell).toHaveAttribute('data-movement-layout', expectedMode);
+    await transitionCheckpoint('after-enable-before-close');
     await page.keyboard.press('Escape');
     await expect(page.getByTestId('volcano-movement-dock')).not.toHaveAttribute('inert');
     await expect(page.getByTestId('base2-left-menu-toggle')).toBeFocused();
+    await transitionCheckpoint('after-close');
     await expect.poll(() => pageScrollTop(page)).toBeGreaterThan(0);
     // Re-enter a real movable position after focus-preserving toggle migration.
     // A residual 1..12px offset intentionally has no Ascend control.

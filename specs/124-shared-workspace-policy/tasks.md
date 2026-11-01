@@ -1217,3 +1217,30 @@ ready checks; remove the operations legacy header override before genuine sequen
 require explicit target applicability; separate named-route reference namespaces;
 and retrieve validated partial transport without converting packaging failure to
 success. Native validation and every new image approval remain pending.
+
+## Native reference infrastructure repair (2026-11-01)
+
+Head 599beaa4313bc946cd2a992831773c6ab6506b8e: standard run 41338007556
+completed 399 passed / 45 failed, media 41338046706 completed 1 passed / 23 failed /
+12 declared skips, and operations 41338039571 completed 22 failed / 20 declared
+skips. Font inventory symlink rejection occurred before sequence comparison;
+these runs produced no sequence candidates or missing-reference verdicts.
+Original artifacts and diagnostic sweeps remain preserved. Backend run 41338007718
+also exposed a direct-script import failure masked locally by PYTHONPATH.
+
+- [ ] T84 Correct direct archive CLI imports using the script's own repository
+      root; test without PYTHONPATH from an unrelated cwd and preserve the fatal
+      missing-manifest guard. Revalidate the complete committed archive.
+- [ ] T85 Separate installed-font alias resolution from strict reference paths.
+      Require canonical bytes within explicit system-font roots, retain bounds,
+      and emit only bounded root-relative identities. Runtime identity failure
+      must remain fatal with no candidate binding, while independently ready
+      later states execute. Exact offending historical native alias is unknown.
+- [ ] T86 Correct the demonstrated scaled document/element anchor-coordinate
+      mismatch and add bounded toggle/close checkpoints. The zoom offset-zero
+      failure at line 560 is not proven resolved until fresh native validation;
+      retain its positive-offset assertion and all subsequent Ascend checks.
+- [ ] T87 Review finite producer-specific journey retention additions separately.
+      Source predicts 180 excluded journey outputs, but historical exact paths
+      remain unavailable. One layout and one Volcano exclusion remain unidentified.
+      Preserve unknown counts and require new native identities before claiming recovery.

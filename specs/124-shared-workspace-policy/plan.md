@@ -966,3 +966,18 @@ The original Volcano preview home is explicitly registered as a document-scrolli
 fixture at both declared widths; its existing home/drawer/palette comparisons remain
 unchanged. It is not a nested-sequence opportunity. Any unexpected nested target,
 dialog or approved nested set in that registered document fixture remains fatal.
+
+The next bounded repair separates archive CLI import resolution, sequence runtime
+identity and shell migration. Direct execution resolves imports from the script,
+independently of caller cwd/PYTHONPATH. System font aliases may resolve only inside
+explicit installed-font roots; reference and receipt symlinks remain rejected.
+Fingerprint actual canonical bytes and alias identity without inventing bindings
+when collection fails. A fatal deferred infrastructure verdict permits later
+independently ready states, while capture/readiness failures remain hard.
+
+Anchor migration converts rectangle displacement using the destination coordinate
+system: scaled element layout units versus document viewport pixels. Unit geometry
+can prove that arithmetic, but cannot establish the cause or resolution of the
+native zoom offset-zero failure. Bounded transition observations and unchanged
+native assertions must verify the complete toggle/focus/close sequence. Screenshot
+retention allowlist corrections remain a separately reviewable transport slice.

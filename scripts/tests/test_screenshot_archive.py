@@ -400,6 +400,7 @@ def test_retained_data_ci_has_history_no_persistent_credentials_or_network_fetch
 
 
 def test_ci_mode_rejects_missing_run_manifests(tmp_path):
+    import os
     import sys
     from pathlib import Path
 
@@ -409,9 +410,27 @@ def test_ci_mode_rejects_missing_run_manifests(tmp_path):
         capture_output=True,
         text=True,
         check=False,
+        cwd=tmp_path,
+        env={key: value for key, value in os.environ.items() if key != "PYTHONPATH"},
     )
     assert result.returncode != 0
     assert "required archive has no run manifests" in result.stderr
+
+
+def test_direct_archive_cli_without_pythonpath_validates_empty_archive(tmp_path):
+    import os
+    import sys
+    from pathlib import Path
+
+    tool = Path(__file__).resolve().parents[2] / "scripts/python/screenshot_archive.py"
+    result = subprocess.run(
+        [sys.executable, str(tool), "--repo", str(tmp_path)],
+        cwd=tmp_path,
+        env={key: value for key, value in os.environ.items() if key != "PYTHONPATH"},
+        capture_output=True, text=True, check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    assert json.loads(result.stdout) == {"validatedRunManifests": 0, "acceptanceGranted": False}
 
 
 def v2_manifest(repo, data):

@@ -1,6 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { existsSync, lstatSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, lstatSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import { dirname, basename, resolve, relative } from 'node:path';
 import { arch, platform, release } from 'node:os';
 import { expect, type TestInfo } from '@playwright/test';
@@ -432,6 +432,66 @@ export function sequenceDependencies() {
 }
 
 let fontsHash: string | undefined;
+const SYSTEM_FONT_ROOTS = ['/usr/share/fonts', '/usr/local/share/fonts'];
+export class FontIdentityError extends Error {
+  constructor(readonly category: string, readonly font: string | null = null) {
+    super(`sequence font identity unavailable: ${category}`);
+  }
+}
+// Installed font aliases are distinct from untrusted reference/receipt paths.
+// Both alias and canonical bytes must remain inside an explicit system-font root.
+export function systemFontIdentity(path: string, roots = SYSTEM_FONT_ROOTS) {
+  const requested = resolve(path);
+  const rootIndex = roots.findIndex((root) => requested.startsWith(resolve(root) + '/'));
+  if (path !== requested || rootIndex < 0) throw new FontIdentityError('outside-font-root');
+  const root = resolve(roots[rootIndex]);
+  const name = relative(root, requested);
+  const font = /^[A-Za-z0-9_ .+/-]{1,240}$/.test(name) ? `${rootIndex}/${name}` : null;
+  if (!font || !/\.(?:ttf|otf|ttc|otc|pfa|pfb|pcf(?:\.gz)?|otb)$/i.test(name))
+    throw new FontIdentityError('unsupported-font-name');
+  let canonicalPath: string;
+  try {
+    canonicalPath = realpathSync(requested);
+  } catch {
+    throw new FontIdentityError('unresolved-font', font);
+  }
+  if (!canonicalPath.startsWith(root + '/')) throw new FontIdentityError('font-root-escape', font);
+  const canonicalName = relative(root, canonicalPath);
+  if (!/^[A-Za-z0-9_ .+/-]{1,240}$/.test(canonicalName)
+      || !/\.(?:ttf|otf|ttc|otc|pfa|pfb|pcf(?:\.gz)?|otb)$/i.test(canonicalName))
+    throw new FontIdentityError('unsupported-font-name', font);
+  try {
+    const raw = safeRead(canonicalPath, 32 * 1024 * 1024);
+    if (realpathSync(requested) !== canonicalPath) throw new Error('font alias changed');
+    return { alias: font, canonical: `${rootIndex}/${canonicalName}`, sha256: digest(raw), bytes: raw.length };
+  } catch {
+    throw new FontIdentityError('invalid-font-bytes', font);
+  }
+}
+
+export async function compareSequenceWithContext(
+  info: TestInfo, input: SequenceInput, context: () => SequenceContext, ratio: number
+) {
+  if (!input.complete || !input.segments.length || input.segments.length > SEQUENCE_LIMITS.segments)
+    throw new Error('cannot compare incomplete sequence');
+  if (info.config.updateSnapshots !== 'none') throw new Error('snapshot updates forbidden');
+  let resolved: SequenceContext;
+  try {
+    resolved = context();
+  } catch (error) {
+    // No invented environment binding, comparison receipt, expected image or pass.
+    // Original continuous captures/receipts already exist. Keep this visual
+    // infrastructure error fatal while independently ready later states execute.
+    console.log('sequence-candidate-unavailable', JSON.stringify({
+      schemaVersion: 1, state: input.state, candidateAvailable: false,
+      category: error instanceof FontIdentityError ? error.category : 'runtime-identity',
+      font: error instanceof FontIdentityError ? error.font : null,
+    }));
+    await expect.soft(false, `Sequence ${input.state}: runtime identity unavailable; no candidate`).toBe(true);
+    return;
+  }
+  await compareSequence(info, input, resolved, ratio);
+}
 export function sequenceRuntime(browserVersion: string) {
   if (!browserVersion) throw new Error('missing actual browser version');
   if (!fontsHash) {
@@ -449,18 +509,24 @@ export function sequenceRuntime(browserVersion: string) {
     if (!files.length || files.length > 2048 || files.some((p) => !p.startsWith('/')))
       throw new Error('font inventory bound');
     let bytes = 0;
+    const aliases: { alias: string; canonical: string }[] = [];
     const started = Date.now();
     fontsHash = digest(
       files
         .map((p) => {
-          const raw = safeRead(p, 32 * 1024 * 1024);
-          bytes += raw.length;
+          const identity = systemFontIdentity(p);
+          if (identity.alias !== identity.canonical) {
+            aliases.push({ alias: identity.alias, canonical: identity.canonical });
+            if (aliases.length > 128) throw new FontIdentityError('font-alias-inventory-bound');
+          }
+          bytes += identity.bytes;
           if (bytes > 512 * 1024 * 1024 || Date.now() - started > 10_000)
             throw new Error('font fingerprint budget');
-          return p + ':' + digest(raw);
+          return canonical(identity);
         })
         .join('\n')
     );
+    console.log('sequence-font-aliases', JSON.stringify({ schemaVersion: 1, aliases }));
   }
   return {
     browserVersion,

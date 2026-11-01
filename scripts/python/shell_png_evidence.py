@@ -37,6 +37,51 @@ WORKSPACE_NAMES = re.compile(
     r'[a-z0-9-]+-(?:actual|expected|diff)))\.png')
 
 
+# Exact native output stems for the pinned journey fixture titles/widths.
+# Dependency-free source contracts bind the inspected Playwright 1.58.2 naming algorithm.
+# Extending this table never permits arbitrary names from the same fixture family.
+JOURNEY_CAPTURES = {
+    'public-journeys-light-pref-e36d1-keyboard-contact-submission': frozenset(['contact-light-enlarged-keyboard.png']),
+    'public-journeys-localized--ff699--shell-and-long-text-reflow': frozenset(['localized-rtl-published.png']),
+    'public-journeys-public-jou-844ca-nd-retry-sends-exactly-once': frozenset(['contact-failed.png', 'contact-received.png']),
+    'public-journeys-public-jou-2bd68-nd-retry-sends-exactly-once': frozenset(['contact-failed.png', 'contact-received.png']),
+    'public-journeys-public-jou-93439-recoverable-service-failure': frozenset(['forgot-receipt.png', 'forgot-unavailable.png']),
+    'public-journeys-public-jou-163f6-recoverable-service-failure': frozenset(['forgot-receipt.png', 'forgot-unavailable.png']),
+    'public-journeys-public-jou-437d2-ired-token-without-redirect': frozenset(['reset-expired.png', 'reset-mismatch.png']),
+    'public-journeys-public-jou-f17a7-ired-token-without-redirect': frozenset(['reset-expired.png', 'reset-mismatch.png']),
+    'public-journeys-public-jou-5ff20-d-expired-token-is-explicit': frozenset(['verify-expired.png', 'verify-missing.png']),
+    'public-journeys-public-jou-0f88a-d-expired-token-is-explicit': frozenset(['verify-expired.png', 'verify-missing.png']),
+    'public-journeys-public-jou-cd331-ionable-and-offers-recovery': frozenset(['login-rejected.png']),
+    'public-journeys-public-jou-f0497-ionable-and-offers-recovery': frozenset(['login-rejected.png']),
+    'public-journeys-public-jou-0e2cd-and-opens-published-content': frozenset(['published-detail.png', 'search-paginated.png', 'search-populated.png']),
+    'public-journeys-public-jou-f5b22-and-opens-published-content': frozenset(['published-detail.png', 'search-paginated.png', 'search-populated.png']),
+    'public-journeys-public-jou-46c8c-recovers-without-duplicates': frozenset(['collection-page-failed.png', 'collection-paginated.png']),
+    'public-journeys-public-jou-ab0fe-recovers-without-duplicates': frozenset(['collection-page-failed.png', 'collection-paginated.png']),
+    'public-journeys-public-jou-ae8b0--instead-of-a-missing-route': frozenset(['journal-populated.png']),
+    'public-journeys-public-jou-3f3d6--instead-of-a-missing-route': frozenset(['journal-populated.png']),
+    'public-journeys-protected--1ecdc-d-appearance-survive-reload': frozenset(['dashboard-member.png', 'settings-persisted.png']),
+    'public-journeys-protected--38b7d-d-appearance-survive-reload': frozenset(['dashboard-member.png', 'settings-persisted.png']),
+    'public-journeys-protected--348bb-ent-after-a-fresh-page-load': frozenset(['session-revoked.png']),
+    'public-journeys-protected--b0aad-ent-after-a-fresh-page-load': frozenset(['session-revoked.png']),
+    'public-journeys-protected--6a8c6--viewer-into-administration': frozenset(['invitation-accepted.png']),
+    'public-journeys-protected--8122b--viewer-into-administration': frozenset(['invitation-accepted.png']),
+    'public-journeys-protected--0f170-missing-token-cannot-submit': frozenset(['invitation-expired.png']),
+    'public-journeys-protected--6d47f-missing-token-cannot-submit': frozenset(['invitation-expired.png']),
+    'operations-media-journeys--0084c--visibly-when-refresh-fails': frozenset(['operations-read-only.png', 'operations-stale.png']),
+    'operations-media-journeys--6db00--visibly-when-refresh-fails': frozenset(['operations-read-only.png', 'operations-stale.png']),
+    'operations-media-journeys--39225-ion-and-preserves-the-asset': frozenset(['media-deletion-blocked.png']),
+    'operations-media-journeys--13bc3-ion-and-preserves-the-asset': frozenset(['media-deletion-blocked.png']),
+    'workspace-journeys-workspa-ad4ed-cord-without-losing-changes': frozenset(['workspace-import-completed.png', 'workspace-reloaded.png']),
+    'workspace-journeys-workspa-e38b3-cord-without-losing-changes': frozenset(['workspace-import-completed.png', 'workspace-reloaded.png']),
+    'password-visibility-password-controls-login-390': frozenset(['password-revealed.png', 'password-zoom.png']),
+    'password-visibility-password-controls-login-1440': frozenset(['password-revealed.png', 'password-zoom.png']),
+    'password-visibility-password-controls-signup-390': frozenset(['password-revealed.png', 'password-zoom.png']),
+    'password-visibility-password-controls-signup-1440': frozenset(['password-revealed.png', 'password-zoom.png']),
+    'password-visibility-passwo-3d2f7-rd-token-synthetic-only-390': frozenset(['password-revealed.png', 'password-zoom.png']),
+    'password-visibility-passwo-1111c-d-token-synthetic-only-1440': frozenset(['password-revealed.png', 'password-zoom.png']),
+}
+
+
 def safe(path: Path) -> None:
     if '..' in path.parts or any(p.is_symlink() for p in (path, *path.parents)):
         raise ValueError('traversal or symlink rejected')
@@ -55,8 +100,11 @@ def allowed(suite: str, relative: Path) -> bool:
     if suite in ('layout', 'volcano'):
         return any(case.startswith(prefix + '-') for prefix in LAYOUT_CASES) and bool(LAYOUT_NAMES.fullmatch(relative.name))
     if suite == 'journeys':
+        stem, _, project = case.rpartition('-')
+        if project in {'chromium', 'firefox', 'webkit'} and relative.name in JOURNEY_CAPTURES.get(stem, ()):
+            return True
         return case.startswith('public-journeys-public-jou-') and bool(re.fullmatch(
-            rf'(?:{COMMON}|contact-received|search-paginated|(?:contact-received-390|search-paginated-1440)-(?:actual|expected|diff))\.png',relative.name))
+            rf'(?:{COMMON}|(?:contact-received-390|search-paginated-1440)-(?:actual|expected|diff))\.png',relative.name))
     prefix = 'settings-release-' if suite == 'settings' else 'workspace-release-'
     names = SETTINGS_NAMES if suite == 'settings' else WORKSPACE_NAMES
     return case.startswith(prefix) and bool(names.fullmatch(relative.name))

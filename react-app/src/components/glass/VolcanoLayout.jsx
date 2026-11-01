@@ -64,7 +64,12 @@ export default function VolcanoLayout({ children, headerTitle, contextSlot, foot
     if (scrollTarget.element) window.scrollTo({ top: 0, behavior: 'auto' });
     scrollTarget.scrollTo(saved.top);
     if (saved.anchor?.isConnected) {
-      const scale = root.current.getBoundingClientRect().width / root.current.offsetWidth || 1;
+      // Rectangle deltas use viewport CSS pixels. Only an element scrollTop
+      // needs conversion back to its unscaled layout units; window scrollY does not.
+      const destination = scrollTarget.element;
+      const scale = destination
+        ? destination.getBoundingClientRect().height / destination.offsetHeight || 1
+        : 1;
       scrollTarget.scrollTo(
         scrollTarget.metrics().top + (saved.anchor.getBoundingClientRect().top - saved.y) / scale
       );

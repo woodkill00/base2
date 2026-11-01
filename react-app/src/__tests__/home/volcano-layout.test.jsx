@@ -12,8 +12,10 @@ vi.mock('../../components/home/HomeFooter', () => ({
   default: () => <footer>Original footer</footer>,
 }));
 vi.mock('../../components/home/HomeObsidianNavigation', () => ({
-  default: ({ onUtilityAction, onNavigate, routes }) => (
+  default: ({ onUtilityAction, onNavigate, routes, initialMovementEnabled, onMovementEnabledChange }) => (
     <nav>
+      <input aria-label="unit movement toggle" type="checkbox" checked={initialMovementEnabled}
+        onChange={(event) => onMovementEnabledChange(event.target.checked)} />
       {['search', 'security', 'share'].map((action) => (
         <button key={action} onClick={() => onUtilityAction(action)}>
           {action}
@@ -43,6 +45,48 @@ function mount(props = {}) {
 beforeEach(() => {
   auth.user = null;
   auth.logout.mockReset();
+});
+test.each([1, 2])('scale %s nested/document migration preserves the visible anchor and focused toggle', (scale) => {
+  const oldMedia = window.matchMedia;
+  window.matchMedia = vi.fn(() => ({ matches: true, addEventListener() {}, removeEventListener() {} }));
+  let nestedTop = 500, documentTop = 0;
+  const targetSpy = vi.spyOn(scrollTargets, 'createScrollTarget').mockImplementation((element) => ({
+    element,
+    metrics: () => ({ top: element ? nestedTop : documentTop, max: 2000, height: 300 }),
+    scrollTo: (top) => { if (element) nestedTop = Math.max(0, Math.min(2000, top)); else documentTop = Math.max(0, Math.min(2000, top)); },
+    subscribe: () => () => {}, align: vi.fn(),
+  }));
+  const windowScroll = vi.spyOn(window, 'scrollTo').mockImplementation(({ top }) => { documentTop = top; });
+  let view;
+  try {
+    view = mount();
+    const root = view.container.querySelector('.volcano-layout');
+    const header = view.container.querySelector('.volcano-header-frame');
+    const port = view.container.querySelector('.volcano-content-scrollport');
+    Object.defineProperty(root, 'offsetWidth', { configurable: true, value: 320 });
+    root.getBoundingClientRect = () => ({ width: 320 * scale });
+    port.getBoundingClientRect = () => ({ top: 0, height: 300 * scale });
+    Object.defineProperty(port, 'offsetHeight', { configurable: true, value: 300 });
+    header.getBoundingClientRect = () => ({ bottom: 0 });
+    const anchor = screen.getByRole('heading', { name: 'Content' });
+    anchor.getBoundingClientRect = () => {
+      const y = 1200 - (root.dataset.movementLayout === 'bottom' ? nestedTop * scale : documentTop);
+      return { top: y, bottom: y + 40 };
+    };
+    const toggle = screen.getByRole('checkbox', { name: 'unit movement toggle' });
+    toggle.focus();
+    expect(anchor.getBoundingClientRect().top).toBe(1200 - 500 * scale);
+    fireEvent.click(toggle);
+    expect(documentTop).toBe(500 * scale);
+    expect(anchor.getBoundingClientRect().top).toBe(1200 - 500 * scale);
+    expect(toggle).toHaveFocus();
+    fireEvent.click(toggle);
+    expect(nestedTop).toBe(500);
+    expect(anchor.getBoundingClientRect().top).toBe(1200 - 500 * scale);
+    expect(toggle).toHaveFocus();
+  } finally {
+    view?.unmount(); targetSpy.mockRestore(); windowScroll.mockRestore(); window.matchMedia = oldMedia;
+  }
 });
 afterEach(() => vi.unstubAllGlobals());
 test('measures changed header height in layout pixels and disconnects its observer', () => {
