@@ -1,6 +1,5 @@
 import hashlib
 import json
-import re
 import subprocess
 import zipfile
 from pathlib import Path
@@ -90,7 +89,7 @@ def test_traversal_and_untrusted_project_names(tmp_path):
 def test_incomplete_inputs_never_truncated_or_reported_packaged(tmp_path, monkeypatch, change):
     source, case, output = fixture(tmp_path)
     if change == "oversize":
-        monkeypatch.setattr(module, "PNG_BUDGET", len(PNG))
+        monkeypatch.setattr(module, "PNG_BUDGET", len(PNG) - 1)
     elif change == "unknown":
         (case / "private.png").write_bytes(PNG)
     else:
@@ -141,17 +140,14 @@ def test_workflow_retains_original_and_failure_propagation():
     assert not any("continue-on-error" in s for s in steps)
     assert "||" not in indexed["matrix"]["run"]
     assert "--update-snapshots=none" in indexed["matrix"]["run"]
-    projects = set()
-    for mode in ("operations", "media"):
-        config = (ROOT / f"react-app/playwright.{mode}-release.config.mjs").read_text()
-        projects.update(re.findall(r"(?:chromium\(\s*|name:\s*)'([^']+)'", config))
-    uploads = [s for s in steps if s.get("name", "").startswith("Retain bounded ")]
-    paths = {s["with"]["path"].split("/")[-1] for s in uploads}
-    assert paths == {"metadata.zip", *(p + ".zip" for p in projects)}
-    for step in uploads:
-        assert step["if"] == "always() && steps.before.outcome == 'success'"
-        assert step["with"]["retention-days"] == 7
-        assert len(step["uses"].split("@")[1]) == 40
+    assert '--upload-action' in indexed['bounded']['run']
+    upload = next(s for s in steps if s.get('name') == 'Retain bounded project PNG parts')
+    assert upload['if'] == "always() && steps.bounded.outputs.upload_ready == 'true'"
+    assert upload['uses'] == './.artifacts/visual-upload-action'
+    metadata = next(s for s in steps if s.get('name') == 'Retain bounded source and reporter inventory')
+    assert metadata['with']['path'] == '${{ env.VISUAL_OUTPUT }}/bounded/metadata.zip'
+    assert metadata['if'] == "always() && steps.before.outcome == 'success'"
+    assert metadata['with']['retention-days'] == 7
     # A failing matrix remains a failing shell command; diagnostic packaging
     # is a separate always() step, with no success override.
     failed = subprocess.run(["bash", "-e", "-c", indexed["matrix"]["run"]],
@@ -202,7 +198,7 @@ def test_allowlisted_observation_bytes_and_hash_preserve_native_failure(tmp_path
     assert not result["errors"]
     name = observation.relative_to(source / "test-results").as_posix()
     diagnostic = result["projects"]["chromium-desktop"]["diagnostics"]
-    assert diagnostic == [{"path": name, "bytes": len(raw), "sha256": hashlib.sha256(raw).hexdigest()}]
+    assert diagnostic == [{"path": name, "bytes": len(raw), "sha256": hashlib.sha256(raw).hexdigest(), "archive": "chromium-desktop.zip"}]
     assert result["projects"]["chromium-desktop"]["missingDiagnostics"] == []
     assert result["projects"]["chromium-light"]["missingDiagnostics"] == [module.OBSERVATION_NAME]
     with zipfile.ZipFile(output / "chromium-desktop.zip") as z:
@@ -371,3 +367,143 @@ def test_v4_all_persistent_control_overlaps_survive_bounded_roundtrip(tmp_path, 
     body['viewportObservations'][0]['targets'][0]['overlappingControls'] = [controls[0], controls[0]]
     with pytest.raises(ValueError):
         module.observations(json.dumps(body).encode(), 'chromium-desktop')
+
+
+def test_large_project_partitions_without_loss_and_is_byte_deterministic(tmp_path, monkeypatch):
+    source, case, output = fixture(tmp_path)
+    for index in range(5):
+        (case / f"test-failed-{index}.png").write_bytes(PNG + bytes([index]))
+    monkeypatch.setattr(module, "PNG_BUDGET", 2 * len(PNG) + 2)
+    before = {p: p.read_bytes() for p in source.rglob("*") if p.is_file()}
+    result = module.stage(source, output)
+    assert result["errors"] == []
+    entry = result["projects"]["chromium-desktop"]
+    assert len(entry["parts"]) == 4
+    recovered = {}
+    for part in entry["parts"]:
+        raw = (output / part["path"]).read_bytes()
+        assert len(raw) == part["bytes"] <= module.ZIP_BUDGET
+        assert hashlib.sha256(raw).hexdigest() == part["sha256"]
+        with zipfile.ZipFile(output / part["path"]) as z:
+            assert set(z.namelist()) == set(part["members"])
+            for name in z.namelist():
+                assert name not in recovered
+                recovered[name] = z.read(name)
+    expected = {p.relative_to(source / "test-results").as_posix(): raw
+                for p, raw in before.items() if p.suffix == ".png"}
+    assert recovered == expected
+    assert all(item["archive"] in {part["path"] for part in entry["parts"]}
+               for item in entry["captures"])
+    second = tmp_path / "second"
+    assert module.stage(source, second) == result
+    assert {p.name: p.read_bytes() for p in output.iterdir()} == {
+        p.name: p.read_bytes() for p in second.iterdir()}
+    assert all(p.read_bytes() == raw for p, raw in before.items())
+    with zipfile.ZipFile(output / "metadata.zip") as z:
+        assert z.read("source-after.json") == b'{"nativeOutcome":"failure"}'
+
+
+def test_generated_uploads_are_individually_bounded_pinned_and_failure_preserving(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    source, _, output = fixture(tmp_path)
+    monkeypatch.setenv("VISUAL_OUTPUT", str(source))
+    # Native workflow output is exactly VISUAL_OUTPUT/bounded.
+    output = source / "bounded"
+    monkeypatch.setattr(module, "PNG_BUDGET", len(PNG))
+    result = module.stage(source, output)
+    target = Path('.artifacts/visual-upload-action')
+    module.upload_action(output, target, result)
+    action = json.loads((target / 'action.yml').read_bytes())
+    steps = action['runs']['steps']
+    assert action['runs']['using'] == 'composite'
+    assert len(steps) == 2
+    assert len({s['with']['name'] for s in steps}) == 2
+    for s in steps:
+        assert set(s) == {'name', 'if', 'uses', 'with'}
+        assert s['if'] == 'always()'
+        assert s['uses'] == 'actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f'
+        assert s['with']['if-no-files-found'] == 'error'
+        assert s['with']['retention-days'] == 7
+        assert '*' not in s['with']['path']
+        assert s['with']['path'].startswith('${{ env.VISUAL_OUTPUT }}/bounded/chromium-desktop-part-')
+    with pytest.raises(ValueError, match='fresh'):
+        module.upload_action(output, target, result)
+
+
+@pytest.mark.parametrize('mutation', ['error', 'tamper', 'duplicate', 'expression', 'symlink', 'output'])
+def test_invalid_upload_plan_never_generates_executable_action(tmp_path, monkeypatch, mutation):
+    monkeypatch.chdir(tmp_path)
+    source, _, _ = fixture(tmp_path)
+    output = source / 'bounded'
+    monkeypatch.setenv('VISUAL_OUTPUT', str(source))
+    result = module.stage(source, output)
+    parts = result['projects']['chromium-desktop']['parts']
+    if mutation == 'error':
+        result['errors'].append('preserved packaging failure')
+    elif mutation == 'tamper':
+        (output / parts[0]['path']).write_bytes(b'changed')
+    elif mutation == 'duplicate':
+        parts.append(parts[0].copy())
+    elif mutation == 'expression':
+        parts[0]['path'] = '${{ secrets.private }}.zip'
+    elif mutation == 'symlink':
+        path = output / parts[0]['path']
+        other = output / 'other'
+        path.rename(other)
+        path.symlink_to(other)
+    else:
+        monkeypatch.setenv('VISUAL_OUTPUT', str(tmp_path / 'other'))
+    target = Path('.artifacts/visual-upload-action')
+    with pytest.raises(ValueError):
+        module.upload_action(output, target, result)
+    assert not target.exists()
+
+
+def test_partition_failure_keeps_originals_and_marks_incomplete(tmp_path, monkeypatch):
+    source, case, output = fixture(tmp_path)
+    original = {p: p.read_bytes() for p in source.rglob('*') if p.is_file()}
+    monkeypatch.setattr(module, 'PNG_BUDGET', len(PNG))
+    real_archive = module.archive
+    def fail_second(path, members):
+        if path.name.endswith('part-002.zip'):
+            raise ValueError('simulated second-part failure')
+        real_archive(path, members)
+    monkeypatch.setattr(module, 'archive', fail_second)
+    result = module.stage(source, output)
+    assert result['projects']['chromium-desktop']['status'] == 'incomplete'
+    assert any('second-part failure' in error for error in result['errors'])
+    assert all(p.read_bytes() == raw for p, raw in original.items())
+    with zipfile.ZipFile(output / 'metadata.zip') as z:
+        assert json.loads(z.read('inventory.json'))['errors'] == result['errors']
+        assert json.loads(z.read('source-after.json'))['nativeOutcome'] == 'failure'
+
+
+def test_real_budget_splits_above_thirty_mib_without_loss(tmp_path):
+    source, case, output = fixture(tmp_path)
+    raw = PNG + b'x' * (12 * 1024 * 1024 - len(PNG))
+    for name in ('current-operations.png', 'operations-actual.png', 'operations-diff.png'):
+        (case / name).write_bytes(raw)
+    result = module.stage(source, output)
+    assert result['errors'] == []
+    parts = result['projects']['chromium-desktop']['parts']
+    assert len(parts) == 2
+    assert sum(len(part['members']) for part in parts) == 3
+    assert all(part['bytes'] <= 30 * 1024 * 1024 for part in parts)
+    for part in parts:
+        with zipfile.ZipFile(output / part['path']) as z:
+            assert all(z.read(name) == raw for name in z.namelist())
+
+
+def test_output_cannot_become_native_input(tmp_path):
+    source, _, _ = fixture(tmp_path)
+    with pytest.raises(ValueError, match='overlaps'):
+        module.stage(source, source / 'test-results' / 'output')
+
+
+def test_duplicate_archive_destination_never_overwrites_first_bytes(tmp_path):
+    path = tmp_path / 'first.zip'
+    module.archive(path, {'capture.png': PNG})
+    original = path.read_bytes()
+    with pytest.raises(ValueError, match='duplicate'):
+        module.archive(path, {'other.png': PNG})
+    assert path.read_bytes() == original

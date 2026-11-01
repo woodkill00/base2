@@ -188,6 +188,10 @@ test('media detail preserves safe preview usage and consequence context', async 
     await expect(page.locator('.volcano-layout')).toHaveAttribute('data-movement-layout', 'sides');
     await expect(page.getByTestId('volcano-scrollport')).not.toHaveCSS('overflow', 'hidden');
   }
+  if ((await assertForcedColorState(page, testInfo)) === 'active') {
+    await dialog.getByLabel('Caption', { exact: true }).scrollIntoViewIfNeeded();
+    await assertForcedSystemControl(dialog.getByLabel('Caption', { exact: true }), true);
+  }
   await expect(page.locator('.volcano-header-frame')).toHaveJSProperty('inert', true);
   await expect(page.locator('.volcano-footer-frame')).toHaveJSProperty('inert', true);
   await expect(page.getByTestId('base2-obsidian-navigation')).toHaveJSProperty('inert', true);
@@ -221,12 +225,15 @@ test('media detail preserves safe preview usage and consequence context', async 
   const lifecycleRelease = new Promise<void>((resolve) => {
     releaseLifecycle = resolve;
   });
+  const lifecycleRequests: { target: string; ifMatch: string | undefined }[] = [];
   await page.route('**/api/media/v1/assets/*/lifecycle', async (route) => {
     await lifecycleRelease;
+    const target = route.request().postDataJSON().target;
+    lifecycleRequests.push({ target, ifMatch: route.request().headers()['if-match'] });
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify({ status: 'soft_deleted', version: 2 }),
+      body: JSON.stringify({ status: target, version: lifecycleRequests.length + 1 }),
     });
   });
   await prepareDeletion.click();
@@ -264,7 +271,9 @@ test('media detail preserves safe preview usage and consequence context', async 
     })
     .toBeLessThanOrEqual(2);
   await assertForcedColorState(page, testInfo);
-  await expect(dialog).toHaveScreenshot(`media-detail-${testInfo.project.name}.png`, {
+  // Only comparison is soft: the original mismatch remains fatal in Playwright.
+  // Continue independent lifecycle assertions and retain current diagnostic bytes.
+  await expect.soft(dialog).toHaveScreenshot(`media-detail-${testInfo.project.name}.png`, {
     animations: 'disabled',
     caret: 'hide',
     maxDiffPixelRatio: 0.01,
@@ -289,6 +298,32 @@ test('media detail preserves safe preview usage and consequence context', async 
   await assertForcedColorState(page, testInfo);
   await dialog.screenshot({
     path: testInfo.outputPath('current-media-detail-completed.png'),
+    animations: 'disabled',
+    caret: 'hide',
+  });
+  await dialog.getByRole('button', { name: 'Prepare restore' }).click();
+  await expect(confirmation.getByRole('button', { name: 'Confirm action' })).toBeFocused();
+  await confirmation.getByRole('button', { name: 'Confirm action' }).click();
+  await expect(dialog.getByRole('heading', { name: 'Archive and deletion safety' })).toBeFocused();
+  await expect(dialog.getByRole('status')).toContainText('ready completed.');
+  await expect(dialog.locator('.media-detail-layout dd').first()).toHaveText('ready');
+  await expect(dialog.locator('.media-detail-layout dd').last()).toHaveText('3');
+  await expect(confirmation).toHaveCount(0);
+  await expect(dialog).toHaveAttribute('aria-busy', 'false');
+  expect(lifecycleRequests).toEqual([
+    { target: 'soft_deleted', ifMatch: '"1"' },
+    { target: 'ready', ifMatch: '"2"' },
+  ]);
+  const restoredStatus = dialog.getByRole('status');
+  await restoredStatus.scrollIntoViewIfNeeded();
+  await expect(restoredStatus).toBeInViewport({ ratio: 1 });
+  await assertForcedColorState(page, testInfo);
+  const restoredViolations = await page.evaluate(
+    async () => (await window.axe.run(document)).violations
+  );
+  expect(restoredViolations).toEqual([]);
+  await dialog.screenshot({
+    path: testInfo.outputPath('current-media-detail-restored.png'),
     animations: 'disabled',
     caret: 'hide',
   });

@@ -387,7 +387,9 @@ def test_media_operations_keep_hard_comparisons_and_accepted_receipt_semantics()
         assert "emulateMedia({ forcedColors:" not in source
         assert 'expect.configure' not in source
         if name == 'media':
-            assert 'expect.soft' not in source
+            assert source.count('expect.soft') == 1
+            assert 'await expect.soft(dialog).toHaveScreenshot(`media-detail-' in source
+            assert 'expect.soft' not in source.replace('expect.soft(dialog).toHaveScreenshot', '')
         else:
             assert source.count('expect.soft') == 1
             assert 'await expect.soft(page).toHaveScreenshot(name' in source

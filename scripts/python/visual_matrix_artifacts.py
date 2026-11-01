@@ -5,6 +5,7 @@ import argparse
 import hashlib
 import json
 import math
+import os
 import re
 import zipfile
 from pathlib import Path
@@ -122,14 +123,92 @@ def read(path: Path, limit: int) -> bytes:
 
 def archive(path: Path, members: dict[str, bytes]) -> None:
     # Inputs have bounded aggregate size; ZIP overhead is checked before exposure.
+    safe(path)
+    if path.exists():
+        raise ValueError("duplicate archive destination")
     temporary = path.with_suffix(".partial")
     with zipfile.ZipFile(temporary, "x", compression=zipfile.ZIP_STORED) as z:
         for name, raw in members.items():
-            z.writestr(name, raw)
+            info = zipfile.ZipInfo(name, date_time=(1980, 1, 1, 0, 0, 0))
+            info.external_attr = 0o100644 << 16
+            z.writestr(info, raw)
     if temporary.stat().st_size > ZIP_BUDGET:
         temporary.unlink()
         raise ValueError("ZIP exceeds transfer budget")
     temporary.rename(path)
+
+
+def project_archives(output: Path, project: str, members: dict[str, Path], entry: dict) -> None:
+    """Split whole validated members deterministically; never concatenate for upload."""
+    groups: list[list[str]] = []
+    current: list[str] = []
+    size = 0
+    for name, path in sorted(members.items()):
+        member_size = path.stat().st_size
+        if member_size > PNG_BUDGET:
+            raise ValueError("single member exceeds payload budget")
+        if current and size + member_size > PNG_BUDGET:
+            groups.append(current)
+            current, size = [], 0
+        current.append(name)
+        size += member_size
+    if current:
+        groups.append(current)
+    identities = {item["path"]: item for item in entry["captures"] + entry["diagnostics"]}
+    for index, names in enumerate(groups, 1):
+        filename = f"{project}.zip" if len(groups) == 1 else f"{project}-part-{index:03d}.zip"
+        payload = {}
+        for name in names:
+            raw = read(members[name], PNG_BUDGET)
+            if (len(raw) != identities[name]["bytes"] or
+                    hashlib.sha256(raw).hexdigest() != identities[name]["sha256"]):
+                raise ValueError("evidence changed during packaging")
+            payload[name] = raw
+        path = output / filename
+        archive(path, payload)
+        entry["parts"].append({"path": filename, "bytes": path.stat().st_size,
+                               "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+                               "members": names})
+        for name in names:
+            identities[name]["archive"] = filename
+
+
+def upload_action(output: Path, destination: Path, inventory: dict) -> None:
+    """Emit data-only pinned upload steps, never shell or native report content."""
+    safe(output)
+    safe(destination)
+    if output != Path(os.environ.get("VISUAL_OUTPUT", "")) / "bounded":
+        raise ValueError("upload output must match workflow evidence directory")
+    if destination.exists() or inventory["errors"]:
+        raise ValueError("upload action requires fresh destination and complete packaging")
+    parts = [part for entry in inventory["projects"].values() for part in entry["parts"]]
+    if not parts or len(parts) > 480:
+        raise ValueError("upload part count outside bounded action budget")
+    names = [part["path"] for part in parts]
+    if len(set(names)) != len(names):
+        raise ValueError("duplicate upload part")
+    # Fixed workflow path; no caller/native value becomes an expression or command.
+    if destination != Path('.artifacts/visual-upload-action'):
+        raise ValueError("unexpected upload action destination")
+    steps = []
+    for part in parts:
+        name = part["path"]
+        if not re.fullmatch(r"[a-z][a-z0-9-]{0,63}(?:-part-[0-9]{3})?\.zip", name):
+            raise ValueError("invalid upload part name")
+        raw = read(output / name, ZIP_BUDGET)
+        if len(raw) != part["bytes"] or hashlib.sha256(raw).hexdigest() != part["sha256"]:
+            raise ValueError("upload part identity mismatch")
+        steps.append({"name": "Retain " + name, "if": "always()",
+                      "uses": "actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f",
+                      "with": {"name": "visual-png-" + name[:-4] +
+                               "-${{ env.REVIEW_LABEL }}-${{ github.run_id }}-${{ github.run_attempt }}",
+                               "path": "${{ env.VISUAL_OUTPUT }}/bounded/" + name,
+                               "if-no-files-found": "error", "retention-days": 7,
+                               "compression-level": 0}})
+    destination.mkdir(parents=True)
+    (destination / "action.yml").write_text(json.dumps({
+        "name": "Upload bounded visual parts", "description": "Exact diagnostic ZIP parts only",
+        "runs": {"using": "composite", "steps": steps}}, indent=2) + "\n")
 
 
 def stage(source: Path, output: Path) -> dict:
@@ -137,6 +216,8 @@ def stage(source: Path, output: Path) -> dict:
     safe(output)
     if output.exists():
         raise ValueError("output must be fresh")
+    if output.is_relative_to(source / "test-results") or source.is_relative_to(output):
+        raise ValueError("output overlaps native input collection")
     before_raw = read(source / "source-before.json", METADATA_BUDGET)
     before = json.loads(before_raw)
     projects = sorted({t["project"] for t in before["expectedTests"]})
@@ -148,7 +229,7 @@ def stage(source: Path, output: Path) -> dict:
         raise ValueError("invalid native matrix")
     output.mkdir(parents=True)
     inventory: dict[str, Any] = {
-        "schemaVersion": 1,
+        "schemaVersion": 2,
         "sourceCommit": before["sourceCommit"], "sourceTree": before["sourceTree"],
         "runId": before["runId"], "attempt": before["attempt"], "matrix": before["matrix"],
         "scope": "Diagnostic packaging only; empty/missing captures are incomplete, not acceptance.",
@@ -211,20 +292,20 @@ def stage(source: Path, output: Path) -> dict:
             "status": "incomplete", "captures": [], "expectedSupportedTests": supported,
             "currentCaptureCount": 0, "minimumCaptureShortfall": len(supported),
             "captureCoverage": "incomplete",
-            "diagnostics": [],
+            "diagnostics": [], "parts": [],
             "missingDiagnostics": [OBSERVATION_NAME] if before["matrix"] == "media" else [],
         }
         inventory["projects"][project] = entry
         try:
-            if len(paths) > 256 or sum(p.stat().st_size for p in paths) > PNG_BUDGET:
-                raise ValueError("project PNG budget exceeded")
+            if len(paths) > 256:
+                raise ValueError("project capture count exceeded")
             members = {}
             for path in paths:
                 raw = read(path, PNG_BUDGET)
                 if not raw.startswith(b"\x89PNG\r\n\x1a\n"):
                     raise ValueError("invalid PNG signature")
                 name = path.relative_to(results).as_posix()
-                members[name] = raw
+                members[name] = path
                 entry["captures"].append({
                     "path": name, "bytes": len(raw), "sha256": hashlib.sha256(raw).hexdigest()
                 })
@@ -238,13 +319,13 @@ def stage(source: Path, output: Path) -> dict:
                     if capture.relative_to(results).as_posix() not in members:
                         raise ValueError("observation missing corresponding viewport PNG")
                 name = path.relative_to(results).as_posix()
-                members[name] = raw
+                members[name] = path
                 entry["diagnostics"].append({
                     "path": name, "bytes": len(raw), "sha256": hashlib.sha256(raw).hexdigest()
                 })
                 entry["missingDiagnostics"] = []
             if members:
-                archive(output / f"{project}.zip", members)
+                project_archives(output, project, members, entry)
                 entry["status"] = "packaged"
                 current = sum(Path(name).name.startswith("current-") for name in members)
                 entry["currentCaptureCount"] = current
@@ -268,8 +349,13 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--source", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--upload-action", action="store_true")
     args = parser.parse_args()
     result = stage(args.source, args.output)
+    if args.upload_action and not result["errors"]:
+        upload_action(args.output, Path('.artifacts/visual-upload-action'), result)
+        with Path(os.environ["GITHUB_OUTPUT"]).open("a") as stream:
+            stream.write("upload_ready=true\n")
     print(json.dumps({"projects": len(result["projects"]), "errors": result["errors"],
                       "acceptanceGranted": False}))
     return 2 if result["errors"] else 0

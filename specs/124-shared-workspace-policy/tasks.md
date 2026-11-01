@@ -1137,3 +1137,16 @@ Review v2 correction: geometry v4 permits three/four unique present control IDs 
 target, while v1-v3 retain their two-control cap; duplicate IDs are rejected. Exact
 three/four-overlap bytes round-trip through bounded packaging without suppressing
 native failure. Strict focus diagnostics export only allowlisted tags/roles/IDs.
+
+### Native prerequisite and bounded-part correction (publication held)
+
+- [ ] T74 Replace obsolete authoring/non-authoring class assertions while keeping
+      mobile padding, edit-state transitions and containment coverage; run all
+      frontend unit/tooling tests with unchanged coverage floors. Original run
+      41314685335 remains 783 passed / 4 failed, with no standard browser execution.
+- [ ] T75 Split operations/media diagnostic members into deterministic <=30 MiB
+      ZIP parts, bind exact member/part identities and upload parts independently.
+      Reproduce the old aggregate-budget failure; test boundary, tamper, unsafe
+      path, interrupted packaging and failure-preserving upload behavior. Original
+      WebKit packaging failure in run 41314740935 remains preserved. Native
+      transport validation and current pixel review are still required.

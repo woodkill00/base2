@@ -768,3 +768,28 @@ scrolling. Desktop and movement-disabled legacy positions are unchanged; protect
 in those legacy modes is not newly claimed. All four persistent controls enter
 footer intersection checks. Fresh native reachability/pixel validation is pending. No new references, acceptance-manifest renewal, security
 runtime work, complete-gate execution or publication belongs to this preparation.
+
+### Native prerequisite and artifact partition repair on 696f7106
+
+Run 41314685335 stopped at 783 passing / 4 failing frontend unit cases, before
+standard browsers. The four assertions encode superseded fixed-grid/no-min-width
+classes; preserve mobile padding, edit-state transitions and containment checks
+while asserting the available-width grid contract. Run the entire frontend unit
+suite with its existing coverage floors before another publication.
+
+Operations run 41314740935 preserved its 1 pass / 21 failures / 20 declared skips,
+but WebKit diagnostic packaging exceeded the former aggregate project budget.
+Keep that original failure and full artifact. Split sorted whole PNG/allowlisted
+observation members at 28 MiB payload per part, measure every ZIP at <=30 MiB,
+and record each member-to-part identity and ZIP hash/size in inventory schema 2.
+A single oversized member remains an explicit error; never truncate it. The
+existing 256-capture per-project bound remains. Each part gets its own GitHub
+artifact, not a combined multi-part artifact exceeding the retrieval limit.
+
+After successful packaging, emit a fixed-path local composite containing only
+pinned upload-artifact steps for validated exact ZIP basenames. No report text
+or arbitrary shell becomes action code. Each step uses always() so an upload
+failure does not hide later parts; failures remain fatal. Original full artifact
+and separate metadata upload remain unchanged. At most 480 parts are uploaded,
+leaving headroom beneath GitHub's per-job artifact limit; overflow fails explicitly.
+This is transport preparation, not native validation or visual acceptance.

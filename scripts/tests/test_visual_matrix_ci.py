@@ -34,7 +34,7 @@ def test_opt_in_is_closed_same_repository_exact_head_read_only():
     for forbidden in ['pull_request_target', 'secrets.', 'continue-on-error', '|| true', 'git reset', 'git restore', 'docker ', 'workflow_dispatch']:
         assert forbidden not in PATH.read_text()
     for step in job['steps']:
-        if 'uses' in step:
+        if 'uses' in step and not step['uses'].startswith('./'):
             assert len(step['uses'].rsplit('@', 1)[1]) == 40
 
 

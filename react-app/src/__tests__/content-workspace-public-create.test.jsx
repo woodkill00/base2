@@ -333,7 +333,10 @@ test.each(['create', 'edit'])(
         ? body.closest('form')
         : screen.getByRole('region', { name: 'Record details' });
     expect(authoring).toHaveClass('min-w-0', 'p-2', 'sm:p-5');
-    if (mode === 'edit') expect(authoring.parentElement).toHaveClass('grid-cols-1');
+    if (mode === 'edit') {
+      expect(authoring.parentElement).toHaveClass('workspace-records-grid');
+      expect(authoring.parentElement).toHaveAttribute('data-editing', 'true');
+    }
     for (const card of view.container.querySelectorAll('.base2-card'))
       expect(card).toHaveClass('min-w-0');
   }
@@ -373,6 +376,8 @@ test.each(['create', 'edit'])(
         expect(screen.getByRole('button', { name: 'Edit fields' })).toBeEnabled();
         expect(screen.queryByRole('button', { name: 'Save changes' })).not.toBeInTheDocument();
         expect(screen.getByRole('region', { name: 'Record details' })).toHaveClass('p-5');
+        expect(screen.getByRole('region', { name: 'Record details' }).parentElement)
+          .toHaveAttribute('data-editing', 'false');
       }
       expect(root).toHaveClass('px-4');
       expect(root).not.toHaveClass('px-0');
@@ -396,7 +401,7 @@ test.each(['schemas', 'imports', 'exports'])(
     expect(document.getElementById('workspace-detail')).toHaveClass('p-6');
     expect(document.getElementById('workspace-detail')).not.toHaveClass('p-0');
     for (const card of view.container.querySelectorAll('.base2-card'))
-      expect(card).not.toHaveClass('min-w-0');
+      expect(card).toHaveClass('min-w-0');
   }
 );
 

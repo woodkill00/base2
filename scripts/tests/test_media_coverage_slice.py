@@ -54,7 +54,8 @@ def test_comparison_precedes_diagnostic_scrolling_and_keeps_failure():
     assert "await expect(shellHeader).toHaveCSS('position', 'sticky');" in spec[cleanup:diagnostics]
     assert 'scrollIntoView' not in spec[spec.index("const shellHeader ="):comparison]
 
-    assert "expect.soft" not in spec
+    library = spec.split("test('media library", 1)[1]
+    assert "expect.soft" not in library
     assert "if (comparisonFailure) throw comparisonFailure;" in spec
 
 
@@ -117,3 +118,18 @@ def test_scrollport_failure_keeps_sampled_image_and_bounded_geometry_before_asse
     assert 'failure = cleanupError' in source
     assert source.index('if (originalFailure) throw failure') > cleanup
     assert '64 * 1024' in source
+
+
+def test_detail_forced_textarea_and_lifecycle_continue_after_comparison_failure():
+    css = (ROOT / 'react-app/src/styles/media-library.css').read_text()
+    forced = css.split('@media (forced-colors: active) {', 1)[1]
+    assert '.app-shell-root textarea,' in forced
+    spec = (ROOT / 'react-app/e2e/media/media-release.spec.ts').read_text()
+    detail = spec.split("test('media detail", 1)[1].split("test('media picker", 1)[0]
+    assert "assertForcedSystemControl(dialog.getByLabel('Caption', { exact: true }), true)" in detail
+    assert 'await expect.soft(dialog).toHaveScreenshot' in detail
+    assert detail.count('expect.soft') == 1
+    assert detail.index('expect.soft(dialog)') < detail.index('releaseLifecycle();')
+    assert detail.index('current-media-detail-completed.png') < detail.index('Prepare restore')
+    assert detail.index("toContainText('ready completed.')") < detail.index('current-media-detail-restored.png')
+    assert "maxDiffPixelRatio: 0.01" in detail
