@@ -1,3 +1,4 @@
+import { safeFocusSnapshot } from '../shell-diagnostics';
 import { setSessionFixture, fulfillSessionFixture } from '../session-fixture';
 import { expect, test, type Page, type TestInfo } from '@playwright/test';
 import { readFileSync } from 'node:fs';
@@ -80,8 +81,25 @@ test('light preference, enlarged text and keyboard contact submission', async ({
     let index = 0;
     index < 20 && !(await name.evaluate((node) => node === document.activeElement));
     index++
-  )
+  ) {
     await page.keyboard.press('Tab');
+    console.log(
+      'contact-focus-step',
+      index,
+      safeFocusSnapshot(
+        await page.evaluate(() => {
+          const node = document.activeElement;
+          return {
+            tag: node?.tagName,
+            id: node?.id || '',
+            role: node?.getAttribute('role') || '',
+            testId: node?.getAttribute('data-testid') || '',
+            inert: Boolean(node?.closest('[inert]')),
+          };
+        })
+      )
+    );
+  }
   await expect(name).toBeFocused();
   await page.keyboard.type('Keyboard reviewer');
   await page.keyboard.press('Tab');

@@ -339,3 +339,50 @@ test('cancels pending section movement when navigation unmounts', () => {
   expect(vi.getTimerCount()).toBe(0);
   scroll.mockRestore(); vi.useRealTimers();
 });
+
+test('edge control survives slow pointer double-click and keyboard focus without delaying movement', () => {
+  vi.useFakeTimers();
+  let top = 100;
+  let notify = () => {};
+  const target = {
+    metrics: () => ({ top, canAscend: top > 0, canDescend: true, progress: 10 }),
+    subscribe: (listener) => {
+      notify = listener;
+      return () => {};
+    },
+    move: vi.fn(() => {
+      top = 0;
+      notify();
+    }),
+    edge: vi.fn(() => {
+      top = 0;
+      notify();
+    }),
+  };
+  const view = render(
+    <HomeObsidianNavigation
+      routes={[{ to: '/signup', label: 'Sign up' }]}
+      currentPath="/signup"
+      scrollTarget={target}
+      onNavigate={vi.fn()}
+    />
+  );
+  const ascend = screen.getByTestId('base2-scroll-ascend');
+  fireEvent.pointerEnter(ascend);
+  fireEvent.focus(ascend);
+  fireEvent.click(ascend, { detail: 1 });
+  expect(target.move).toHaveBeenCalledWith(-1);
+  act(() => vi.advanceTimersByTime(1500));
+  expect(ascend.isConnected).toBe(true);
+  expect(ascend).toHaveAttribute('aria-disabled', 'true');
+  fireEvent.doubleClick(ascend);
+  expect(target.edge).toHaveBeenCalledWith(true);
+  fireEvent.pointerLeave(ascend);
+  expect(ascend.isConnected).toBe(true);
+  fireEvent.blur(ascend);
+  expect(ascend.isConnected).toBe(false);
+  fireEvent.click(screen.getByTestId('base2-scroll-descend'), { detail: 0 });
+  expect(target.move).toHaveBeenCalledWith(1);
+  view.unmount();
+  vi.useRealTimers();
+});

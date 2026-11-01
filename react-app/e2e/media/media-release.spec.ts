@@ -251,6 +251,7 @@ test('media detail preserves safe preview usage and consequence context', async 
   ).toEqual([]);
   // Normalize the pending-action viewport in every modal project, not just desktop.
   // Focus restoration can otherwise leave different scroll offsets in light/mobile runs.
+  await expect(applying).toHaveCSS('scroll-margin-block-end', '0px');
   await applying.evaluate((node) => {
     node.scrollIntoView({ behavior: 'instant', block: 'end', inline: 'nearest' });
   });
@@ -560,16 +561,31 @@ test('media library is accessible responsive and visually reviewed', async ({ pa
           )
       );
       const observation = await cards.evaluateAll((nodes) => {
-        const port = document.querySelector<HTMLElement>('.volcano-layout[data-movement-layout="bottom"] .volcano-content-scrollport');
-        const viewport = port?.getBoundingClientRect() || new DOMRect(0, 0, innerWidth, innerHeight);
+        const port = document.querySelector<HTMLElement>(
+          '.volcano-layout[data-movement-layout="bottom"] .volcano-content-scrollport'
+        );
+        const viewport =
+          port?.getBoundingClientRect() || new DOMRect(0, 0, innerWidth, innerHeight);
 
+        const header = document.querySelector('.volcano-header-frame')?.getBoundingClientRect();
+        const visibleTop = Math.min(
+          viewport.bottom,
+          Math.max(viewport.top, header?.bottom ?? viewport.top)
+        );
+        const unobscured = new DOMRect(
+          viewport.left,
+          visibleTop,
+          viewport.width,
+          viewport.bottom - visibleTop
+        );
         const controls = [
           ...document.querySelectorAll(
-            '[data-testid="base2-scroll-ascend"], [data-testid="base2-scroll-descend"]'
+            '[data-testid="base2-scroll-ascend"], [data-testid="base2-scroll-descend"], [data-testid="base2-left-menu-toggle"], [data-testid="base2-right-utility-toggle"]'
           ),
         ];
         return {
           contentViewport: viewport.toJSON(),
+          unobscuredContentViewport: unobscured.toJSON(),
           scrollY: port?.scrollTop ?? scrollY,
           viewport: [innerWidth, innerHeight],
           controls: controls.map((control) => ({
@@ -612,7 +628,16 @@ test('media library is accessible responsive and visually reviewed', async ({ pa
                         ? 'status'
                         : 'metadata',
                 rect: rect.toJSON(),
-                centerInViewport: x >= viewport.left && x < viewport.right && y >= viewport.top && y < viewport.bottom,
+                centerInViewport:
+                  x >= viewport.left &&
+                  x < viewport.right &&
+                  y >= viewport.top &&
+                  y < viewport.bottom,
+                centerInUnobscuredContent:
+                  x >= unobscured.left &&
+                  x < unobscured.right &&
+                  y >= unobscured.top &&
+                  y < unobscured.bottom,
                 centerUnobstructed: !!hit && (hit === target || target.contains(hit)),
                 overlappingControls: controls
                   .filter((control) => {
@@ -643,7 +668,7 @@ test('media library is accessible responsive and visually reviewed', async ({ pa
     const observationBytes = Buffer.from(
       JSON.stringify(
         {
-          schemaVersion: 3,
+          schemaVersion: 4,
           fixtureScope: 'synthetic-project-tests',
           project: testInfo.project.name,
           test: testInfo.title,

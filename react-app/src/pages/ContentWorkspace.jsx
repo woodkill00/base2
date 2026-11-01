@@ -459,6 +459,15 @@ function WorkspaceContent({ locale = 'en', scopeKey, canEdit }) {
         className={`base2-workspace mx-auto max-w-7xl space-y-6 py-8 ${compactAuthoring ? 'px-0 sm:px-4' : 'px-4'}`}
       >
         <Navigation />
+        <style>{`
+          .workspace-records-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+            gap: 1.25rem;
+          }
+          .workspace-records-grid > * { min-inline-size: 0; }
+          .workspace-records-grid[data-editing="true"] { grid-template-columns: minmax(0, 1fr); }
+        `}</style>
         <header className="space-y-2">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-violet-300">
             Structured content
@@ -518,7 +527,7 @@ function WorkspaceContent({ locale = 'en', scopeKey, canEdit }) {
             <div
               className={`grid gap-5 lg:grid-cols-[minmax(14rem,0.32fr)_minmax(0,1fr)] ${compactAuthoring ? 'grid-cols-1' : ''}`}
             >
-              <GlassCard className={compactAuthoring ? 'min-w-0' : undefined}>
+              <GlassCard className="min-w-0">
                 <div className="p-4">
                   <label htmlFor="workspace-type" className="text-sm font-medium">
                     Content type
@@ -542,7 +551,7 @@ function WorkspaceContent({ locale = 'en', scopeKey, canEdit }) {
                   </select>
                 </div>
               </GlassCard>
-              <GlassCard className={compactAuthoring ? 'min-w-0' : undefined}>
+              <GlassCard className="min-w-0">
                 <section
                   id="workspace-detail"
                   tabIndex={-1}
@@ -835,7 +844,8 @@ function WorkspaceContent({ locale = 'en', scopeKey, canEdit }) {
                         </p>
                       ) : records.length ? (
                         <div
-                          className={`mt-5 grid gap-5 xl:grid-cols-[minmax(15rem,0.8fr)_minmax(18rem,1.2fr)] ${compactAuthoring ? 'grid-cols-1' : ''}`}
+                          className="mt-5 workspace-records-grid"
+                          data-editing={compactAuthoring}
                         >
                           <ul className="divide-y divide-white/10" aria-label="Records">
                             {records.map((record) => (

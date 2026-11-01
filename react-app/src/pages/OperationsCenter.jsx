@@ -677,6 +677,15 @@ export default function OperationsCenter() {
         dir={direction}
       >
         <style>{`
+          .operations-readable-grid {
+            display: grid;
+            gap: 1rem;
+            grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--operations-card-min, 18rem)), 1fr));
+          }
+          .operations-summary-grid { --operations-card-min: 12rem; }
+          .operations-readable-grid > * { min-inline-size: 0; overflow-wrap: break-word; }
+          .operations-readable-grid button { overflow-wrap: normal; word-break: normal; }
+
           @media (prefers-reduced-motion: reduce) {
             html body .operations-center *,
             html body .operations-center *::before,
@@ -716,7 +725,7 @@ export default function OperationsCenter() {
 
         <section aria-label={copy.operationsSummary} className="mt-4">
           {evidenceLabel('summary') ? <p role="status">{evidenceLabel('summary')}</p> : null}
-          <div className="mt-4 grid gap-4 sm:grid-cols-3">
+          <div className="mt-4 operations-readable-grid operations-summary-grid">
             <GlassCard className="p-5">
               <p className="text-sm opacity-70">{copy.services}</p>
               <p className="mt-2 text-3xl font-semibold">
@@ -748,7 +757,7 @@ export default function OperationsCenter() {
           {available('overview') ? (
             <div className="mt-4 space-y-4">
               {evidenceLabel('overview') ? <p role="status">{evidenceLabel('overview')}</p> : null}
-              <div className="grid gap-3 sm:grid-cols-3">
+              <div className="operations-readable-grid operations-summary-grid">
                 <GlassCard className="p-5">
                   <h3 className="font-semibold">{copy.jobs}</h3>
                   <p className="mt-2 text-sm">
@@ -778,7 +787,7 @@ export default function OperationsCenter() {
                   </p>
                 </GlassCard>
               </div>
-              <div className="grid gap-3 lg:grid-cols-3">
+              <div className="operations-readable-grid">
                 <GlassCard className="p-5">
                   <h3 className="font-semibold">{copy.deadLetters}</h3>
                   {overview.runtime?.jobs?.items?.length ? (

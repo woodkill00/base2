@@ -322,3 +322,52 @@ def test_v3_retains_explicit_scrollport_clip_geometry(tmp_path):
     body['viewportObservations'][0]['contentViewport']['private'] = 'not allowed'
     with pytest.raises(ValueError):
         module.observations(json.dumps(body).encode(), 'chromium-desktop')
+
+
+def test_v4_distinguishes_header_occlusion_without_rewriting_old_geometry(tmp_path):
+    _, _, _, _, body = media_observation_fixture(tmp_path)
+    body['schemaVersion'] = 4
+    for row in body['viewportObservations']:
+        row['contentViewport'] = {'x': 0, 'y': 0, 'width': 320, 'height': 500,
+                                  'left': 0, 'top': 0, 'right': 320, 'bottom': 500}
+        row['unobscuredContentViewport'] = {'x': 0, 'y': 100, 'width': 320, 'height': 400,
+                                  'left': 0, 'top': 100, 'right': 320, 'bottom': 500}
+        row['targets'] = [{**target, 'cardIndex': 4, 'targetIndex': index,
+                           'centerInViewport': True, 'centerInUnobscuredContent': False,
+                           'centerUnobstructed': False}
+                          for index, target in enumerate(row['targets'])]
+    checked = module.observations(json.dumps(body).encode(), 'chromium-desktop')
+    row = checked['viewportObservations'][0]
+    assert row['targets'][0]['centerInViewport'] is True
+    assert row['targets'][0]['centerInUnobscuredContent'] is False
+    assert row['targets'][0]['overlappingControls'] == ['base2-scroll-ascend']
+    body['viewportObservations'][0]['unobscuredContentViewport']['top'] = -1
+    with pytest.raises(ValueError):
+        module.observations(json.dumps(body).encode(), 'chromium-desktop')
+
+
+@pytest.mark.parametrize('count', [3, 4])
+def test_v4_all_persistent_control_overlaps_survive_bounded_roundtrip(tmp_path, count):
+    source, _, output, observation, body = media_observation_fixture(tmp_path)
+    body['schemaVersion'] = 4
+    controls = ['base2-scroll-ascend', 'base2-scroll-descend',
+                'base2-left-menu-toggle', 'base2-right-utility-toggle'][:count]
+    for row in body['viewportObservations']:
+        rect = row['controls'][0]['rect']
+        row['contentViewport'] = rect.copy()
+        row['unobscuredContentViewport'] = rect.copy()
+        row['controls'] = [{'id': name, 'rect': rect.copy()} for name in controls]
+        row['targets'] = [{**target, 'cardIndex': 0, 'targetIndex': index,
+                           'centerInUnobscuredContent': True, 'overlappingControls': controls.copy()}
+                          for index, target in enumerate(row['targets'])]
+    raw = json.dumps(body).encode()
+    observation.write_bytes(raw)
+    result = module.stage(source, output)
+    assert result['errors'] == []
+    name = observation.relative_to(source / 'test-results').as_posix()
+    with zipfile.ZipFile(output / 'chromium-desktop.zip') as archive:
+        assert archive.read(name) == raw
+        assert json.loads(archive.read(name))['viewportObservations'][0]['targets'][0]['overlappingControls'] == controls
+    body['viewportObservations'][0]['targets'][0]['overlappingControls'] = [controls[0], controls[0]]
+    with pytest.raises(ValueError):
+        module.observations(json.dumps(body).encode(), 'chromium-desktop')

@@ -136,11 +136,59 @@
   width: 100%;
 }
 .volcano-layout[data-movement-layout='off'] .volcano-movement-dock { display: none; }
-.volcano-content-scrollport :focus-visible { scroll-margin-block: var(--volcano-header-height, 4rem) 1rem; }
+.volcano-content-scrollport :focus-visible:not(:where(dialog, dialog *, [role="dialog"], [role="dialog"] *, [role="alertdialog"], [role="alertdialog"] *)) { scroll-margin-block: var(--volcano-header-height, 4rem) 1rem; }
 @media (forced-colors: active) {
   .volcano-layout[data-movement-layout='bottom'] .volcano-movement-dock {
     background: Canvas;
     color: CanvasText;
     border-color: CanvasText;
   }
+}
+
+/* CSS zoom scales fixed panels too: use the shell's physical viewport in layout pixels. */
+.volcano-layout .home-obsidian-nav-layer .home-left-command-menu {
+  --left-menu-safe-height: max(0px, calc(var(--volcano-viewport-height, 100dvh) - var(--left-menu-top) - var(--left-menu-bottom-gap)));
+  height: var(--left-menu-safe-height);
+  max-height: var(--left-menu-safe-height);
+  overflow-y: auto;
+}
+
+/* Compact drawer tabs share the reserved strip, not the content viewport.
+   Keep the existing tab colors, curved edges and icons; maintain 44px targets. */
+.volcano-layout[data-movement-layout='bottom'] {
+  --volcano-dock-toggle-size: clamp(44px, 2rem, 56px);
+  --volcano-dock-toggle-top: calc(var(--volcano-viewport-height, 100dvh) - var(--volcano-dock-toggle-size) - max(8px, env(safe-area-inset-bottom)));
+}
+.volcano-layout[data-movement-layout='bottom'] .home-bottom-movement-controls {
+  min-height: max(var(--movement-button-size), var(--volcano-dock-toggle-size));
+  width: calc(100% - 2 * (var(--volcano-dock-toggle-size) + 8px));
+  margin-inline: auto;
+  column-gap: 0;
+}
+.volcano-layout[data-movement-layout='bottom'] .home-left-menu-toggle {
+  top: var(--volcano-dock-toggle-top);
+  left: max(12px, env(safe-area-inset-left));
+  width: var(--volcano-dock-toggle-size);
+  height: var(--volcano-dock-toggle-size);
+  transform: none;
+}
+.volcano-layout[data-movement-layout='bottom'] .home-right-utility-menu {
+  top: var(--volcano-dock-toggle-top);
+  right: max(12px, env(safe-area-inset-right));
+  transform: none;
+}
+.volcano-layout[data-movement-layout='bottom'] .home-right-utility-toggle {
+  width: var(--volcano-dock-toggle-size);
+  height: var(--volcano-dock-toggle-size);
+}
+.volcano-layout[data-movement-layout='bottom'] .home-right-utility-panel {
+  position: absolute;
+  bottom: calc(100% + .5rem);
+  right: 0;
+  max-height: max(0px, calc(var(--volcano-dock-toggle-top) - .5rem));
+  overflow-y: auto;
+}
+
+.volcano-layout[data-movement-layout='bottom'] .volcano-movement-dock {
+  padding: 8px max(12px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
 }

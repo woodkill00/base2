@@ -214,6 +214,8 @@ for (const width of [390, 1440]) {
         fullPage: true,
         animations: 'disabled',
       });
+      // Retain this named route before the subsequent Search navigation.
+      await captureScrollportExtent(page, info);
       await page.keyboard.press('Control+k');
       await expect(page.getByRole('menuitem', { name: 'Administration', exact: true })).toHaveCount(
         0
@@ -253,11 +255,21 @@ for (const scenario of [
       await page.locator('html').evaluate((node) => {
         node.style.zoom = '2';
       });
+    console.log('movement-checkpoint', {
+      schemaVersion: 1,
+      scenario: scenario.name,
+      action: 'page-loaded',
+    });
     const shell = page.locator('.volcano-layout');
     const expectedMode = scenario.name === 'desktop' ? 'sides' : 'bottom';
     await expect(shell).toHaveAttribute('data-movement-layout', expectedMode);
     const port = page.getByTestId('volcano-scrollport');
     await expect(page.locator('.volcano-header-frame')).toHaveCSS('position', 'sticky');
+    console.log('movement-checkpoint', {
+      schemaVersion: 1,
+      scenario: scenario.name,
+      action: 'skip-link-start',
+    });
     await page.locator('.unified-skip-link').focus();
     await page.keyboard.press('Enter');
     await expect(page.locator('#main-content')).toBeFocused();
@@ -267,6 +279,12 @@ for (const scenario of [
     }));
     expect(anchorPosition.main).toBeGreaterThanOrEqual(anchorPosition.header - 1);
     for (const fraction of [0, 0.5, 1]) {
+      console.log('movement-checkpoint', {
+        schemaVersion: 1,
+        scenario: scenario.name,
+        action: 'viewport-start',
+        fraction,
+      });
       await page.evaluate((value) => {
         const nested = document.querySelector<HTMLElement>(
           '.volcano-layout[data-movement-layout="bottom"] .volcano-content-scrollport'
@@ -344,44 +362,79 @@ for (const scenario of [
       if (expectedMode === 'bottom')
         expect(geometry.contentBottom).toBeLessThanOrEqual(geometry.dockTop + 1);
     }
+    console.log('movement-checkpoint', {
+      schemaVersion: 1,
+      scenario: scenario.name,
+      action: 'footer-assertion',
+    });
     await expect(page.locator('.volcano-footer-frame')).toBeInViewport();
     // The retained skip-link hash must not replay on target/toggle changes.
     await expect.poll(() => pageScrollTop(page)).toBeGreaterThan(0);
     await page.getByTestId('base2-left-menu-toggle').click();
     await expect(page.getByTestId('volcano-movement-dock')).toHaveAttribute('inert');
     if (expectedMode === 'bottom') await expect(port).toHaveCSS('overflow', 'hidden');
+    console.log(
+      'movement-before-toggle',
+      scenario.name,
+      await page.evaluate(() => {
+        const panel = document.querySelector('.home-left-command-menu')!;
+        const toggle = document.querySelector('[aria-label="Toggle Base2 movement buttons"]')!;
+        return {
+          panel: panel.getBoundingClientRect().toJSON(),
+          toggle: toggle.getBoundingClientRect().toJSON(),
+          viewport: [innerWidth, innerHeight],
+          panelHeight: panel.clientHeight,
+          panelScrollHeight: panel.scrollHeight,
+        };
+      })
+    );
     await page.getByRole('checkbox', { name: 'Toggle Base2 movement buttons' }).uncheck();
     await expect(shell).toHaveAttribute('data-movement-layout', 'off');
-    await expect(page.getByRole('checkbox', { name: 'Toggle Base2 movement buttons' })).toBeFocused();
+    await expect(
+      page.getByRole('checkbox', { name: 'Toggle Base2 movement buttons' })
+    ).toBeFocused();
     await page.getByRole('checkbox', { name: 'Toggle Base2 movement buttons' }).check();
     await expect(shell).toHaveAttribute('data-movement-layout', expectedMode);
     await page.keyboard.press('Escape');
     await expect(page.getByTestId('volcano-movement-dock')).not.toHaveAttribute('inert');
     await expect(page.getByTestId('base2-left-menu-toggle')).toBeFocused();
     await expect.poll(() => pageScrollTop(page)).toBeGreaterThan(0);
+    console.log('movement-before-edge', scenario.name, await pageScrollTop(page));
     await page.getByTestId('base2-scroll-ascend').dblclick();
     await expect.poll(() => pageScrollTop(page)).toBe(0);
+    console.log('movement-edge-complete', scenario.name);
     if (scenario.name === 'compact') {
       // Exercise exact offsets on uniquely keyed router entries. The cold/native
       // fragment entry above deliberately uses browser fallback, not a shared key.
-      await page.locator('a[href="/login"]').first().evaluate((node: HTMLAnchorElement) => node.click());
+      await page
+        .locator('a[href="/login"]')
+        .first()
+        .evaluate((node: HTMLAnchorElement) => node.click());
       await expect(page).toHaveURL(/\/login$/);
-      await page.locator('a[href="/signup"]').first().evaluate((node: HTMLAnchorElement) => node.click());
+      await page
+        .locator('a[href="/signup"]')
+        .first()
+        .evaluate((node: HTMLAnchorElement) => node.click());
       await expect(page).toHaveURL(/\/signup$/);
       await page.setViewportSize({ width: 1440, height: 900 });
       await expect(shell).toHaveAttribute('data-movement-layout', 'sides');
       await scrollPageTo(page, 100);
       await expect.poll(() => pageScrollTop(page)).toBe(100);
       // DOM activation avoids Playwright scrolling the link before navigation.
-      await page.locator('a[href="/login"]').first().evaluate((node: HTMLAnchorElement) => node.click());
+      await page
+        .locator('a[href="/login"]')
+        .first()
+        .evaluate((node: HTMLAnchorElement) => node.click());
       await expect(page).toHaveURL(/\/login$/);
       await page.setViewportSize({ width: 320, height: 568 });
       await expect(shell).toHaveAttribute('data-movement-layout', 'bottom');
       await scrollPageTo(page, 180);
       await expect.poll(() => pageScrollTop(page)).toBe(180);
+      console.log('movement-before-back', await pageScrollTop(page));
       await page.goBack();
       await expect(page).toHaveURL(/\/signup(?:#.*)?$/);
       await expect.poll(() => pageScrollTop(page)).toBe(100);
+      console.log('movement-before-forward', await pageScrollTop(page));
       await page.goForward();
       await expect(page).toHaveURL(/\/login$/);
       await expect.poll(() => pageScrollTop(page)).toBe(180);
@@ -390,5 +443,6 @@ for (const scenario of [
 }
 
 test.afterEach(async ({ page }, testInfo) => {
-  if (testInfo.status !== 'skipped') await captureScrollportExtent(page, testInfo);
+  if (testInfo.status !== 'skipped' && !testInfo.title.startsWith('Volcano guest route '))
+    await captureScrollportExtent(page, testInfo);
 });

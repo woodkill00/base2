@@ -322,6 +322,8 @@ const HomeObsidianNavigation = ({
   const [activeUtilitySlot, setActiveUtilitySlot] = useState(utilityItems.length + 4);
   const [colorSchemeId, setColorSchemeId] = useState('volcanic');
   const [scrollState, setScrollState] = useState(getScrollMetrics);
+  const [hoveredMovement, setHoveredMovement] = useState(null);
+  const [focusedMovement, setFocusedMovement] = useState(null);
   const movementClickTimer = useRef(null);
   const lastMovementClick = useRef({ direction: 0, time: 0 });
   const leftToggleRef = useRef(null);
@@ -957,9 +959,7 @@ const HomeObsidianNavigation = ({
   };
 
   const queueSingleMovement = (direction) => {
-    if (movementClickTimer.current) {
-      window.clearTimeout(movementClickTimer.current);
-    }
+    if (movementClickTimer.current) window.clearTimeout(movementClickTimer.current);
     movementClickTimer.current = null;
     moveSection(direction);
   };
@@ -1059,6 +1059,8 @@ const HomeObsidianNavigation = ({
     onUtilityAction(item.action);
   };
 
+  // Preserve a button throughout pointer/focus engagement, including a slow
+  // native double-click whose first click has already reached the edge.
   const canMoveUp = scrollState.canAscend;
   const canMoveDown = scrollState.canDescend;
 
@@ -1100,10 +1102,15 @@ const HomeObsidianNavigation = ({
       <output className="home-active-section-output" data-testid="base2-section-active">
         {activeSection}
       </output>
-      {canMoveUp ? (
+      {canMoveUp || hoveredMovement === -1 || focusedMovement === -1 ? (
         <button
           type="button"
           className="home-movement-button home-movement-button-up"
+          onPointerEnter={() => setHoveredMovement(-1)}
+          onPointerLeave={() => setHoveredMovement(null)}
+          onFocus={() => setFocusedMovement(-1)}
+          onBlur={() => setFocusedMovement(null)}
+          aria-disabled={!canMoveUp || undefined}
           onClick={() => handleMovementClick(-1)}
           onDoubleClick={(event) => handleMovementDoubleClick(-1, event)}
           aria-label={copy.scrollUp}
@@ -1115,10 +1122,15 @@ const HomeObsidianNavigation = ({
         </button>
       ) : null}
 
-      {canMoveDown ? (
+      {canMoveDown || hoveredMovement === 1 || focusedMovement === 1 ? (
         <button
           type="button"
           className="home-movement-button home-movement-button-down"
+          onPointerEnter={() => setHoveredMovement(1)}
+          onPointerLeave={() => setHoveredMovement(null)}
+          onFocus={() => setFocusedMovement(1)}
+          onBlur={() => setFocusedMovement(null)}
+          aria-disabled={!canMoveDown || undefined}
           onClick={() => handleMovementClick(1)}
           onDoubleClick={(event) => handleMovementDoubleClick(1, event)}
           aria-label={copy.scrollDown}

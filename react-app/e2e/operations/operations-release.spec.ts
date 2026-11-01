@@ -18,23 +18,28 @@ async function captureCurrentRun(page, testInfo, name, maxDiffPixelRatio = 0.01)
   const options = { fullPage: true, animations: 'disabled' as const, caret: 'hide' as const };
   await page.evaluate(() => {
     document.documentElement.style.scrollBehavior = 'auto';
-
   });
   await scrollPageTo(page, 0);
   await expect.poll(() => pageScrollTop(page)).toBe(0);
   await assertForcedColorState(page, testInfo);
-  await expect(page).toHaveScreenshot(name, { ...options, maxDiffPixelRatio });
+  // Playwright retains each original mismatch as a fatal test error while the
+  // next independent state can still execute. Hard prerequisites stay hard.
+  const previousErrors = testInfo.errors.length;
+  await expect.soft(page).toHaveScreenshot(name, { ...options, maxDiffPixelRatio });
   await assertForcedColorState(page, testInfo);
   await page.screenshot({ ...options, path: testInfo.outputPath(`current-${name}`) });
   await assertForcedColorState(page, testInfo);
-  const acceptedCapture = testInfo.snapshotPath(name);
-  await testInfo.attach(`visual:${basename(testInfo.snapshotPath(name))}`, {
-    // Attach the exact snapshot that Playwright just compared successfully.
-    // The custom reporter hashes this real attachment rather than inferring a
-    // capture name from the test title or trusting an unverified later frame.
-    body: readFileSync(acceptedCapture),
-    contentType: 'image/png',
-  });
+  await captureScrollportExtent(page, testInfo, name.replace(/\.png$/, ''));
+  if (testInfo.errors.length === previousErrors) {
+    const acceptedCapture = testInfo.snapshotPath(name);
+    await testInfo.attach(`visual:${basename(testInfo.snapshotPath(name))}`, {
+      // Attach the exact snapshot that Playwright just compared successfully.
+      // The custom reporter hashes this real attachment rather than inferring a
+      // capture name from the test title or trusting an unverified later frame.
+      body: readFileSync(acceptedCapture),
+      contentType: 'image/png',
+    });
+  }
 }
 
 test.afterEach(async ({ page }, testInfo) => {
@@ -241,6 +246,29 @@ test('operations center is accessible responsive and visually stable', async ({
   if (testInfo.project.name === 'chromium-large-text') {
     await page.addStyleTag({ content: 'html { font-size: 200% !important; }' });
     await expect(page.getByTestId('base2-left-menu-toggle')).toBeVisible();
+  }
+  if (testInfo.project.name === 'chromium-large-text') {
+    const brokenWords = await page.locator('.operations-readable-grid').evaluateAll((grids) => {
+      const broken: string[] = [];
+      for (const grid of grids) {
+        if (grid.scrollWidth > grid.clientWidth + 1) broken.push('grid-overflow');
+        const walker = document.createTreeWalker(grid, NodeFilter.SHOW_TEXT);
+        while (walker.nextNode()) {
+          const node = walker.currentNode;
+          for (const match of (node.textContent || '').matchAll(
+            /\b(?:passed|Replay|safely|Cancel|Operations|Collect)\b/g
+          )) {
+            const range = document.createRange();
+            range.setStart(node, match.index!);
+            range.setEnd(node, match.index! + match[0].length);
+            if (new Set([...range.getClientRects()].map((box) => Math.round(box.top))).size > 1)
+              broken.push(match[0]);
+          }
+        }
+      }
+      return broken;
+    });
+    expect(brokenWords).toEqual([]);
   }
   const rtl = testInfo.project.name === 'chromium-rtl';
   const german = testInfo.project.name === 'chromium-german';

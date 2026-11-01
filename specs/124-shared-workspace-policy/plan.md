@@ -740,3 +740,31 @@ actual URL. Keyed router entries retain bounded loading-aware restoration, with
 entry ownership checked before storing offsets or applying pending restoration.
 Exact prior-offset restoration for an unkeyed nested-scrollport entry is not
 claimed; browser fragment alignment/native restoration remains the fallback.
+
+### Terminal shared-shell repair boundary
+
+The next candidate separates confirmed CSS/interaction defects from unresolved
+native observations. Dialog descendants must retain their own scrolling geometry;
+operations and records columns must adapt to available content width in rem units.
+Only operations screenshot comparisons accumulate through Playwright's native
+soft assertion machinery; state readiness, accessibility, forced-color and behavior
+checks remain hard. Later hard failures must not erase earlier comparison errors.
+Current captures are retained even after mismatch, while reference-byte attachments
+are emitted only for successful comparisons. Per-state compact viewport captures
+must not overwrite one another or be attributed to a route after navigation away.
+
+Geometry v4 preserves the raw content viewport and control intersections. It adds
+an unobscured viewport beneath the sticky header and a separate center-visibility
+flag, without reinterpreting historical receipts. Drawer toggles join movement
+circles in new observations. A sampled obstruction is not proof of an unreachable
+control, and zero sampled intersections are not global visual acceptance.
+
+Compact timeout/Firefox focus progression need native trace evidence before product
+changes; diagnostics alone do not resolve them. The confirmed compact footer/right-toggle overlap is addressed by moving the
+existing drawer tabs into side slots of the reserved bottom strip. Circle styling
+and full content width remain unchanged; tabs keep their colors, icons and curved
+edges with 44-56px targets. Popup content opens above the strip with bounded vertical
+scrolling. Desktop and movement-disabled legacy positions are unchanged; protection
+in those legacy modes is not newly claimed. All four persistent controls enter
+footer intersection checks. Fresh native reachability/pixel validation is pending. No new references, acceptance-manifest renewal, security
+runtime work, complete-gate execution or publication belongs to this preparation.

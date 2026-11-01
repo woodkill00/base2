@@ -50,7 +50,7 @@ def observations(raw: bytes, project: str) -> dict:
     data = json.loads(raw, object_pairs_hook=unique)
     require(isinstance(data, dict) and set(data) == {
         "schemaVersion", "fixtureScope", "project", "test", "scope", "viewportObservations"})
-    require(type(data["schemaVersion"]) is int and data["schemaVersion"] in (1, 2, 3))
+    require(type(data["schemaVersion"]) is int and data["schemaVersion"] in (1, 2, 3, 4))
     require(data["fixtureScope"] == "synthetic-project-tests" and data["project"] == project)
     require(data["test"] == MEDIA_TEST)
     require(data["scope"] == "Diagnostic viewport observations; not visual acceptance.")
@@ -59,18 +59,25 @@ def observations(raw: bytes, project: str) -> dict:
     for index, row in zip((0, 2, 4), rows, strict=True):
         require(isinstance(row, dict) and set(row) ==
                 ({"cardIndex", "scrollY", "viewport", "controls", "targets"}
-                 | ({"contentViewport"} if data["schemaVersion"] == 3 else set())))
-        if data["schemaVersion"] == 3:
+                 | ({"contentViewport"} if data["schemaVersion"] >= 3 else set())
+                 | ({"unobscuredContentViewport"} if data["schemaVersion"] == 4 else set())))
+        if data["schemaVersion"] >= 3:
             rect(row["contentViewport"])
+        if data["schemaVersion"] == 4:
+            rect(row["unobscuredContentViewport"])
+            raw_view, visible = row["contentViewport"], row["unobscuredContentViewport"]
+            require(raw_view["top"] <= visible["top"] <= visible["bottom"] <= raw_view["bottom"]
+                    and visible["left"] == raw_view["left"] and visible["right"] == raw_view["right"])
         require(type(row["cardIndex"]) is int and row["cardIndex"] == index)
         require(number(row["scrollY"]) and row["scrollY"] >= 0)
         require(isinstance(row["viewport"], list) and len(row["viewport"]) == 2
                 and all(type(v) is int and 0 < v <= 32768 for v in row["viewport"]))
-        require(isinstance(row["controls"], list) and len(row["controls"]) <= 2)
+        require(isinstance(row["controls"], list) and len(row["controls"]) <= (4 if data["schemaVersion"] == 4 else 2))
         ids = []
         for control in row["controls"]:
             require(isinstance(control, dict) and set(control) == {"id", "rect"})
-            require(isinstance(control["id"], str) and control["id"] in CONTROL_IDS)
+            require(isinstance(control["id"], str) and control["id"] in (CONTROL_IDS | {
+                "base2-left-menu-toggle", "base2-right-utility-toggle"} if data["schemaVersion"] == 4 else CONTROL_IDS))
             ids.append(control["id"])
             rect(control["rect"])
         require(len(set(ids)) == len(ids))
@@ -80,7 +87,10 @@ def observations(raw: bytes, project: str) -> dict:
         for target in row["targets"]:
             require(isinstance(target, dict) and set(target) ==
                     ({"kind", "rect", "centerInViewport", "centerUnobstructed", "overlappingControls"}
-                     | ({"cardIndex", "targetIndex"} if data["schemaVersion"] >= 2 else set())))
+                     | ({"cardIndex", "targetIndex"} if data["schemaVersion"] >= 2 else set())
+                     | ({"centerInUnobscuredContent"} if data["schemaVersion"] == 4 else set())))
+            if data["schemaVersion"] == 4:
+                require(type(target["centerInUnobscuredContent"]) is bool)
             if data["schemaVersion"] >= 2:
                 require(type(target["cardIndex"]) is int and 0 <= target["cardIndex"] < 5)
                 require(type(target["targetIndex"]) is int and 0 <= target["targetIndex"] < 5)
@@ -92,8 +102,9 @@ def observations(raw: bytes, project: str) -> dict:
             require(type(target["centerInViewport"]) is bool
                     and type(target["centerUnobstructed"]) is bool)
             overlaps = target["overlappingControls"]
-            require(isinstance(overlaps, list) and len(overlaps) <= 2
-                    and all(isinstance(v, str) and v in ids for v in overlaps))
+            require(isinstance(overlaps, list) and len(overlaps) <= (4 if data["schemaVersion"] == 4 else 2)
+                    and all(isinstance(v, str) and v in ids for v in overlaps)
+                    and len(set(overlaps)) == len(overlaps))
     return data
 
 

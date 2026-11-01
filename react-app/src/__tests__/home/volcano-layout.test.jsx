@@ -251,3 +251,47 @@ test('native null-state fragments never share custom history positions with a co
     expect(window.history.state).toEqual(keyed.state);
   } finally { view?.unmount(); spy.mockRestore(); window.history.replaceState(before.state, '', before.url); }
 });
+
+test('shell focus margins match page targets but exclude every modal subtree', () => {
+  const css = readFileSync('src/components/glass/volcano-layout.css', 'utf8');
+  const selector = css
+    .match(/([^{}]+)\{ scroll-margin-block:/)[1]
+    .trim()
+    .replace(':focus-visible', '[data-focus]');
+  const host = document.createElement('div');
+  host.className = 'volcano-content-scrollport';
+  host.innerHTML =
+    '<button data-focus>page</button><dialog data-focus><button data-focus>native</button></dialog><div role="dialog" data-focus><button data-focus>dialog</button></div><div role="alertdialog"><button data-focus>alert</button></div>';
+  document.body.append(host);
+  expect([...document.querySelectorAll(selector)].map((node) => node.textContent)).toEqual([
+    'page',
+  ]);
+  host.remove();
+});
+
+test('scaled shell supplies unscaled viewport height for fixed drawer containment', () => {
+  const observers = [];
+  vi.stubGlobal(
+    'ResizeObserver',
+    class {
+      constructor(callback) {
+        this.callback = callback;
+        observers.push(this);
+      }
+      observe(node) {
+        this.node = node;
+      }
+      disconnect() {}
+    }
+  );
+  const view = mount();
+  const shell = view.container.querySelector('.volcano-layout');
+  Object.defineProperty(window, 'innerHeight', { configurable: true, value: 900 });
+  Object.defineProperty(shell, 'offsetWidth', { configurable: true, value: 640 });
+  Object.defineProperty(shell, 'clientWidth', { configurable: true, value: 640 });
+  shell.getBoundingClientRect = () => ({ width: 1280 });
+  act(() => observers.find((observer) => observer.node === shell).callback());
+  expect(shell.style.getPropertyValue('--volcano-viewport-height')).toBe('450px');
+  expect(shell).toHaveAttribute('data-movement-layout', 'bottom');
+  view.unmount();
+});

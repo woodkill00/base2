@@ -385,9 +385,15 @@ def test_media_operations_keep_hard_comparisons_and_accepted_receipt_semantics()
         assert 'test.beforeEach' in source and 'test.afterEach' in source
         assert source.count('await assertForcedColorState(page, testInfo)') >= 4
         assert "emulateMedia({ forcedColors:" not in source
-        assert 'expect.soft' not in source and 'expect.configure' not in source
+        assert 'expect.configure' not in source
+        if name == 'media':
+            assert 'expect.soft' not in source
+        else:
+            assert source.count('expect.soft') == 1
+            assert 'await expect.soft(page).toHaveScreenshot(name' in source
+            assert 'if (testInfo.errors.length === previousErrors)' in source
     operations = (ROOT / 'react-app/e2e/operations/operations-release.spec.ts').read_text()
-    assert operations.index('await expect(page).toHaveScreenshot(name') < operations.index('const acceptedCapture')
+    assert operations.index('await expect.soft(page).toHaveScreenshot(name') < operations.index('const acceptedCapture')
     assert 'body: readFileSync(acceptedCapture)' in operations
 
 
@@ -516,6 +522,7 @@ def test_workspace_png_uploads_are_bounded_separate_and_keep_original_evidence()
 def test_workspace_png_staging_copies_only_exact_names_with_hashes_and_failure_provenance(tmp_path):
     import hashlib
     import json
+
     from scripts.python import workspace_png_evidence as evidence
 
     source, output = tmp_path / 'source', tmp_path / 'output'

@@ -67,8 +67,53 @@ def test_preview_foreground_and_all_visible_card_diagnostics():
     assert 'expect(Math.min(...previewContrast)).toBeGreaterThanOrEqual(4.5)' in spec
     assert 'expect(previewContrast).toHaveLength(2)' in spec
     assert 'const observation = await cards.evaluateAll' in spec
-    assert 'schemaVersion: 3' in spec
+    assert 'schemaVersion: 4' in spec
+    assert 'unobscuredContentViewport: unobscured.toJSON()' in spec
+    assert 'centerInUnobscuredContent:' in spec
     assert 'contentViewport: viewport.toJSON()' in spec
     assert 'targetIndex' in spec and 'box.bottom > viewport.top' in spec and 'box.top < viewport.bottom' in spec
 
     assert 'row.targets.flatMap((target) => target.overlappingControls))).toEqual([])' in spec
+
+
+def test_shell_focus_margin_excludes_modal_subtrees_and_preserves_alignment_assertion():
+    css = (ROOT / 'react-app/src/components/glass/volcano-layout.css').read_text()
+    assert ':focus-visible:not(:where(dialog, dialog *, [role="dialog"], [role="dialog"] *, [role="alertdialog"], [role="alertdialog"] *))' in css
+    native = (ROOT / 'react-app/e2e/media/media-release.spec.ts').read_text()
+    assert '.toBeLessThanOrEqual(2)' in native
+
+
+def test_zoom_drawer_uses_unscaled_shell_viewport_and_can_scroll_fixed_rows():
+    css = (ROOT / 'react-app/src/components/glass/volcano-layout.css').read_text()
+    drawer = css.split('.volcano-layout .home-obsidian-nav-layer .home-left-command-menu {')[1].split('}')[0]
+    assert 'var(--volcano-viewport-height, 100dvh)' in drawer
+    assert 'height: var(--left-menu-safe-height)' in drawer
+    assert 'overflow-y: auto' in drawer
+
+
+def test_compact_drawer_toggles_occupy_reserved_control_strip_not_content():
+    css = (ROOT / 'react-app/src/components/glass/volcano-layout.css').read_text()
+    assert ".volcano-layout[data-movement-layout='bottom'] .home-left-menu-toggle" in css
+    assert ".volcano-layout[data-movement-layout='bottom'] .home-right-utility-menu" in css
+    assert '--volcano-dock-toggle-size: clamp(44px, 2rem, 56px)' in css
+    assert '--volcano-dock-toggle-top:' in css
+    assert 'var(--volcano-viewport-height, 100dvh) - var(--volcano-dock-toggle-size)' in css
+    assert 'width: calc(100% - 2 * (var(--volcano-dock-toggle-size) + 8px))' in css
+    helper = (ROOT / 'react-app/e2e/scroll-target.ts').read_text()
+    assert 'Persistent controls must not overlap visible footer content' in helper
+
+
+def test_scrollport_failure_keeps_sampled_image_and_bounded_geometry_before_assertion():
+    source = (ROOT / 'react-app/e2e/scroll-target.ts').read_text()
+    capture = source.index('await page.screenshot({')
+    geometry = source.index("'scrollport-overlap-evidence'")
+    assertion = source.index("expect(footerOverlaps, 'Persistent controls")
+    cleanup = source.index('await scrollPageTo(page, saved.y, saved.x)')
+    assert capture < geometry < assertion < cleanup
+    assert capture < source.index("await expect(page.locator('.volcano-footer-frame')).toBeInViewport()") < cleanup
+    assert capture < source.index('.poll(async () => Math.abs((await pageScrollTop(page)) - max))') < cleanup
+    assert source.index('if (captureFailed) throw captureFailure') > assertion
+    assert 'if (!originalFailure) {' in source
+    assert 'failure = cleanupError' in source
+    assert source.index('if (originalFailure) throw failure') > cleanup
+    assert '64 * 1024' in source

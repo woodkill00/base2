@@ -379,6 +379,18 @@ test('workspace release corpus is accessible, responsive, and visually stable', 
   await expect(page.locator(':focus')).toBeVisible();
   await expect(page.locator('.volcano-header-frame')).toHaveCSS('position', 'sticky');
   await prepareStableFullPageCapture(page);
+  const recordContainment = await page
+    .getByRole('region', { name: 'Record details', exact: true })
+    .evaluate((node) => {
+      const inspector = node.getBoundingClientRect();
+      const enclosure = document.querySelector('#workspace-detail')!.getBoundingClientRect();
+      return (
+        inspector.left >= enclosure.left - 1 &&
+        inspector.right <= enclosure.right + 1 &&
+        node.scrollWidth <= node.clientWidth + 1
+      );
+    });
+  expect(recordContainment, 'Record details must remain enclosed').toBe(true);
   await compareAndRetain('records', `workspace-records-${testInfo.project.name}.png`);
 
   await page.getByRole('tab', { name: 'Schemas' }).click();

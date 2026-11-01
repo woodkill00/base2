@@ -1101,3 +1101,39 @@ History identity audit: cold and native null-state fragments no longer share a
 custom `default` slot. Real href fragment regression covers repeated fragments,
 Back/Forward, query changes, keyed-save isolation and unchanged history state.
 Unkeyed nested-scrollport exact-offset restoration remains a stated limitation.
+
+### Native shared-shell repair on cb674560 (publication held)
+
+Original run 41295005783: 423 / 443 browser cases passed; 20 failed. Full media
+41295029086: 7 passed / 17 failed / 12 declared skips. Full operations
+41295038159: 1 passed / 21 failed / 20 declared skips. Preserve those outcomes
+and all original references; current repairs are not fresh native validation.
+
+- [ ] T68 Verify scoped focus margins exclude dialog descendants while retaining
+      the existing media pending-action alignment tolerance of 2 pixels.
+- [ ] T69 Verify available-width operations grids and workspace record/inspector
+      containment in large text, light and high contrast; do not conceal overflow.
+- [ ] T70 Verify pointer movement double-click lifetime and zoom drawer reachability.
+      The pointer regression reproduces immediate first-click removal. Retain the
+      control while pointer or focus engages it, preserving immediate single-click
+      movement and slow double-click recognition without a guessed timer.
+- [ ] T71 Resolve compact timeout and Firefox contact focus from native trace/DOM
+      evidence. Existing logs do not identify compact's stalled action or Firefox's
+      actual focus progression. Keep assertions and timeouts unchanged; new bounded
+      console diagnostics are preparation, not fixes or proof of resolution.
+- [ ] T72 Execute later independent operations states despite snapshot differences;
+      native soft comparison errors remain fatal and successful reference-byte
+      attachments remain distinct from current actual captures. State-specific
+      viewport captures supplement fullPage under nested scrolling.
+- [ ] T73 Verify named-route captures before navigation and visible footer evidence.
+      Schema v4 retains original scrollport/intersection geometry and adds the
+      sticky-header-unobscured rectangle plus all four persistent shell controls.
+      Previous v1/v2/v3 receipts remain immutable. Compact drawer toggles now occupy side slots in the reserved control strip;
+      colors/icons/curved edges are retained with 44-56px targets. Movement-disabled
+      positions remain unchanged. Native
+      footer checks include all four persistent controls. Fresh native proof is pending.
+
+Review v2 correction: geometry v4 permits three/four unique present control IDs per
+target, while v1-v3 retain their two-control cap; duplicate IDs are rejected. Exact
+three/four-overlap bytes round-trip through bounded packaging without suppressing
+native failure. Strict focus diagnostics export only allowlisted tags/roles/IDs.
