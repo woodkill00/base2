@@ -32,7 +32,7 @@ test('focus diagnostic has exact allowlisted shape and cannot expose arbitrary i
 });
 
 // Continuous sweeps have their own flow tests; preserve this legacy failure-order contract.
-vi.mock('../../e2e/continuous-scroll', () => ({ captureContinuousScroll: async () => {} }));
+vi.mock('../../e2e/continuous-scroll', () => ({ captureContinuousScroll: async () => true }));
 
 const evidenceOrder = vi.hoisted(() => [] as string[]);
 const originalOverlap = vi.hoisted(() => new Error('original sampled overlap'));

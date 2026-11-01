@@ -79,13 +79,20 @@ export async function pageScrollTop(page: Page) {
 export async function captureScrollportExtent(
   page: Page,
   testInfo: import('@playwright/test').TestInfo,
-  state = ''
+  state = '',
+  comparisonRatio?: number
 ) {
   const port = page.locator(
     '.volcano-layout[data-movement-layout="bottom"] .volcano-content-scrollport'
   );
-  if (!(await port.count()) || (await page.getByRole('dialog').count())) return;
-  await captureContinuousScroll(page, testInfo, state || 'current');
+  const captured = await captureContinuousScroll(
+    page,
+    testInfo,
+    state || 'current',
+    undefined,
+    comparisonRatio
+  );
+  if (!captured) return;
   const saved = await pageScrollPosition(page);
   let originalFailure = false;
   let failure: unknown;

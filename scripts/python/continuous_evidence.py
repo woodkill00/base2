@@ -16,7 +16,7 @@ ERRORS = {'empty', 'limit', 'index', 'route', 'extent', 'geometry', 'gap', 'nonp
           'focus-not-neutral', 'skip-overlay-visible', 'focus-restore-failed'}
 
 
-def validate(raw: bytes, path: Path, commit: str, tree: str, project: str | None = None, run: str | None = None, attempt: str | None = None) -> dict:
+def _validate(raw: bytes, path: Path, commit: str, tree: str, project: str | None = None, run: str | None = None, attempt: str | None = None) -> dict:
     def require(condition: bool) -> None:
         if not condition:
             raise ValueError('invalid continuous evidence')
@@ -30,6 +30,7 @@ def validate(raw: bytes, path: Path, commit: str, tree: str, project: str | None
 
     require(len(raw) <= BUDGET and bool(NAME.fullmatch(path.name)))
     data = json.loads(raw, object_pairs_hook=unique)
+    require(isinstance(data, dict))
     version = data.get('schemaVersion')
     require(type(version) is int and version in (1, 2))
     extra = {'coverageKind', 'unobscuredReview', 'focus'} if version == 2 else set()
@@ -138,3 +139,12 @@ def capture_rows(data: dict) -> list:
     """Focus context is retained separately and never contributes to coverage."""
     context = data.get('focus', {}).get('capture')
     return data['segments'] + ([context] if context is not None else [])
+
+
+def validate(raw: bytes, path: Path, commit: str, tree: str, project: str | None = None,
+             run: str | None = None, attempt: str | None = None) -> dict:
+    """Normalize malformed JSON shapes without swallowing IO or programming failures."""
+    try:
+        return _validate(raw, path, commit, tree, project, run, attempt)
+    except (TypeError, KeyError, AttributeError, IndexError, OverflowError) as exc:
+        raise ValueError("invalid continuous evidence shape") from exc

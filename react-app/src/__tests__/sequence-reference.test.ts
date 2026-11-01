@@ -1,0 +1,462 @@
+import { sequenceApplicable, registeredDocumentSequence } from '../../e2e/sequence-applicability';
+import assertResolvedReadOnly, { requireReadOnlySnapshots } from '../../e2e/reference-readonly.mjs';
+import { afterEach, expect, test, vi } from 'vitest';
+import {
+  mkdtempSync,
+  mkdirSync,
+  readFileSync,
+  writeFileSync,
+  rmSync,
+  existsSync,
+  symlinkSync,
+} from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
+import { PNG } from 'pngjs';
+import {
+  approvedSequenceTarget,
+  namedRouteSequenceState,
+  strictJson,
+  imageIdentity,
+  preflightComparison,
+  canonical,
+  compareSequence,
+  digest,
+  sequenceBinding,
+  validateReference,
+  safeRead,
+} from '../../e2e/sequence-reference';
+import { deriveGeometry } from '../../e2e/sequence-geometry';
+const matcher = vi.hoisted(() => ({ allow: false, calls: 0 }));
+const errors = vi.hoisted(() => [] as Error[]);
+vi.mock('@playwright/test', () => ({
+  expect: {
+    soft: (actual: unknown) => ({
+      toBe: (wanted: unknown) => {
+        if (actual !== wanted) errors.push(new Error('missing approved sequence'));
+      },
+      toMatchSnapshot: () => {
+        matcher.calls++;
+        if (!matcher.allow) throw new Error('unapproved matcher must not run');
+      },
+    }),
+  },
+}));
+const dirs: string[] = [];
+afterEach(() => {
+  dirs.splice(0).forEach((p) => rmSync(p, { recursive: true, force: true }));
+  errors.length = 0;
+  matcher.allow = false;
+  matcher.calls = 0;
+});
+function fixture() {
+  const dir = mkdtempSync(join(tmpdir(), 'sequence-unit-'));
+  dirs.push(dir);
+  const out = join(dir, 'out'),
+    refs = join(dir, 'refs');
+  mkdirSync(out);
+  mkdirSync(refs);
+  const raw = PNG.sync.write(new PNG({ width: 2, height: 2 }));
+  const file = 'current-continuous-media-000.png';
+  writeFileSync(join(out, file), raw);
+  const frame = {
+    file,
+    sha256: digest(raw),
+    bytes: raw.length,
+    index: 0,
+    offset: 0,
+    max: 0,
+    height: 400,
+    inset: 0,
+    scale: 1,
+    viewport: [320, 568, 1],
+    rect: [0, 0, 320, 400],
+  };
+  const input = {
+    state: 'media',
+    sourceCommit: 'a'.repeat(40),
+    sourceTree: 'b'.repeat(40),
+    runId: '1',
+    attempt: '1',
+    project: 'chromium-compact',
+    test: 'unit synthetic',
+    route: '/media',
+    target: 'content-scrollport',
+    complete: true,
+    segments: [frame],
+  };
+  const context = {
+    routeStateHash: 'c'.repeat(64),
+    environmentHash: 'd'.repeat(64),
+    fixtureVersion: 'synthetic-v1',
+    dependencyHash: 'e'.repeat(64),
+  };
+  const info = {
+    config: { updateSnapshots: 'none' },
+    errors,
+    outputPath: (name: string) => join(out, name),
+    snapshotPath: (name: string) => join(refs, name),
+  };
+  return { dir, out, refs, raw, input, context, info };
+}
+test('missing set retains exact actuals, fatal errors and no created references', async () => {
+  const f = fixture();
+  await compareSequence(f.info as never, f.input, f.context, 0.01);
+  expect(errors).toHaveLength(2);
+  const r = JSON.parse(readFileSync(join(f.out, 'sequence-media.json'), 'utf8'));
+  expect(r.complete).toBe(true);
+  expect(r.manifestError).toBe('missing-reference-set');
+  for (const row of r.results) {
+    expect(row.expected).toBeNull();
+    expect(row.diff).toBeNull();
+    expect(readFileSync(join(f.out, row.actual.file))).toEqual(f.raw);
+  }
+  expect(existsSync(join(f.refs, 'sequence-media.json'))).toBe(false);
+  expect(existsSync(join(f.refs, 'sequence-media-overview.png'))).toBe(false);
+});
+test.each(['missing', 'all', 'changed'])('rejects writable snapshot mode %s', async (mode) => {
+  const f = fixture();
+  f.info.config.updateSnapshots = mode;
+  await expect(compareSequence(f.info as never, f.input, f.context, 0.01)).rejects.toThrow(
+    'updates forbidden'
+  );
+});
+test('invalid symlink manifest retains diagnostics without reread masking', async () => {
+  const f = fixture();
+  writeFileSync(join(f.dir, 'other.json'), '{}');
+  symlinkSync(join(f.dir, 'other.json'), join(f.refs, 'sequence-media.json'));
+  await compareSequence(f.info as never, f.input, f.context, 0.01);
+  const r = JSON.parse(readFileSync(join(f.out, 'sequence-media.json'), 'utf8'));
+  expect(r.manifestError).toBe('invalid-reference-set');
+  expect(r.referenceManifestSha256).toBeNull();
+  expect(errors).toHaveLength(2);
+});
+test('actual tamper preserves original fatal error and writes incomplete receipt', async () => {
+  const f = fixture();
+  f.input.segments[0].sha256 = 'f'.repeat(64);
+  await expect(compareSequence(f.info as never, f.input, f.context, 0.01)).rejects.toThrow(
+    'actual sequence bytes changed'
+  );
+  expect(JSON.parse(readFileSync(join(f.out, 'sequence-media.json'), 'utf8')).complete).toBe(false);
+});
+test('one pixel port cannot claim thousand pixel interval', () => {
+  expect(
+    deriveGeometry({
+      offset: 0,
+      max: 0,
+      height: 1,
+      inset: 0,
+      scale: 1,
+      viewport: [320, 568, 1],
+      rect: [0, 0, 320, 1],
+    })
+  ).toMatchObject({ start: 0, end: 1, extent: 1 });
+});
+test.each([{ scale: 0 }, { inset: 401 }, { max: -1 }, { rect: [400, 0, 320, 400] }])(
+  'rejects contradictory geometry %j',
+  (change) => {
+    const f = fixture();
+    expect(() => deriveGeometry({ ...f.input.segments[0], ...change })).toThrow();
+  }
+);
+test('state, query identity and schedule drift invalidate entire reference set', () => {
+  const f = fixture(),
+    binding = sequenceBinding(f.input, f.context, 0.01),
+    names = ['sequence-media-overview.png', 'sequence-media-000.png'];
+  const manifest = {
+    schemaVersion: 1,
+    binding,
+    review: {
+      sourceCommit: 'a'.repeat(40),
+      sourceTree: 'b'.repeat(40),
+      recordSha256: 'f'.repeat(64),
+    },
+    images: names.map((name) => ({ name, sha256: digest(f.raw) })),
+  };
+  expect(() => validateReference(manifest, binding, names)).not.toThrow();
+  for (const change of [{ state: 'other' }, { routeStateHash: 'f'.repeat(64) }, { schedule: [] }])
+    expect(() => validateReference(manifest, { ...binding, ...change }, names)).toThrow();
+});
+test('reader rejects parent symlinks', () => {
+  const f = fixture();
+  symlinkSync(f.out, join(f.dir, 'link'));
+  expect(() => safeRead(join(f.dir, 'link', 'current-continuous-media-000.png'), 1000)).toThrow(
+    'symlink'
+  );
+});
+
+test('verified review and ancestor bind expected bytes; matching frames have no invented diff', async () => {
+  const f = fixture();
+  const binding = sequenceBinding(f.input, f.context, 0.01);
+  const names = ['sequence-media-overview.png', 'sequence-media-000.png'];
+  const images = names.map((name) => ({ name, sha256: digest(f.raw) }));
+  const sourceCommit = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
+  const sourceTree = execFileSync('git', ['rev-parse', 'HEAD^{tree}'], { encoding: 'utf8' }).trim();
+  const record = {
+    schemaVersion: 1,
+    decision: 'approved-sequence',
+    sourceCommit,
+    sourceTree,
+    bindingSha256: digest(canonical(binding)),
+    imagesSha256: digest(canonical(images)),
+    limitations: 'captured neutral state only; unrelated overlays and states excluded',
+  };
+  const reviewBytes = JSON.stringify(record);
+  const manifest = {
+    schemaVersion: 1,
+    binding,
+    images,
+    review: { sourceCommit, sourceTree, recordSha256: digest(reviewBytes) },
+  };
+  writeFileSync(join(f.refs, 'sequence-media.json'), JSON.stringify(manifest));
+  writeFileSync(join(f.refs, 'sequence-media.review.json'), reviewBytes);
+  names.forEach((name) => writeFileSync(join(f.refs, name), f.raw));
+  matcher.allow = true;
+  await compareSequence(f.info as never, f.input, f.context, 0.01);
+  expect(matcher.calls).toBe(2);
+  expect(errors).toHaveLength(0);
+  const result = JSON.parse(readFileSync(join(f.out, 'sequence-media.json'), 'utf8'));
+  expect(
+    result.results.every(
+      (r: { status: string; diff: unknown }) => r.status === 'matched' && r.diff === null
+    )
+  ).toBe(true);
+  names.forEach((name) => expect(readFileSync(join(f.refs, name))).toEqual(f.raw));
+});
+
+test('arbitrary approval-shaped hashes cannot invoke pixel matcher', async () => {
+  const f = fixture(),
+    binding = sequenceBinding(f.input, f.context, 0.01);
+  const images = ['overview', '000'].map((label) => ({
+    name: `sequence-media-${label}.png`,
+    sha256: digest(f.raw),
+  }));
+  writeFileSync(
+    join(f.refs, 'sequence-media.json'),
+    JSON.stringify({
+      schemaVersion: 1,
+      binding,
+      images,
+      review: {
+        sourceCommit: 'a'.repeat(40),
+        sourceTree: 'b'.repeat(40),
+        recordSha256: 'f'.repeat(64),
+      },
+    })
+  );
+  await compareSequence(f.info as never, f.input, f.context, 0.01);
+  expect(matcher.calls).toBe(0);
+  expect(errors).toHaveLength(2);
+  expect(JSON.parse(readFileSync(join(f.out, 'sequence-media.json'), 'utf8')).manifestError).toBe(
+    'invalid-reference-set'
+  );
+});
+
+test('preflight includes original, overview, actual, expected and remaining diff budgets', () => {
+  const f = fixture();
+  const estimate = preflightComparison(f.input, [f.raw.length, f.raw.length], f.raw.length);
+  expect(estimate.requiredBytes).toBe(f.raw.length * 6);
+  expect(estimate.remainingDiffBytes).toBe(96 * 1024 * 1024 - estimate.requiredBytes);
+  const many = {
+    ...f.input,
+    segments: Array.from({ length: 64 }, () => ({ ...f.input.segments[0], bytes: 1024 * 1024 })),
+  };
+  expect(() => preflightComparison(many, [])).toThrow('preflight byte budget');
+  expect(() =>
+    preflightComparison({ ...f.input, segments: Array(65).fill(f.input.segments[0]) }, [])
+  ).toThrow('excessive');
+});
+
+test('decoded raster bounds are checked before decompression allocation', () => {
+  const f = fixture(),
+    forged = Buffer.from(f.raw);
+  forged.writeUInt32BE(0x7fffffff, 16);
+  expect(() => imageIdentity('synthetic.png', forged)).toThrow('decoded raster bound');
+  const zero = Buffer.from(f.raw);
+  zero.writeUInt32BE(0, 20);
+  expect(() => imageIdentity('synthetic.png', zero)).toThrow('decoded raster bound');
+});
+
+test('duplicate JSON keys cannot masquerade as a strict approval record', () => {
+  expect(() => strictJson('{"schemaVersion":1,"schemaVersion":1}')).toThrow('duplicate');
+  expect(strictJson('{"schemaVersion":1}')).toEqual({ schemaVersion: 1 });
+});
+
+test('a later IHDR cannot bypass the predecode raster bound', () => {
+  const f = fixture(),
+    header = f.raw.subarray(8, 33);
+  const duplicate = Buffer.concat([f.raw.subarray(0, 33), header, f.raw.subarray(33)]);
+  expect(() => imageIdentity('synthetic.png', duplicate)).toThrow('duplicate or invalid IHDR');
+});
+
+test.each([
+  ['-u'],
+  ['--update-snapshots'],
+  ['--update-snapshots', 'missing'],
+  ['--update-snapshots=all'],
+  ['--update-snapshots=changed'],
+])('configuration rejects writable CLI mode %j before legacy comparisons', (...args) => {
+  expect(() => requireReadOnlySnapshots(args)).toThrow('Snapshot writes');
+});
+test('configuration permits only explicit none or default read-only mode', () => {
+  expect(() => requireReadOnlySnapshots(['--update-snapshots=none'])).not.toThrow();
+  expect(() => requireReadOnlySnapshots(['--update-snapshots', 'none'])).not.toThrow();
+  expect(() => requireReadOnlySnapshots([])).not.toThrow();
+});
+
+test('interlaced decoder path is rejected before unbounded inflation', () => {
+  const f = fixture(),
+    raw = Buffer.from(f.raw);
+  raw[28] = 1;
+  expect(() => imageIdentity('synthetic.png', raw)).toThrow('interlaced');
+});
+
+test.each(['-uall', '-uchanged', '-umissing'])('short CLI alias %s cannot enable writes', (arg) => {
+  expect(() => requireReadOnlySnapshots([arg])).toThrow('Snapshot writes');
+});
+test.each(['all', 'changed', 'missing'] as const)(
+  'resolved global setup rejects %s regardless of CLI spelling',
+  (updateSnapshots) => {
+    expect(() => assertResolvedReadOnly({ updateSnapshots })).toThrow('Resolved snapshot');
+  }
+);
+test('resolved global setup accepts only none', () => {
+  expect(() => assertResolvedReadOnly({ updateSnapshots: 'none' })).not.toThrow();
+});
+
+test('all named-route viewport identities have disjoint stable namespaces', () => {
+  const source = readFileSync('e2e/layout/volcano-preservation.spec.ts', 'utf8');
+  const marker = source.indexOf('test(`Volcano guest route');
+  const start = source.lastIndexOf('for (const path of [', marker);
+  const routes = [...source.slice(start, marker).matchAll(/'(\/[^']*)'/g)].map((match) => match[1]);
+  expect(routes).toHaveLength(22);
+  const states = routes.flatMap((route) =>
+    [390, 1440].map((width) =>
+      namedRouteSequenceState(route, `Volcano guest route ${route} at ${width}px`)
+    )
+  );
+  expect(new Set(states).size).toBe(44);
+  expect(states.every((state) => /^named-route-[a-f0-9]{20}$/.test(state))).toBe(true);
+  expect(namedRouteSequenceState('/docs/example', 'stable')).toBe(
+    namedRouteSequenceState('/docs/example', 'stable')
+  );
+});
+
+const applicable = {
+  comparison: true,
+  compact: true,
+  layout: 'bottom',
+  targetCount: 1,
+  dialogs: 0,
+  dialogTarget: false,
+  targetIsDialog: false,
+  approvedTarget: null,
+};
+
+test.each([
+  { targetCount: 0 },
+  { layout: 'sides' },
+  { layout: 'off' },
+  { dialogs: 1 },
+  { approvedTarget: 'dialog' },
+])('registered nested targets never silently disappear: %j', (delta) => {
+  expect(() => sequenceApplicable({ ...applicable, ...delta })).toThrow();
+});
+
+test('approved nested sequence remains required after viewport or mode changes', () => {
+  expect(() =>
+    sequenceApplicable({
+      ...applicable,
+      compact: false,
+      layout: 'sides',
+      targetCount: 0,
+      approvedTarget: 'content-scrollport',
+    })
+  ).toThrow();
+});
+
+test('explicit document and off diagnostic states remain nonapplicable', () => {
+  expect(
+    sequenceApplicable({ ...applicable, compact: false, layout: 'sides', targetCount: 0 })
+  ).toBe(false);
+  expect(
+    sequenceApplicable({ ...applicable, comparison: false, layout: 'off', targetCount: 0 })
+  ).toBe(false);
+});
+
+test('dialog sequence requires exactly the intended dialog target', () => {
+  expect(
+    sequenceApplicable({ ...applicable, dialogTarget: true, targetIsDialog: true, dialogs: 1 })
+  ).toBe(true);
+  for (const delta of [{ targetCount: 0 }, { targetIsDialog: false }, { dialogs: 2 }]) {
+    expect(() =>
+      sequenceApplicable({
+        ...applicable,
+        dialogTarget: true,
+        targetIsDialog: true,
+        dialogs: 1,
+        ...delta,
+      })
+    ).toThrow();
+  }
+});
+
+test.each(['malformed', 'null', 'bad-target', 'symlink', 'dangling-symlink'])('invalid target metadata %s remains soft-fatal and permits ready capture', async (kind) => {
+  const f = fixture();
+  const manifest = join(f.refs, 'sequence-media.json');
+  if (kind === 'symlink' || kind === 'dangling-symlink') {
+    if (kind === 'symlink') writeFileSync(join(f.dir, 'private.json'), '{}');
+    symlinkSync(join(f.dir, 'private.json'), manifest);
+  } else {
+    writeFileSync(manifest, kind === 'malformed' ? '{' : kind === 'null' ? 'null' : '{"binding":{"target":"window"}}');
+  }
+  const target = approvedSequenceTarget(f.info as never, 'media');
+  expect(target).toBeNull();
+  expect(errors).toHaveLength(1);
+  expect(sequenceApplicable({comparison:true,compact:true,layout:'bottom',targetCount:1,dialogs:0,dialogTarget:false,targetIsDialog:false,approvedTarget:target})).toBe(true);
+  await compareSequence(f.info as never, f.input, f.context, 0.01);
+  expect(errors.length).toBeGreaterThan(1);
+  expect(JSON.parse(readFileSync(join(f.out, 'sequence-media.json'), 'utf8')).manifestError).toBe('invalid-reference-set');
+  expect(() => sequenceApplicable({comparison:true,compact:true,layout:'bottom',targetCount:0,dialogs:0,dialogTarget:false,targetIsDialog:false,approvedTarget:target})).toThrow('required nested');
+});
+
+test('only the pinned original preview home is intentionally document-scrolled', () => {
+  const file = '/repo/react-app/e2e/layout/volcano-preservation.spec.ts';
+  const input = {comparison:true,compact:true,layout:null,volcanoRootCount:0,nestedScrollportCount:0,targetCount:0,dialogs:0,dialogTarget:false,targetIsDialog:false,approvedTarget:null};
+  for (const width of [390, 1440]) {
+    const documentScenario = registeredDocumentSequence('volcano-home', file, `original Volcano reference at ${width}px`, '/');
+    expect(documentScenario).toBe(true);
+    expect(sequenceApplicable({...input,documentScenario})).toBe(false);
+    expect(() => sequenceApplicable({...input,documentScenario,layout:'bottom',targetCount:1})).toThrow('document fixture changed');
+    expect(() => sequenceApplicable({...input,documentScenario,approvedTarget:'content-scrollport'})).toThrow('document fixture changed');
+  }
+  for (const args of [
+    ['named-route',file,'original Volcano reference at 390px','/'],
+    ['volcano-home','/other.spec.ts','original Volcano reference at 390px','/'],
+    ['volcano-home',file,'some other test','/'],
+    ['volcano-home',file,'original Volcano reference at 390px','/about'],
+  ]) expect(registeredDocumentSequence(...args as [string,string,string,string])).toBe(false);
+  expect(() => sequenceApplicable(input)).toThrow('required nested');
+  const home = readFileSync(resolve('src/pages/Home.js'), 'utf8');
+  const config = readFileSync(resolve('playwright.volcano.config.mjs'), 'utf8');
+  const fixture = readFileSync(resolve('e2e/live/approved-reference.ts'), 'utf8');
+  expect(home).toContain("import.meta.env.VITE_VOLCANO110_PREVIEW === 'true' && siteManifest.siteId === 'base2-obsidian'");
+  expect(config).toContain("VITE_VOLCANO110_PREVIEW: process.env.BASE2_LAYOUT_BASELINE ? 'false' : 'true'");
+  expect(fixture).toContain("captureScrollportExtent(page, info, 'volcano-home', 0)");
+  for (const state of ['home','left','right','palette']) expect(fixture).toContain('`volcano-${width}-'+state+'.png`');
+});
+
+
+test('original home rejects unmarked Volcano roots and unfiltered nested ports', () => {
+  const input = {comparison:true,documentScenario:true,compact:true,layout:null,targetCount:0,dialogs:0,dialogTarget:false,targetIsDialog:false,approvedTarget:null};
+  // A missing mode attribute must not make a present root look like document mode.
+  for (const [volcanoRootCount,nestedScrollportCount] of [[1,0],[1,1],[0,1],[2,0]]) {
+    expect(() => sequenceApplicable({...input,volcanoRootCount,nestedScrollportCount})).toThrow('document fixture changed');
+  }
+  expect(() => sequenceApplicable(input)).toThrow('document fixture changed');
+  expect(sequenceApplicable({...input,volcanoRootCount:0,nestedScrollportCount:0})).toBe(false);
+  const producer = readFileSync(resolve('e2e/continuous-scroll.ts'),'utf8');
+  expect(producer).toContain("volcanoRootCount: document.querySelectorAll('.volcano-layout').length");
+  expect(producer).toContain("nestedScrollportCount: document.querySelectorAll('.volcano-content-scrollport').length");
+});

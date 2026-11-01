@@ -1185,3 +1185,35 @@ failed the unchanged focus-ring separation assertion; no baseline was accepted.
       Operations landscape run 41323158842 and six workspace mobile/tablet sweeps
       from run 41323136993 are not eligible as unobscured reference evidence:
       the focused Skip overlay hides content despite their geometric interval union.
+
+## Reference sequence renewal source preparation (2026-11-01)
+
+Source checkpoint 3d065cfc0d6a9facbb4f1bb4dc188ae6b5be4db4, tree
+f56bfbc159929e11a7cbfcc3c397ef9172732ea2: standard native run 41327081761
+completed 425 passed / 19 failed; optional media 41327121096 completed 12 passed /
+12 failed / 12 declared skips, and operations 41327110311 completed 1 passed /
+21 failed / 20 declared skips. Browser failures remain comparisons. The compact
+Back/Forward 100/180, zoom Ascend, Firefox Name focus and all 28 dock focus
+captures passed their native checks. Independent review specifically inspected
+17 landscape operations neutral frames, 41 workspace neutral frames plus six
+original focus contexts, and all 28 dock controls. These facts establish the
+scoped repairs, not release or reference acceptance. Security remains failing.
+
+- [ ] T81 Preserve desktop full-page comparisons. Add nested viewport overview
+      and complete neutral segment comparisons, tied to exact state/geometry,
+      dependency/configuration identities, reviewed source ancestry and an
+      explicit review record. Missing/changed sets remain fatal and read-only.
+- [ ] T82 Retain actual/expected/diff only when those roles exist, with independent
+      receipt validation. Bound collection across all configured states; preserve
+      full artifacts and native failures. Add exact journey comparison collection
+      and privacy-safe producer exclusion receipts. Test tamper and error precedence.
+- [ ] T83 Independently review final source, then obtain genuine native captures
+      before any image approval. No old full-page reference may be replaced by
+      merely the first nested viewport. Two original journey actuals remain
+      unavailable due to the 32 MiB transfer cap; no substitute image is accepted.
+
+Source-v2 review corrections for T81–T83: preserve picker failure while continuing
+ready checks; remove the operations legacy header override before genuine sequences;
+require explicit target applicability; separate named-route reference namespaces;
+and retrieve validated partial transport without converting packaging failure to
+success. Native validation and every new image approval remain pending.

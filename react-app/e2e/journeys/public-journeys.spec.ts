@@ -1,3 +1,4 @@
+import { captureScrollportExtent } from '../scroll-target';
 import { safeFocusSnapshot } from '../shell-diagnostics';
 import { setSessionFixture, fulfillSessionFixture } from '../session-fixture';
 import { expect, test, type Page, type TestInfo } from '@playwright/test';
@@ -40,12 +41,14 @@ const capture = async (page: Page, info: TestInfo, name: string) => {
     ((name === 'contact-received' && width === 390) ||
       (name === 'search-paginated' && width === 1440))
   ) {
-    await expect(page).toHaveScreenshot(`${name}-${width}.png`, {
+    await expect.soft(page).toHaveScreenshot(`${name}-${width}.png`, {
       fullPage: true,
       animations: 'disabled',
       maxDiffPixelRatio: 0.001,
     });
   }
+  if (name === 'contact-received' && width === 390)
+    await captureScrollportExtent(page, info, 'journey-contact-received', 0.001);
   await page.screenshot({
     path: info.outputPath(`${name}.png`),
     fullPage: true,

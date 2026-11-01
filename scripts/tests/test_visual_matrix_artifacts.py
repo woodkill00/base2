@@ -70,8 +70,10 @@ def test_symlinks_rejected_without_copying_target(tmp_path, kind):
             module.stage(alias, output)
         return
     result = module.stage(source, output)
-    assert any("symlink" in e for e in result["errors"])
-    assert not list(output.glob("chromium-*.zip"))
+    assert "producer validation failed" in result["errors"]
+    assert not list(output.glob("chromium-light*.zip"))
+    if kind == "file":
+        assert not list(output.glob("chromium-desktop*.zip"))
 
 
 def test_traversal_and_untrusted_project_names(tmp_path):
@@ -471,7 +473,8 @@ def test_partition_failure_keeps_originals_and_marks_incomplete(tmp_path, monkey
     monkeypatch.setattr(module, 'archive', fail_second)
     result = module.stage(source, output)
     assert result['projects']['chromium-desktop']['status'] == 'incomplete'
-    assert any('second-part failure' in error for error in result['errors'])
+    assert result['errors'] == ['chromium-desktop: 1 producer/part failures']
+    assert result['projects']['chromium-desktop']['parts']  # First validated part remains retrievable.
     assert all(p.read_bytes() == raw for p, raw in original.items())
     with zipfile.ZipFile(output / 'metadata.zip') as z:
         assert json.loads(z.read('inventory.json'))['errors'] == result['errors']
@@ -507,3 +510,83 @@ def test_duplicate_archive_destination_never_overwrites_first_bytes(tmp_path):
     with pytest.raises(ValueError, match='duplicate'):
         module.archive(path, {'other.png': PNG})
     assert path.read_bytes() == original
+
+
+def test_partial_matrix_upload_preserves_valid_parts_and_error_receipt(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    source, case, _ = fixture(tmp_path)
+    output = source/'bounded'
+    monkeypatch.setenv('VISUAL_OUTPUT', str(source))
+    bad=source/'test-results'/'private-invalid-chromium-light'
+    bad.mkdir()
+    (bad/'private-sensitive.png').write_bytes(b'private contents')
+    result=module.stage(source, output)
+    assert result['errors'] and not result['complete']
+    assert result['projects']['chromium-desktop']['parts']
+    module.upload_action(output, Path('.artifacts/visual-upload-action'), result)
+    with zipfile.ZipFile(output/'metadata.zip') as archive:
+        raw=archive.read('inventory.json')
+        assert b'private-sensitive' not in raw and b'private contents' not in raw
+        assert json.loads(raw)==result
+
+
+@pytest.mark.parametrize('invalid', ['signature', 'receipt'])
+def test_same_project_invalid_producer_does_not_discard_valid_sibling(tmp_path, monkeypatch, invalid):
+    monkeypatch.chdir(tmp_path)
+    source, case, _ = fixture(tmp_path)
+    output=source/'bounded'
+    monkeypatch.setenv('VISUAL_OUTPUT', str(source))
+    other=source/'test-results'/'operations-private-rejected-chromium-desktop'
+    other.mkdir()
+    (other/'current-operations.png').write_bytes(b'invalid private content' if invalid == 'signature' else PNG)
+    if invalid == 'receipt':
+        (other/'continuous-current.json').write_text('{"private":"invalid native receipt"}')
+    result=module.stage(source, output)
+    entry=result['projects']['chromium-desktop']
+    assert result['errors'] and not result['complete'] and entry['status']=='incomplete'
+    assert entry['parts'] and len(entry['captures']) == 2
+    module.upload_action(output, Path('.artifacts/visual-upload-action'), result)
+    members=[]
+    for part in entry['parts']:
+        with zipfile.ZipFile(output/part['path']) as archive:
+            members.extend(archive.namelist())
+            assert all(archive.read(n)==PNG for n in archive.namelist())
+    assert all(n.startswith(case.name+'/') for n in members)
+    assert 'private-rejected' not in json.dumps(result)
+
+
+def test_inventory_overflow_rejects_producer_but_uploads_safe_parts(tmp_path, monkeypatch):
+    source, case, output = fixture(tmp_path)
+    extra = case.parent / ('z' * 120 + '-chromium-desktop')
+    extra.mkdir()
+    for i in range(100):
+        (extra / f'current-frame-{i:03}.png').write_bytes(PNG)
+    originals = {p: p.read_bytes() for p in source.rglob('*') if p.is_file()}
+    monkeypatch.setattr(module, 'METADATA_BUDGET', 15000)
+    result = module.stage(source, output)
+    assert result['errors'] and not result['complete']
+    entry = result['projects']['chromium-desktop']
+    assert len(entry['captures']) == 2 and entry['rejectedProducerCount'] == 1
+    with zipfile.ZipFile(output/'metadata.zip') as archive:
+        assert len(archive.read('inventory.json')) <= 15000
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv('VISUAL_OUTPUT', str(output.parent))
+    module.upload_action(output, Path('.artifacts/visual-upload-action'), result)
+    assert all(p.read_bytes() == raw for p, raw in originals.items())
+    assert 'z'*120 not in json.dumps(result)
+
+
+def test_supported_absence_is_fatal_with_valid_parts_still_ready(tmp_path, monkeypatch):
+    source, _, output = fixture(tmp_path)
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv('VISUAL_OUTPUT', str(output.parent))
+    github_output=tmp_path/'github-output'
+    monkeypatch.setenv('GITHUB_OUTPUT',str(github_output))
+    monkeypatch.setattr('sys.argv',['collector','--source',str(source),'--output',str(output),'--upload-action'])
+    assert module.main() == 2
+    assert 'upload_ready=true' in github_output.read_text()
+    with zipfile.ZipFile(output/'metadata.zip') as archive:
+        data=json.loads(archive.read('inventory.json'))
+    assert data['errors']==[] and data['complete'] is False
+    assert data['projects']['chromium-light']['status']=='incomplete'
+    assert data['projects']['chromium-desktop']['parts']

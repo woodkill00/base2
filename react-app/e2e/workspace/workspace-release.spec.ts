@@ -297,9 +297,8 @@ test('workspace release corpus is accessible, responsive, and visually stable', 
     forcedColors: string;
   }> = [];
   // Only stale HC image references are batched; functional/state/axe assertions remain hard.
-  const visualExpect = expect.configure({
-    soft: testInfo.project.name === 'chromium-high-contrast',
-  });
+  // Preserve each mismatch while independently ready views still execute.
+  const visualExpect = expect.configure({ soft: true });
   const compareAndRetain = async (view: string, reference: string) => {
     await assertForcedColorState(page, testInfo);
     if (testInfo.project.name === 'chromium-high-contrast') {
@@ -331,6 +330,7 @@ test('workspace release corpus is accessible, responsive, and visually stable', 
       animations: 'disabled',
       caret: 'hide',
     });
+    await captureScrollportExtent(page, testInfo, `workspace-${view}`, 0.01);
     const forcedColors = await assertForcedColorState(page, testInfo);
     captures.push({
       view,

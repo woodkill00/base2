@@ -11,6 +11,9 @@ vi.mock('node:child_process', () => {
 const original = vi.hoisted(() => new Error('original continuous validation'));
 vi.mock('@playwright/test', () => ({
   expect: (actual: unknown) => ({
+    toBe: (wanted: unknown) => {
+      if (actual !== wanted) throw original;
+    },
     toEqual: (wanted: unknown) => {
       if (JSON.stringify(actual) !== JSON.stringify(wanted)) throw original;
     },
@@ -35,6 +38,8 @@ function fixture({
   directories.push(directory);
   const events: string[] = [];
   const node = {
+    tagName: 'DIV',
+    getAttribute: (name: string) => name === 'role' ? 'dialog' : null,
     scrollLeft: 0,
     scrollTop: 20,
     scrollHeight: extent,
@@ -77,7 +82,8 @@ function fixture({
       },
       dispose: async () => {},
     }),
-    evaluate: async () => {},
+    getByRole: () => ({ count: async () => 1 }),
+    evaluate: async () => ({ compact: true, layout: 'bottom' }),
     screenshot: async ({ path }: { path: string }) => {
       events.push('capture');
       const bytes = Buffer.from('unit screenshot, not native evidence');
@@ -89,6 +95,7 @@ function fixture({
     title: 'synthetic unit case',
     project: { name: 'chromium-compact' },
     outputPath: (name: string) => join(directory, name),
+    snapshotPath: (name: string) => join(directory, 'approved-' + name),
   };
   return { directory, events, page, info, target, node, focusedNode };
 }

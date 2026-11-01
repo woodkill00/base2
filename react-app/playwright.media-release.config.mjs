@@ -1,3 +1,5 @@
+import { requireReadOnlySnapshots } from './e2e/reference-readonly.mjs';
+requireReadOnlySnapshots();
 import { defineConfig, devices } from '@playwright/test';
 
 const chromium = (name, viewport, extra = {}) => ({
@@ -6,6 +8,8 @@ const chromium = (name, viewport, extra = {}) => ({
 });
 
 export default defineConfig({
+  updateSnapshots: 'none',
+  globalSetup: './e2e/reference-readonly.mjs',
   testDir: './e2e/media',
   testMatch: 'media-release.spec.ts',
   fullyParallel: false,

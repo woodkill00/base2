@@ -113,7 +113,7 @@ def test_shell_roundtrip_binds_exact_frames_and_original_receipt(receipt, tmp_pa
                       runId='1', attempt='1', outcomes={s: 'failure' for s in sources})
     output = tmp_path / 'bounded'
     if extra:
-        with pytest.raises(ValueError, match='unbound'):
+        with pytest.raises(shell.PackagingIncomplete, match='incomplete'):
             shell.stage(sources, output, provenance)
     else:
         shell.stage(sources, output, provenance)

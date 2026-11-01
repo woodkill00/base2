@@ -2,7 +2,9 @@
 from __future__ import annotations
 
 import argparse
+import copy
 import hashlib
+import io
 import json
 import math
 import os
@@ -11,7 +13,7 @@ import zipfile
 from pathlib import Path
 from typing import Any
 
-from scripts.python import continuous_evidence
+from scripts.python import continuous_evidence, sequence_evidence
 
 PNG_BUDGET = 28 * 1024 * 1024
 ZIP_BUDGET = 30 * 1024 * 1024
@@ -140,7 +142,7 @@ def archive(path: Path, members: dict[str, bytes]) -> None:
     temporary.rename(path)
 
 
-def project_archives(output: Path, project: str, members: dict[str, Path], entry: dict) -> None:
+def project_archives(output: Path, project: str, members: dict[str, Path], entry: dict, *, plan_only: bool = False) -> None:
     """Split whole validated members deterministically; never concatenate for upload."""
     groups: list[list[str]] = []
     current: list[str] = []
@@ -156,9 +158,17 @@ def project_archives(output: Path, project: str, members: dict[str, Path], entry
         size += member_size
     if current:
         groups.append(current)
+    if len(groups) > 480:
+        raise ValueError("project artifact count bound")
     identities = {item["path"]: item for item in entry["captures"] + entry["diagnostics"]}
     for index, names in enumerate(groups, 1):
         filename = f"{project}.zip" if len(groups) == 1 else f"{project}-part-{index:03d}.zip"
+        if plan_only:
+            entry["parts"].append({"path": filename, "bytes": ZIP_BUDGET,
+                                   "sha256": "0" * 64, "members": names})
+            for name in names:
+                identities[name]["archive"] = filename
+            continue
         payload = {}
         for name in names:
             raw = read(members[name], PNG_BUDGET)
@@ -181,8 +191,14 @@ def upload_action(output: Path, destination: Path, inventory: dict) -> None:
     safe(destination)
     if output != Path(os.environ.get("VISUAL_OUTPUT", "")) / "bounded":
         raise ValueError("upload output must match workflow evidence directory")
-    if destination.exists() or inventory["errors"]:
-        raise ValueError("upload action requires fresh destination and complete packaging")
+    if destination.exists():
+        raise ValueError("upload action requires fresh destination")
+    # The uploaded error/completeness receipt must be exactly the plan being used.
+    safe(output / 'metadata.zip')
+    with zipfile.ZipFile(io.BytesIO(read(output / 'metadata.zip', ZIP_BUDGET))) as metadata:
+        item = metadata.getinfo('inventory.json')
+        if item.file_size > METADATA_BUDGET or json.loads(metadata.read(item)) != inventory:
+            raise ValueError("upload inventory differs from retained completeness receipt")
     parts = [part for entry in inventory["projects"].values() for part in entry["parts"]]
     if not parts or len(parts) > 480:
         raise ValueError("upload part count outside bounded action budget")
@@ -211,6 +227,77 @@ def upload_action(output: Path, destination: Path, inventory: dict) -> None:
     (destination / "action.yml").write_text(json.dumps({
         "name": "Upload bounded visual parts", "description": "Exact diagnostic ZIP parts only",
         "runs": {"using": "composite", "steps": steps}}, indent=2) + "\n")
+
+
+def validate_producer(paths, sweeps, comparisons, diagnostics, before, project, supported, results):
+    """Validate a complete producer before making any of its bytes uploadable."""
+    candidate = {"captures": [], "diagnostics": [],
+                 "missingDiagnostics": [OBSERVATION_NAME] if before["matrix"] == "media" else []}
+    continuous_count = sum(bool(continuous_evidence.FRAME.fullmatch(p.name)) for p in paths)
+    sequence_count = sum(bool(sequence_evidence.IMAGE.fullmatch(p.name)) for p in paths)
+    if (continuous_count > 1040 or sequence_count > 16*65*3 or len(sweeps) > 16
+            or len(comparisons) > 16 or len(paths) - continuous_count - sequence_count > 256):
+        raise ValueError("project capture count exceeded")
+    members = {}
+    for path in paths:
+        raw = read(path, PNG_BUDGET)
+        if not raw.startswith(b"\x89PNG\r\n\x1a\n"):
+            raise ValueError("invalid PNG signature")
+        name = path.relative_to(results).as_posix()
+        members[name] = path
+        candidate["captures"].append({
+            "path": name, "bytes": len(raw), "sha256": hashlib.sha256(raw).hexdigest()
+        })
+    bound_frames = set()
+    for receipt in sweeps:
+        raw = read(receipt, continuous_evidence.BUDGET)
+        data = continuous_evidence.validate(raw, receipt, before['sourceCommit'], before['sourceTree'], project, str(before['runId']), str(before['attempt']))
+        if data['test'] not in {t['title'] for t in before['expectedTests'] if t['project'] == project}:
+            raise ValueError('continuous receipt outside declared test')
+        for row in continuous_evidence.capture_rows(data):
+            name = (receipt.parent / row['file']).relative_to(results).as_posix()
+            if name not in members or name in bound_frames:
+                raise ValueError('missing or duplicate continuous frame binding')
+            bound_frames.add(name)
+        name = receipt.relative_to(results).as_posix()
+        members[name] = receipt
+        candidate['diagnostics'].append({'path': name, 'bytes': len(raw), 'sha256': hashlib.sha256(raw).hexdigest(),
+                                     'complete': data['complete'], 'kind': 'continuous-viewports'})
+    if {name for name in members if continuous_evidence.FRAME.fullmatch(Path(name).name)} != bound_frames:
+        raise ValueError('unbound continuous frame')
+    bound_comparisons = set()
+    for receipt in comparisons:
+        raw = read(receipt, sequence_evidence.BUDGET)
+        data = sequence_evidence.validate(raw, receipt, before['sourceCommit'], before['sourceTree'], project, str(before['runId']), str(before['attempt']))
+        if (not sequence_evidence.registered(before['matrix'],receipt.parent.name,data['binding']['state'])
+            or data['binding']['test'] not in {t['title'] for t in supported}):
+            raise ValueError('unregistered sequence comparison')
+        for row in sequence_evidence.images(data):
+            name = (receipt.parent/row['file']).relative_to(results).as_posix()
+            if name not in members or name in bound_comparisons:
+                raise ValueError('missing or duplicate comparison binding')
+            bound_comparisons.add(name)
+        members[receipt.relative_to(results).as_posix()] = receipt
+        candidate['diagnostics'].append({'path':receipt.relative_to(results).as_posix(),'bytes':len(raw),
+            'sha256':hashlib.sha256(raw).hexdigest(),'kind':'sequence-comparison','complete':data['complete']})
+    if {name for name in members if sequence_evidence.IMAGE.fullmatch(Path(name).name)} != bound_comparisons:
+        raise ValueError('unbound sequence comparison image')
+    if len(diagnostics) > 1:
+        raise ValueError("duplicate project observation file")
+    for path in diagnostics:
+        raw = read(path, OBSERVATION_BUDGET)
+        data = observations(raw, project)
+        for row in data["viewportObservations"]:
+            capture = path.parent / f"current-media-library-viewport-{row['cardIndex']}.png"
+            if capture.relative_to(results).as_posix() not in members:
+                raise ValueError("observation missing corresponding viewport PNG")
+        name = path.relative_to(results).as_posix()
+        members[name] = path
+        candidate["diagnostics"].append({
+            "path": name, "bytes": len(raw), "sha256": hashlib.sha256(raw).hexdigest()
+        })
+        candidate["missingDiagnostics"] = []
+    return members, candidate
 
 
 def stage(source: Path, output: Path) -> dict:
@@ -257,109 +344,124 @@ def stage(source: Path, output: Path) -> dict:
     grouped: dict[str, list[Path]] = {p: [] for p in projects}
     diagnostics: dict[str, list[Path]] = {p: [] for p in projects}
     sweeps: dict[str, list[Path]] = {p: [] for p in projects}
+    comparisons: dict[str, list[Path]] = {p: [] for p in projects}
     try:
         safe(results)
         if results.exists():
             for case in sorted(results.iterdir()):
-                safe(case)
-                if not case.is_dir():
-                    continue
-                matches = [p for p in projects if case.name.endswith("-" + p)]
-                if len(matches) != 1:
-                    # Unknown directories with PNGs are visible, never guessed.
-                    if any(case.glob("*.png")):
-                        raise ValueError("PNG directory has no unique declared project")
-                    continue
-                for path in sorted(case.iterdir()):
-                    safe(path)
-                    if path.suffix == ".png":
-                        if not PNG_NAME.fullmatch(path.name):
-                            raise ValueError("unrecognized PNG capture name")
-                        grouped[matches[0]].append(path)
-                    elif continuous_evidence.NAME.fullmatch(path.name):
-                        sweeps[matches[0]].append(path)
-                    elif path.name == OBSERVATION_NAME:
-                        project = matches[0]
-                        declared = any(t["project"] == project and t.get("title") == MEDIA_TEST
-                                       and t.get("expectedStatus") == "passed"
-                                       for t in before["expectedTests"])
-                        if before["matrix"] != "media" or case.name != MEDIA_CASE + project or not declared:
-                            raise ValueError("observation outside declared media library case")
-                        diagnostics[project].append(path)
+                try:
+                    safe(case)
+                    if not case.is_dir():
+                        continue
+                    matches = [p for p in projects if case.name.endswith("-" + p)]
+                    if len(matches) != 1:
+                        # Unknown directories with PNGs are visible, never guessed.
+                        if any(case.glob("*.png")):
+                            raise ValueError("PNG directory has no unique declared project")
+                        continue
+                    for path in sorted(case.iterdir()):
+                        safe(path)
+                        if path.suffix == ".png":
+                            if not PNG_NAME.fullmatch(path.name):
+                                raise ValueError("unrecognized PNG capture name")
+                            grouped[matches[0]].append(path)
+                        elif sequence_evidence.NAME.fullmatch(path.name):
+                            comparisons[matches[0]].append(path)
+                        elif continuous_evidence.NAME.fullmatch(path.name):
+                            sweeps[matches[0]].append(path)
+                        elif path.name == OBSERVATION_NAME:
+                            project = matches[0]
+                            declared = any(t["project"] == project and t.get("title") == MEDIA_TEST
+                                           and t.get("expectedStatus") == "passed"
+                                           for t in before["expectedTests"])
+                            if before["matrix"] != "media" or case.name != MEDIA_CASE + project or not declared:
+                                raise ValueError("observation outside declared media library case")
+                            diagnostics[project].append(path)
+                except (ValueError, OSError):
+                    # Never expose rejected names or content. Reject this producer
+                    # atomically while preserving independently validated cases.
+                    inventory["errors"].append("producer validation failed")
+                    for collection in (grouped, diagnostics, sweeps, comparisons):
+                        for project in projects:
+                            collection[project] = [p for p in collection[project] if p.parent != case]
     except ValueError as exc:
         inventory["errors"].append(str(exc))
         grouped = {p: [] for p in projects}
         diagnostics = {p: [] for p in projects}
-    for project, paths in grouped.items():
+    for project in projects:
         supported = [t for t in before["expectedTests"]
                      if t["project"] == project and t.get("expectedStatus") == "passed"]
         entry: dict[str, Any] = {
             "status": "incomplete", "captures": [], "expectedSupportedTests": supported,
             "currentCaptureCount": 0, "minimumCaptureShortfall": len(supported),
-            "captureCoverage": "incomplete",
-            "diagnostics": [], "parts": [],
+            "captureCoverage": "incomplete", "diagnostics": [], "parts": [],
             "missingDiagnostics": [OBSERVATION_NAME] if before["matrix"] == "media" else [],
         }
         inventory["projects"][project] = entry
+    payload_bytes = 0
+    for project, paths in grouped.items():
+        entry = inventory["projects"][project]
+        supported = entry["expectedSupportedTests"]
+        members: dict[str, Path] = {}
+        project_errors = []
+        cases = sorted({p.parent for p in paths + sweeps[project] + comparisons[project] + diagnostics[project]})
+        for case in cases:
+            try:
+                producer, candidate = validate_producer(
+                    [p for p in paths if p.parent == case],
+                    [p for p in sweeps[project] if p.parent == case],
+                    [p for p in comparisons[project] if p.parent == case],
+                    [p for p in diagnostics[project] if p.parent == case],
+                    before, project, supported, results)
+                combined = {**members, **producer}
+                continuous_count = sum(bool(continuous_evidence.FRAME.fullmatch(Path(n).name)) for n in combined)
+                sequence_count = sum(bool(sequence_evidence.IMAGE.fullmatch(Path(n).name)) for n in combined)
+                png_count = sum(Path(n).suffix == '.png' for n in combined)
+                continuous_receipts = sum(bool(continuous_evidence.NAME.fullmatch(Path(n).name)) for n in combined)
+                comparison_receipts = sum(bool(sequence_evidence.NAME.fullmatch(Path(n).name)) for n in combined)
+                if (continuous_count > 1040 or sequence_count > 16*65*3 or continuous_receipts > 16
+                        or comparison_receipts > 16 or png_count-continuous_count-sequence_count > 256):
+                    raise ValueError("project capture count exceeded; producer rejected")
+                producer_bytes = sum(row["bytes"] for row in candidate["captures"] + candidate["diagnostics"])
+                if payload_bytes + producer_bytes > 6*1024*1024*1024:
+                    raise ValueError("matrix payload budget exceeded; producer rejected")
+                # Preflight the complete final inventory, including duplicate member
+                # paths in part membership and archive bindings, before writing ZIPs.
+                planned = copy.deepcopy(inventory)
+                planned_entry = planned["projects"][project]
+                planned_entry["captures"].extend(candidate["captures"])
+                planned_entry["diagnostics"].extend(candidate["diagnostics"])
+                planned_entry["parts"] = []
+                project_archives(output, project, combined, planned_entry, plan_only=True)
+                if (len(json.dumps(planned, indent=2).encode()) + 8192 > METADATA_BUDGET
+                        or sum(len(e["parts"]) for e in planned["projects"].values()) > 480):
+                    raise ValueError("inventory budget exceeded; producer rejected")
+                payload_bytes += producer_bytes
+                members.update(producer)
+                entry["captures"].extend(candidate["captures"])
+                entry["diagnostics"].extend(candidate["diagnostics"])
+                if not candidate["missingDiagnostics"]:
+                    entry["missingDiagnostics"] = []
+            except (ValueError, OSError):
+                # Do not disclose rejected producer names or arbitrary content.
+                project_errors.append("producer validation or budget failed")
         try:
-            continuous_count = sum(bool(continuous_evidence.FRAME.fullmatch(p.name)) for p in paths)
-            if continuous_count > 1040 or len(sweeps[project]) > 16 or len(paths) - continuous_count > 256:
-                raise ValueError("project capture count exceeded")
-            members = {}
-            for path in paths:
-                raw = read(path, PNG_BUDGET)
-                if not raw.startswith(b"\x89PNG\r\n\x1a\n"):
-                    raise ValueError("invalid PNG signature")
-                name = path.relative_to(results).as_posix()
-                members[name] = path
-                entry["captures"].append({
-                    "path": name, "bytes": len(raw), "sha256": hashlib.sha256(raw).hexdigest()
-                })
-            bound_frames = set()
-            for receipt in sweeps[project]:
-                raw = read(receipt, continuous_evidence.BUDGET)
-                data = continuous_evidence.validate(raw, receipt, before['sourceCommit'], before['sourceTree'], project, str(before['runId']), str(before['attempt']))
-                if data['test'] not in {t['title'] for t in before['expectedTests'] if t['project'] == project}:
-                    raise ValueError('continuous receipt outside declared test')
-                for row in continuous_evidence.capture_rows(data):
-                    name = (receipt.parent / row['file']).relative_to(results).as_posix()
-                    if name not in members or name in bound_frames:
-                        raise ValueError('missing or duplicate continuous frame binding')
-                    bound_frames.add(name)
-                name = receipt.relative_to(results).as_posix()
-                members[name] = receipt
-                entry['diagnostics'].append({'path': name, 'bytes': len(raw), 'sha256': hashlib.sha256(raw).hexdigest(),
-                                             'complete': data['complete'], 'kind': 'continuous-viewports'})
-            if {name for name in members if continuous_evidence.FRAME.fullmatch(Path(name).name)} != bound_frames:
-                raise ValueError('unbound continuous frame')
-            if len(diagnostics[project]) > 1:
-                raise ValueError("duplicate project observation file")
-            for path in diagnostics[project]:
-                raw = read(path, OBSERVATION_BUDGET)
-                data = observations(raw, project)
-                for row in data["viewportObservations"]:
-                    capture = path.parent / f"current-media-library-viewport-{row['cardIndex']}.png"
-                    if capture.relative_to(results).as_posix() not in members:
-                        raise ValueError("observation missing corresponding viewport PNG")
-                name = path.relative_to(results).as_posix()
-                members[name] = path
-                entry["diagnostics"].append({
-                    "path": name, "bytes": len(raw), "sha256": hashlib.sha256(raw).hexdigest()
-                })
-                entry["missingDiagnostics"] = []
             if members:
                 project_archives(output, project, members, entry)
-                entry["status"] = "packaged"
+                entry["status"] = "packaged" if not project_errors else "incomplete"
                 current = sum(Path(name).name.startswith("current-") for name in members)
                 entry["currentCaptureCount"] = current
                 entry["minimumCaptureShortfall"] = max(0, len(supported) - current)
-                # Counts cannot prove per-test association or full visual coverage.
-                if current and not entry["minimumCaptureShortfall"]:
+                if current and not entry["minimumCaptureShortfall"] and not project_errors:
                     entry["captureCoverage"] = "requires-review"
-        except ValueError as exc:
+        except ValueError:
+            project_errors.append("bounded part packaging failed")
             entry["status"] = "incomplete"
-            entry["reason"] = str(exc)
-            inventory["errors"].append(f"{project}: {exc}")
+        if project_errors:
+            entry["reason"] = "producer or part validation incomplete"
+            entry["rejectedProducerCount"] = len(project_errors)
+            inventory["errors"].append(f"{project}: {len(project_errors)} producer/part failures")
+    inventory["complete"] = not inventory["errors"] and all(not e["expectedSupportedTests"] or e["status"] == "packaged" for e in inventory["projects"].values())
     raw_inventory = (json.dumps(inventory, indent=2) + "\n").encode()
     if len(raw_inventory) > METADATA_BUDGET:
         raise ValueError("inventory exceeds budget")
@@ -375,13 +477,13 @@ def main() -> int:
     parser.add_argument("--upload-action", action="store_true")
     args = parser.parse_args()
     result = stage(args.source, args.output)
-    if args.upload_action and not result["errors"]:
+    if args.upload_action and any(entry["parts"] for entry in result["projects"].values()):
         upload_action(args.output, Path('.artifacts/visual-upload-action'), result)
         with Path(os.environ["GITHUB_OUTPUT"]).open("a") as stream:
             stream.write("upload_ready=true\n")
     print(json.dumps({"projects": len(result["projects"]), "errors": result["errors"],
                       "acceptanceGranted": False}))
-    return 2 if result["errors"] else 0
+    return 2 if not result["complete"] else 0
 
 
 if __name__ == "__main__":

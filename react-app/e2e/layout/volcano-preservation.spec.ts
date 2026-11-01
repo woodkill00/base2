@@ -1,3 +1,4 @@
+import { namedRouteSequenceState } from '../sequence-reference';
 import {
   captureScrollportExtent,
   readFocusPaint,
@@ -220,7 +221,7 @@ for (const width of [390, 1440]) {
         animations: 'disabled',
       });
       // Retain this named route before the subsequent Search navigation.
-      await captureScrollportExtent(page, info);
+      await captureScrollportExtent(page, info, namedRouteSequenceState(path, info.title), 0);
       await page.keyboard.press('Control+k');
       await expect(page.getByRole('menuitem', { name: 'Administration', exact: true })).toHaveCount(
         0
@@ -233,8 +234,8 @@ for (const width of [390, 1440]) {
 }
 
 for (const width of [390, 1440]) {
-  test(`original Volcano reference at ${width}px`, async ({ page }) => {
-    await assertApprovedReference(page, 'http://127.0.0.1:4192', width);
+  test(`original Volcano reference at ${width}px`, async ({ page }, info) => {
+    await assertApprovedReference(page, 'http://127.0.0.1:4192', width, info);
   });
 }
 

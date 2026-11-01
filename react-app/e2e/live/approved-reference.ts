@@ -1,8 +1,10 @@
-import { expect, type Page } from '@playwright/test';
+import { captureScrollportExtent } from '../scroll-target';
+import { expect, type Page, type TestInfo } from '@playwright/test';
 
 // Same deterministic state as the approved local references. Mocked API responses
 // test deployed design assets, NOT backend health.
-export async function assertApprovedReference(page: Page, origin: string, width: number) {
+export async function assertApprovedReference(page: Page, origin: string, width: number, info?: TestInfo) {
+  const visualExpect = info ? expect.soft : expect;
   await page.setViewportSize({ width, height: 900 });
   await page.route('**/*', (route) => {
     const url = new URL(route.request().url());
@@ -25,19 +27,20 @@ export async function assertApprovedReference(page: Page, origin: string, width:
   await expect(page.locator('.unified-layout')).toHaveCount(0);
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
   await expect(page.getByTestId('manifest-home-hero')).toHaveCSS('opacity', '1');
-  await expect(page).toHaveScreenshot(`volcano-${width}-home.png`, { animations: 'disabled' });
+  await visualExpect(page).toHaveScreenshot(`volcano-${width}-home.png`, { animations: 'disabled' });
+  if (info) await captureScrollportExtent(page, info, 'volcano-home', 0);
   await page.getByTestId('base2-left-menu-toggle').click();
   await expect(page.getByTestId('base2-left-command-menu')).toHaveAttribute('aria-hidden', 'false');
-  await expect(page).toHaveScreenshot(`volcano-${width}-left.png`, { animations: 'disabled' });
+  await visualExpect(page).toHaveScreenshot(`volcano-${width}-left.png`, { animations: 'disabled' });
   await page.keyboard.press('Escape');
   await expect(page.getByTestId('base2-left-command-menu')).toHaveAttribute('aria-hidden', 'true');
   await page.getByTestId('base2-right-utility-toggle').click();
   await expect(page.getByTestId('base2-right-utility-icons')).toBeVisible();
-  await expect(page).toHaveScreenshot(`volcano-${width}-right.png`, { animations: 'disabled' });
+  await visualExpect(page).toHaveScreenshot(`volcano-${width}-right.png`, { animations: 'disabled' });
   await page.getByTestId('base2-right-utility-toggle').click();
   await page.keyboard.press('Control+k');
   await expect(page.getByRole('dialog', { name: 'Base2 command palette' })).toBeVisible();
-  await expect(page).toHaveScreenshot(`volcano-${width}-palette.png`, { animations: 'disabled' });
+  await visualExpect(page).toHaveScreenshot(`volcano-${width}-palette.png`, { animations: 'disabled' });
   await page.keyboard.press('Escape');
   await expect(page.getByRole('dialog')).toHaveCount(0);
 }

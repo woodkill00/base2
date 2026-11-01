@@ -54,7 +54,7 @@ def test_comparison_errors_are_soft_only_at_comparison_and_remain_native_failure
     assert 'await expect.soft(page).toHaveScreenshot(name, { ...options, maxDiffPixelRatio });' in native
     assert 'const previousErrors = testInfo.errors.length' in native
     assert 'if (testInfo.errors.length === previousErrors)' in native
-    assert "await captureScrollportExtent(page, testInfo, name.replace(/\\.png$/, ''))" in native
+    assert "await captureScrollportExtent(page, testInfo, name.replace(/\\.png$/, ''), maxDiffPixelRatio)" in native
     assert 'expect.soft' not in native.replace('expect.soft(page).toHaveScreenshot', '')
 
 
@@ -65,3 +65,10 @@ def test_workspace_record_split_uses_available_width_and_does_not_clip():
     assert '.workspace-records-grid > * { min-inline-size: 0; }' in source
     native = (ROOT / 'react-app/e2e/workspace/workspace-release.spec.ts').read_text()
     assert 'Record details must remain enclosed' in native
+
+
+def test_cancellation_legacy_fixture_and_real_sequence_remain_separate():
+    native = (ROOT / 'react-app/e2e/operations/operations-release.spec.ts').read_text()
+    assert "captureCurrentRun(page, testInfo, 'operations-center-cancel-confirmation.png', 0.02, true)" in native
+    assert "if (name !== 'operations-center-cancel-confirmation.png')" in native
+    assert "if (failed) throw firstFailure" in native

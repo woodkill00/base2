@@ -867,3 +867,102 @@ universal occlusion proof: remaining overlays and every intended content band st
 require independent pixel review, explicitly recorded as required rather than
 approved. Packaging binds all images and allows one extra context image per state
 within existing byte/part limits; no reference or threshold is changed.
+
+### Nested reference sequence source contract (pre-publication)
+
+The sequence manifest is a new contract; old references and native failures remain
+immutable. Desktop window-scrolled pages retain the existing full-page comparison.
+For nested content, the neutral first frame is the overview, followed by the entire
+ordered overlapping sequence. The matcher consumes the exact retained PNG buffers.
+No image is stitched, edited or synthesized. Existing ratios (including operations
+cancellation 0.02) and default threshold 0.2 remain unchanged. Snapshot update mode
+must be `none` in the five affected native configurations.
+
+An approved set requires a version 1 manifest and adjacent review record, exact
+ordered image hashes, current dependency/configuration/route-state bindings, and
+verified source commit/tree ancestry. The record binds the full schedule and image
+inventory hashes. This source change creates neither record nor expected image.
+Missing or invalid sets produce fatal soft comparison errors so independently ready
+later states can still execute. Hard readiness, interaction and coverage failures
+remain fatal. An absent expected image has no invented expected/diff role; matching
+images have no fabricated diff. Complete comparison transport means all scheduled
+comparisons were attempted, not that they matched or were visually accepted.
+
+Geometry derivation version 1 is shared in the producer and independently checked
+against the original schema 2 receipt by Python. The existing 1 CSS-pixel derivation
+rounding allowance is separate from approval: approved schedules use exact structural
+geometry equality, including subpixel values. Route query/fragment identity and
+fixture environment are hashed without publishing raw query values. Any schedule,
+route/state, dependency or environment change invalidates the complete set. Fixed
+synthetic fixtures, disabled animation and neutral focus reduce arbitrary churn;
+this does not certify unrelated overlays or unobserved states. Original focused
+context remains separate. Desktop full-page comparisons retain their original names.
+
+Budget preflight is deliberately fail-closed. Each state has at most 64 segments,
+28 MiB per PNG, 96 MiB aggregate including original frames/context plus actual,
+expected and diff copies, and a 256 KiB comparison receipt. Known original/actual/
+expected sizes are checked before matching; diff bytes are charged as produced.
+Comparison work has a 20-second ceiling; existing native test timeouts remain the
+outer limit and are not increased. Hitting a bound is incomplete evidence and a
+failure, never silent truncation or permission to reduce coverage.
+
+The configured comparison opportunities are 55 standard states (24 nested workspace
+views, 22 named mobile routes, three mobile contact cases, five HC media
+dialog states and one HC operations cancellation), 35 optional media states (five
+nested libraries, 24 detail lifecycle states, six pickers), and 23 optional operations
+states (four nested main states, five compact recovery states and 14 cancellation
+dialogs). These are opportunities, not executed/accepted counts: a failed hard
+prerequisite can prevent later states, and actual scroll targets determine applicability.
+At the 96 MiB state ceiling those are 5280 / 3360 / 2208 MiB, before unrelated legacy
+diagnostics. Collection preflights the entire produced inventory before splitting;
+the job payload cap is 6 GiB, at most 480 parts (leaving room below the 500-artifact
+job ceiling for original artifacts). Maximum state ceilings are not promised to fit
+simultaneously with every legacy diagnostic: saturation fails explicitly.
+
+Shell parts hold at most 28 MiB payload, 2048 members, 300-byte relative paths and
+512 KiB metadata; these bounds leave wrapper overhead below 32 MiB. Optional matrix
+ZIPs retain their explicit 30 MiB encoded limit. No arbitrary JSON/HTML/video/trace
+collection is added. The original full artifacts and original test exit status remain.
+Journey comparison collection is restricted to the two known contact/search names;
+known producer attachment exclusions disclose only bounded relative names, while
+unknown exclusions remain counts. The old 84 layout / one Volcano / 15 settings
+excluded PNGs cannot be identified retroactively from count-only receipts. New
+producer receipts resolve only safely recognized names and do not claim all exclusions
+are covered. Expected images remain subject to independent native pixel approval.
+
+The dependency binding includes rendering configurations (Vite/Tailwind/PostCSS),
+HTML, package manifests/lock, public assets including PNGs/fonts, fixture support
+and orchestration source; approved snapshot directories are excluded to avoid
+self-reference. Runtime identity includes actual browser version, platform/architecture,
+kernel, Node/runner image versions, and hashes of the installed font files reported
+by Fontconfig. A changed renderer/toolchain requires renewed inspection rather than
+silently reusing an old approval. Missing or unsafe font inventory fails closed;
+no font installation or system repair is performed by this collector.
+
+Read-only enforcement also checks Playwright's resolved configuration in a shared
+global setup, before any legacy comparison can execute; CLI aliases cannot bypass
+it. PNG allocation bounds are checked before decoding, including a complete chunk
+walk rejecting duplicate IHDR and interlaced streams. Native Playwright sequence
+captures are non-interlaced. These restrictions do not rewrite any image bytes.
+
+The source-v2 review corrections keep legacy picker mismatches fatal through
+Playwright's deferred error reporting, allowing independently ready sequence and
+reuse checks to run. Operations removes its temporary legacy header style before
+asserting authored sticky positioning and collecting sequences. Named-route sets
+use a stable route/test digest, so all 44 route/width identities have distinct
+reference namespaces. Registered compact states and existing approved targets
+fail on missing, ambiguous or wrong target kinds; only intentional document/off
+modes without an applicable approved set skip collection. Attempted failure states
+are captured before rethrowing their original error.
+
+Bounded transport validates each producer before aggregation. Invalid producers
+and capacity overflow leave explicit incomplete/error metadata while independently
+valid parts remain retrievable. Rejected producer names and contents are omitted;
+packaging still exits unsuccessfully. These partial parts cannot establish complete
+coverage or reference acceptance. The deferred diagnostic archive and its closed
+support-object registry are separately reviewed work, outside this source candidate.
+
+The original Volcano preview home is explicitly registered as a document-scrolling
+fixture at both declared widths; its existing home/drawer/palette comparisons remain
+unchanged. It is not a nested-sequence opportunity. Any unexpected nested target,
+dialog or approved nested set in that registered document fixture remains fatal.

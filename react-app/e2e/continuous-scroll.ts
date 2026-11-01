@@ -1,7 +1,17 @@
+import { sequenceApplicable, registeredDocumentSequence } from './sequence-applicability';
 import { expect, type Locator, type Page, type TestInfo } from '@playwright/test';
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { existsSync, writeFileSync } from 'node:fs';
+import { deriveGeometry } from './sequence-geometry';
+import {
+  compareSequence,
+  approvedSequenceTarget,
+  digest,
+  sequenceDependencies,
+  sequenceRuntime,
+  type SequenceInput,
+} from './sequence-reference';
 import { coverageErrors, type Segment } from './continuous-coverage';
 
 function writeReceipt(path: string, data: unknown) {
@@ -15,13 +25,53 @@ export async function captureContinuousScroll(
   page: Page,
   info: TestInfo,
   state: string,
-  dialog?: Locator
+  dialog?: Locator,
+  comparisonRatio?: number
 ) {
   if (!/^[a-z0-9-]{1,90}$/.test(state)) throw new Error('invalid continuous state');
   const target =
     dialog ||
     page.locator('.volcano-layout[data-movement-layout="bottom"] .volcano-content-scrollport');
-  if (!(await target.count())) return; // Only the explicitly applicable scroll target.
+  let applicable: boolean;
+  try {
+    const targetCount = await target.count();
+    const mode = await page.evaluate(() => ({
+      compact: matchMedia('(max-width: 64rem)').matches,
+      volcanoRootCount: document.querySelectorAll('.volcano-layout').length,
+      nestedScrollportCount: document.querySelectorAll('.volcano-content-scrollport').length,
+      layout:
+        document.querySelector('.volcano-layout')?.getAttribute('data-movement-layout') ?? null,
+    }));
+    applicable = sequenceApplicable({
+      comparison: comparisonRatio !== undefined,
+      documentScenario: registeredDocumentSequence(state, info.file, info.title, new URL(page.url()).pathname),
+      ...mode,
+      targetCount,
+      dialogs: await page.getByRole('dialog').count(),
+      dialogTarget: Boolean(dialog),
+      targetIsDialog:
+        Boolean(dialog) &&
+        targetCount === 1 &&
+        (await target.evaluate(
+          (node) => node.getAttribute('role') === 'dialog' || node.tagName === 'DIALOG'
+        )),
+      approvedTarget: approvedSequenceTarget(info, state),
+    });
+  } catch (error) {
+    // Attempted state stays visible; screenshot failure never replaces the cause.
+    try {
+      await page.screenshot({
+        path: info.outputPath(`current-scrollport-${state}-top.png`),
+        fullPage: false,
+        animations: 'disabled',
+        caret: 'hide',
+      });
+    } catch {
+      /* Preserve the original applicability failure. */
+    }
+    throw error;
+  }
+  if (!applicable) return false;
   const receiptName = `continuous-${state}.json`;
   if (existsSync(info.outputPath(receiptName))) throw new Error('duplicate continuous state');
   const route = new URL(page.url()).pathname;
@@ -51,6 +101,20 @@ export async function captureContinuousScroll(
     failed = false,
     extent = 0,
     reachedEnd = false;
+  let captured: SequenceInput | undefined;
+  const initialRouteState = new URL(page.url()).search + new URL(page.url()).hash;
+  const environment =
+    comparisonRatio === undefined
+      ? null
+      : await page.evaluate(() => ({
+          lang: document.documentElement.lang,
+          dir: document.documentElement.dir,
+          fontSize: getComputedStyle(document.documentElement).fontSize,
+          forced: matchMedia('(forced-colors: active)').matches,
+          light: matchMedia('(prefers-color-scheme: light)').matches,
+          motion: matchMedia('(prefers-reduced-motion: reduce)').matches,
+          layout: document.querySelector('.volcano-layout')?.getAttribute('data-movement-layout'),
+        }));
   const measure = () =>
     target.evaluate((node) => {
       const box = node.getBoundingClientRect();
@@ -152,6 +216,13 @@ export async function captureContinuousScroll(
         sha256: createHash('sha256').update(raw).digest('hex'),
         bytes: raw.length,
       });
+      const derived = deriveGeometry(m);
+      expect({ start: m.start, end: m.end, extent: m.extent }).toEqual({
+        start: derived.start,
+        end: derived.end,
+        extent: derived.extent,
+      });
+      expect(new URL(page.url()).search + new URL(page.url()).hash).toBe(initialRouteState);
       if (!m.neutralFocus) errors.push('focus-not-neutral');
       if (!m.skipOverlayClear) errors.push('skip-overlay-visible');
       expect(errors, 'Neutral content sweep must not retain a focused skip overlay').toEqual([]);
@@ -252,6 +323,7 @@ export async function captureContinuousScroll(
       segments,
     };
     writeReceipt(info.outputPath(receiptName), data);
+    captured = data;
   } catch (error) {
     if (!failed) {
       failed = true;
@@ -259,4 +331,31 @@ export async function captureContinuousScroll(
     }
   }
   if (failed) throw failure;
+  if (comparisonRatio !== undefined && captured) {
+    const use = info.project.use;
+    await compareSequence(
+      info,
+      captured,
+      {
+        routeStateHash: digest(initialRouteState),
+        environmentHash: digest(
+          JSON.stringify({
+            environment,
+            runtime: sequenceRuntime(page.context().browser()?.version() || ''),
+            browser: use.browserName,
+            locale: use.locale,
+            timezone: use.timezoneId,
+            touch: use.hasTouch,
+            colorScheme: use.colorScheme,
+            forcedColors: use.contextOptions?.forcedColors,
+            deviceScaleFactor: use.deviceScaleFactor,
+          })
+        ),
+        fixtureVersion: 'synthetic-v1',
+        dependencyHash: sequenceDependencies(),
+      },
+      comparisonRatio
+    );
+  }
+  return true;
 }

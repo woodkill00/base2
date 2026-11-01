@@ -15,7 +15,13 @@ const user = {
   permissions: ['operations.read', 'operations.manage'],
 };
 
-async function captureCurrentRun(page, testInfo, name, maxDiffPixelRatio = 0.01) {
+async function captureCurrentRun(
+  page,
+  testInfo,
+  name,
+  maxDiffPixelRatio = 0.01,
+  legacyStaticHeader = false
+) {
   const options = { fullPage: true, animations: 'disabled' as const, caret: 'hide' as const };
   await page.evaluate(() => {
     document.documentElement.style.scrollBehavior = 'auto';
@@ -26,11 +32,34 @@ async function captureCurrentRun(page, testInfo, name, maxDiffPixelRatio = 0.01)
   // Playwright retains each original mismatch as a fatal test error while the
   // next independent state can still execute. Hard prerequisites stay hard.
   const previousErrors = testInfo.errors.length;
-  await expect.soft(page).toHaveScreenshot(name, { ...options, maxDiffPixelRatio });
+  const legacyStyle = legacyStaticHeader
+    ? await page.addStyleTag({ content: '.volcano-header-frame { position: static !important; }' })
+    : null;
+  let firstFailure: unknown;
+  let failed = false;
+  try {
+    await expect.soft(page).toHaveScreenshot(name, { ...options, maxDiffPixelRatio });
+    await assertForcedColorState(page, testInfo);
+    await page.screenshot({ ...options, path: testInfo.outputPath(`current-${name}`) });
+  } catch (error) {
+    failed = true;
+    firstFailure = error;
+  } finally {
+    try {
+      if (legacyStyle) await legacyStyle.evaluate((node) => node.parentNode?.removeChild(node));
+      await expect(page.locator('.volcano-header-frame')).toHaveCSS('position', 'sticky');
+    } catch (error) {
+      if (!failed) {
+        failed = true;
+        firstFailure = error;
+      }
+    }
+  }
+  if (failed) throw firstFailure;
   await assertForcedColorState(page, testInfo);
-  await page.screenshot({ ...options, path: testInfo.outputPath(`current-${name}`) });
-  await assertForcedColorState(page, testInfo);
-  await captureScrollportExtent(page, testInfo, name.replace(/\.png$/, ''));
+  // The cancellation state has its own explicitly registered dialog sequence.
+  if (name !== 'operations-center-cancel-confirmation.png')
+    await captureScrollportExtent(page, testInfo, name.replace(/\.png$/, ''), maxDiffPixelRatio);
   if (testInfo.errors.length === previousErrors) {
     const acceptedCapture = testInfo.snapshotPath(name);
     await testInfo.attach(`visual:${basename(testInfo.snapshotPath(name))}`, {
@@ -374,10 +403,13 @@ test('operations center is accessible responsive and visually stable', async ({
       })
     ).toBe(true);
   }
-  await page.addStyleTag({
-    content: '.volcano-header-frame { position: static !important; }',
-  });
-  await captureCurrentRun(page, testInfo, `operations-center-${testInfo.project.name}.png`);
+  await captureCurrentRun(
+    page,
+    testInfo,
+    `operations-center-${testInfo.project.name}.png`,
+    0.01,
+    true
+  );
   const timelineButton = page.getByRole('button', { name: label.viewTimeline }).first();
   await timelineButton.focus();
   await timelineButton.press('Enter');
@@ -404,9 +436,15 @@ test('operations center is accessible responsive and visually stable', async ({
     name: label.cancelTitle,
   });
   await expect(cancelHeading).toBeFocused();
-  await captureContinuousScroll(page, testInfo, 'operations-cancel', page.getByRole('dialog'));
+  await captureContinuousScroll(
+    page,
+    testInfo,
+    'operations-cancel',
+    page.getByRole('dialog'),
+    0.02
+  );
   if (testInfo.project.name === 'chromium-desktop') {
-    await captureCurrentRun(page, testInfo, 'operations-center-cancel-confirmation.png', 0.02);
+    await captureCurrentRun(page, testInfo, 'operations-center-cancel-confirmation.png', 0.02, true);
   }
   await page.keyboard.press('Escape');
   await expect(cancel).toBeFocused();

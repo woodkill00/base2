@@ -324,7 +324,7 @@ def test_workspace_forced_colors_is_a_real_context_option_and_observed_state():
     assert 'expect(state.none).toBe(!expectedActive)' in helper
     assert source.count('await assertForcedColorState(page, testInfo)') >= 4
     compact = "".join(source.split())
-    assert "expect.configure({soft:testInfo.project.name==='chromium-high-contrast',})" in compact
+    assert "expect.configure({soft:true})" in compact
     assert "comparison: testInfo.errors.length === errorsBefore ? 'passed' : 'failed'" in source
     assert "status: failed ? 'failed' : 'passed'" in source
     assert "failed ? 'assertions-completed-with-failures' : 'assertions-completed'" in source
@@ -343,6 +343,8 @@ const fs = require('node:fs'); const vm = require('node:vm');
 const paths = JSON.parse(process.argv[1]); const results = [];
 for (const path of paths) {
   let source = fs.readFileSync(path, 'utf8');
+  const readonlyGuard = "import { requireReadOnlySnapshots } from './e2e/reference-readonly.mjs';\nrequireReadOnlySnapshots();\n";
+  if (source.startsWith(readonlyGuard)) source = source.slice(readonlyGuard.length);
   const declaration = "import { defineConfig, devices } from '@playwright/test';";
   if (!source.startsWith(declaration)) throw new Error('Unexpected config imports');
   source = source.slice(declaration.length).replace('export default defineConfig(', 'result = defineConfig(');
@@ -387,9 +389,10 @@ def test_media_operations_keep_hard_comparisons_and_accepted_receipt_semantics()
         assert "emulateMedia({ forcedColors:" not in source
         assert 'expect.configure' not in source
         if name == 'media':
-            assert source.count('expect.soft') == 1
+            assert source.count('expect.soft') == 2
+            assert 'await expect.soft(picker).toHaveScreenshot(`media-picker-' in source
             assert 'await expect.soft(dialog).toHaveScreenshot(`media-detail-' in source
-            assert 'expect.soft' not in source.replace('expect.soft(dialog).toHaveScreenshot', '')
+            assert 'expect.soft' not in source.replace('expect.soft(dialog).toHaveScreenshot', '').replace('expect.soft(picker).toHaveScreenshot', '')
         else:
             assert source.count('expect.soft') == 1
             assert 'await expect.soft(page).toHaveScreenshot(name' in source
