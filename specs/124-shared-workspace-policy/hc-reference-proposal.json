@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "status": "proposed-reference-corrections-not-full-visual-acceptance",
+  "sourceCommit": "3cdd3716702693f650cd85941640aa083df49a0e",
+  "sourceTree": "c0911236fe2d4cc1ea17af63de41c19fd0e93dc1",
+  "nativeMergeCommit": "ad6e038059100eb99b4b82ad3fdd78a39e02ba1e",
+  "runId": 41268107152,
+  "jobId": 124735054658,
+  "artifactId": 13068363258,
+  "artifactZipSha256": "3b0f86872c852d0be649613f71b64f87389690c69d823f1410c589a2467aa857",
+  "reviewEvidence": "Actual/expected pixels and native traces were independently reviewed. Actual captures show genuine forced-color system palette and borders versus normal-palette references; no clipping or layout regression was observed. Native hard forced-mode, computed-paint/contrast and axe prerequisites passed.",
+  "publicationAuthorization": "Explicit user approval permits storing only these two reviewed test-fixture images in draft PR90; no merge, deployment or other screenshot approval.",
+  "binaryPreparation": "Exact native PNG bytes were verified against the listed SHA256 hashes and dimensions, then uploaded as the listed Git blobs. GitHub fetch_blob cannot decode these binary PNGs; tree entries use the verified existing blob identities without changing image bytes.",
+  "references": [
+    {
+      "path": "react-app/e2e/media/media-release.spec.ts-snapshots/media-picker-chromium-high-contrast-chromium-high-contrast-linux.png",
+      "blobSha": "cf475cdc6e125dc0501e0a97f1868ed58c8a2299",
+      "sha256": "df0d924e86f7ed4f71ce11c681b80b79dfd05198f69031fcedfd96d87b505609",
+      "bytes": 42936,
+      "pixels": [
+        756,
+        820
+      ],
+      "originalFailure": {
+        "differingPixels": 14443,
+        "reportedRoundedRatio": 0.03,
+        "maxDiffPixelRatio": 0.01
+      },
+      "remaining": "Fresh native snapshot comparison, Use selected media, focus return and reuse confirmation; full matrix and source-bound visual review."
+    },
+    {
+      "path": "react-app/e2e/operations/operations-release.spec.ts-snapshots/operations-center-chromium-high-contrast-chromium-high-contrast-linux.png",
+      "blobSha": "9f6b6146a15e2d16a7b773deef0d2d3326d50abc",
+      "sha256": "b2be5bb2b7727f82ab60524d796d008158bf62106672ae197c7bb94c00347b24",
+      "bytes": 533646,
+      "pixels": [
+        1280,
+        2949
+      ],
+      "originalFailure": {
+        "differingPixels": 60904,
+        "reportedRoundedRatio": 0.02,
+        "maxDiffPixelRatio": 0.01
+      },
+      "remaining": "Fresh native snapshot comparison and later timeline/action checks; full matrix and source-bound visual review."
+    }
+  ],
+  "limits": [
+    "Listed hashes and dimensions identify the exact reviewed native PNG bytes; fresh native execution and full visual acceptance remain pending.",
+    "Four workspace references remain unchanged and unapproved.",
+    "Accepted full media/operations manifests are not renewed.",
+    "Original failures remain retained; proposed references do not establish a passing native run."
+  ]
+}

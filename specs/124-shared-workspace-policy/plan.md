@@ -542,3 +542,13 @@ baseline mutation. Keep native failures fatal and actual failed evidence availab
 This is evidence collection infrastructure, not visual approval or manifest renewal.
 Review actual native captures before proposing reference changes; hold publication
 for coordination and do not trigger the complete gate at this stage.
+
+### Bounded workspace visual evidence transfer
+
+Keep the full native workspace artifact and original test failures. Additionally
+stage exact HC actual/expected/diff/post-assert PNG filenames into one artifact per
+view, with source commit/tree, requested head, run/attempt, original outcome and
+member hashes. Cap each view at 30 MiB of unchanged PNG bytes plus at most 64 KiB
+of provenance, below the 32 MiB transfer limit. Reject symlinks, oversized input
+and reused output; never truncate captures or export traces, videos or fixtures.
+Missing captures remain explicit empty inventories, not successful visual evidence.

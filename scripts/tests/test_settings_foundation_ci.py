@@ -488,3 +488,133 @@ def test_partial_operations_hc_selects_only_supported_main_case_not_skipped_stat
     assert source.count("test('operations center is accessible responsive and visually stable'") == 1
     assert "test('operations center shows truthful empty and failure states'" in source
     assert "test('operations center exposes stale, reauthentication, and read-only recovery states'" in source
+
+
+def test_workspace_png_uploads_are_bounded_separate_and_keep_original_evidence():
+    steps = frontend_steps()
+    stage = next(item for item in steps if item.get('id') == 'workspace_png')
+    assert stage['working-directory'] == '.'
+    assert stage['run'] == 'python3 scripts/python/workspace_png_evidence.py'
+    assert stage['if'] == ("always() && steps.scope.outputs.mode == 'full' && "
+                           "(steps.workspace_acceptance.outcome == 'success' || steps.workspace_acceptance.outcome == 'failure')")
+    assert stage['env']['WORKSPACE_OUTCOME'] == '${{ steps.workspace_acceptance.outcome }}'
+    original = next(item for item in steps if item.get('name') == 'Upload workspace acceptance evidence')
+    assert original['with']['path'] == '.artifacts/workspace-124'
+    assert original['if'] == "always() && steps.scope.outputs.mode == 'full'"
+    for view in ('records', 'schema', 'imports', 'exports'):
+        upload = next(item for item in steps if item.get('name') == f'Upload workspace HC {view} PNG evidence')
+        assert upload['if'] == "always() && steps.scope.outputs.mode == 'full' && steps.workspace_png.outcome == 'success'"
+        assert upload['uses'] == 'actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f'
+        assert upload['with'] == {
+            'name': f'workspace-hc-{view}-${{{{ github.run_id }}}}-${{{{ github.run_attempt }}}}',
+            'path': f'.artifacts/workspace-png-124/{view}/',
+            'if-no-files-found': 'error', 'retention-days': 7,
+        }
+    assert 'continue-on-error' not in stage
+
+
+def test_workspace_png_staging_copies_only_exact_names_with_hashes_and_failure_provenance(tmp_path):
+    import hashlib
+    import json
+    from scripts.python import workspace_png_evidence as evidence
+
+    source, output = tmp_path / 'source', tmp_path / 'output'
+    case = source / evidence.CASE
+    case.mkdir(parents=True)
+    names = [f'workspace-records-chromium-high-contrast-{kind}.png'
+             for kind in ('actual', 'expected', 'diff')]
+    names.append('workspace-records-post-assert.png')
+    for name in names:
+        (case / name).write_bytes(b'unit fixture, not native image evidence')
+    for name in ('trace.zip', 'video.webm', 'error-context.md', 'fixture.json', 'other.png'):
+        (case / name).write_bytes(b'excluded fixture')
+    provenance = {'sourceCommit': 'a' * 40, 'sourceTree': 'b' * 40,
+                  'runId': '123', 'attempt': '1', 'workspaceOutcome': 'failure'}
+    evidence.stage(source, output, provenance)
+    assert sorted(path.name for path in (output / 'records').iterdir()) == sorted(names + ['provenance.json'])
+    metadata = json.loads((output / 'records/provenance.json').read_text())
+    assert metadata['workspaceOutcome'] == 'failure'
+    assert len(metadata['captures']) == 4
+    for capture in metadata['captures']:
+        original = source / capture['path']
+        copied = output / 'records' / original.name
+        assert original.read_bytes() == copied.read_bytes()
+        assert capture['sha256'] == hashlib.sha256(original.read_bytes()).hexdigest()
+        assert capture['bytes'] == original.stat().st_size
+    assert (case / 'trace.zip').exists()  # Full original evidence is preserved.
+    assert json.loads((output / 'schema/provenance.json').read_text())['captures'] == []
+
+
+def test_workspace_png_staging_rejects_oversize_without_truncation(tmp_path):
+    from scripts.python import workspace_png_evidence as evidence
+
+    source, output = tmp_path / 'source', tmp_path / 'output'
+    case = source / evidence.CASE
+    case.mkdir(parents=True)
+    image = case / 'workspace-exports-chromium-high-contrast-actual.png'
+    with image.open('wb') as stream:
+        stream.truncate(evidence.MAX_PNG_BYTES + 1)
+    with pytest.raises(ValueError, match='bounded size'):
+        evidence.stage(source, output, {})
+    assert image.stat().st_size == evidence.MAX_PNG_BYTES + 1
+    assert not output.exists()
+
+
+@pytest.mark.parametrize('link_target', ['case', 'image'])
+def test_workspace_png_staging_rejects_symlinks(tmp_path, link_target):
+    from scripts.python import workspace_png_evidence as evidence
+
+    source, output = tmp_path / 'source', tmp_path / 'output'
+    source.mkdir()
+    outside = tmp_path / 'outside'
+    outside.mkdir()
+    case = source / evidence.CASE
+    if link_target == 'case':
+        case.symlink_to(outside, target_is_directory=True)
+    else:
+        case.mkdir()
+        (outside / 'private').write_bytes(b'private fixture')
+        (case / 'workspace-records-chromium-high-contrast-actual.png').symlink_to(outside / 'private')
+    with pytest.raises(ValueError, match='symlink'):
+        evidence.stage(source, output, {})
+    assert not output.exists()
+
+
+def test_workspace_png_staging_never_reuses_old_output(tmp_path):
+    from scripts.python import workspace_png_evidence as evidence
+
+    output = tmp_path / 'output'
+    output.mkdir()
+    (output / 'old.txt').write_text('preserve')
+    with pytest.raises(ValueError, match='fresh'):
+        evidence.stage(tmp_path / 'source', output, {})
+    assert (output / 'old.txt').read_text() == 'preserve'
+
+
+def test_workspace_png_budget_is_per_view_and_leaves_transfer_headroom(tmp_path, monkeypatch):
+    from scripts.python import workspace_png_evidence as evidence
+
+    assert evidence.MAX_PNG_BYTES == 30 * 1024 * 1024
+    # Four bounded names + 64 KiB provenance leave ample ZIP header overhead.
+    assert evidence.MAX_PNG_BYTES + 65536 + 8192 < 32 * 1024 * 1024
+    monkeypatch.setattr(evidence, 'MAX_PNG_BYTES', 10)
+    source, output = tmp_path / 'source', tmp_path / 'output'
+    case = source / evidence.CASE
+    case.mkdir(parents=True)
+    for kind in ('actual', 'diff'):
+        (case / f'workspace-records-chromium-high-contrast-{kind}.png').write_bytes(b'123456')
+    with pytest.raises(ValueError, match='bounded size'):
+        evidence.stage(source, output, {})
+    assert not output.exists()
+
+
+def test_workspace_png_rejects_dangling_output_link(tmp_path):
+    from scripts.python import workspace_png_evidence as evidence
+
+    output = tmp_path / 'output'
+    missing = tmp_path / 'missing'
+    output.symlink_to(missing, target_is_directory=True)
+    with pytest.raises(ValueError, match='fresh'):
+        evidence.stage(tmp_path / 'source', output, {})
+    assert output.is_symlink()
+    assert not missing.exists()

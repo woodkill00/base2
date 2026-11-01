@@ -158,6 +158,51 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+      - name: Stage bounded workspace HC PNG evidence
+        id: workspace_png
+        if: always() && steps.scope.outputs.mode == 'full' && (steps.workspace_acceptance.outcome == 'success' || steps.workspace_acceptance.outcome == 'failure')
+        working-directory: .
+        env:
+          WORKSPACE_REQUESTED_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+          WORKSPACE_OUTCOME: ${{ steps.workspace_acceptance.outcome }}
+        run: python3 scripts/python/workspace_png_evidence.py
+
+      - name: Upload workspace HC records PNG evidence
+        if: always() && steps.scope.outputs.mode == 'full' && steps.workspace_png.outcome == 'success'
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: workspace-hc-records-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .artifacts/workspace-png-124/records/
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Upload workspace HC schema PNG evidence
+        if: always() && steps.scope.outputs.mode == 'full' && steps.workspace_png.outcome == 'success'
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: workspace-hc-schema-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .artifacts/workspace-png-124/schema/
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Upload workspace HC imports PNG evidence
+        if: always() && steps.scope.outputs.mode == 'full' && steps.workspace_png.outcome == 'success'
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: workspace-hc-imports-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .artifacts/workspace-png-124/imports/
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Upload workspace HC exports PNG evidence
+        if: always() && steps.scope.outputs.mode == 'full' && steps.workspace_png.outcome == 'success'
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: workspace-hc-exports-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .artifacts/workspace-png-124/exports/
+          if-no-files-found: error
+          retention-days: 7
+
       - name: Genuine forced-color media diagnostics
         id: media_hc_acceptance
         if: >-

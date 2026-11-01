@@ -943,3 +943,15 @@ the four previously blocked contracts then pass 4 / 4 without product changes.
 Logs and failure evidence are retained outside the checkout in /workspace/recovery-124.
 Full 134-check gate remains unrun, inherited 71 media security findings remain unresolved,
 Feature 122 repair remains prohibited, and the broader family roadmap is incomplete.
+
+### Bounded workspace PNG collection preparation (unpublished)
+
+- [ ] T42 Add forward native collection of the four HC workspace views as separate
+      bounded PNG artifacts. Preserve the existing complete artifact and all native
+      failure outcomes. Include only exact actual/expected/diff/post-assert PNG names
+      and small source/run/hash provenance; reject symlinks, output reuse and inputs
+      exceeding 30 MiB per view without truncation. Verify copying, omissions, limits,
+      failure provenance and upload contracts; independently review before publication.
+      This does not recover artifact 13068039288 or accept any pixels. The parent
+      reports that its size exceeds the supported 32 MiB transfer limit. No transfer
+      limit or proxy bypass is authorized; snapshot thresholds remain unchanged.
