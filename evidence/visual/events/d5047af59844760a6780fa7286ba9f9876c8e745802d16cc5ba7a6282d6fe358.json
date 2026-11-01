@@ -1,0 +1,64 @@
+{
+  "conclusion": "inconclusive",
+  "inspections": [
+    {
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-tablet/current-operations-center-chromium-tablet.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "183ba7a93eadfea8005bc7c1f7095210092a9fb40a7b970039c66bc75a0e4426"
+    },
+    {
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-tablet/current-scrollport-footer.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "623e34e8304f10a3b082583a14e972279434f558d55f4ef27b2dfe253f766c47"
+    },
+    {
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-tablet/current-scrollport-middle.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "dede06968d9042b5a8db833839257fcd461d5db3a17fdcc404bf08a3cd5a32c2"
+    },
+    {
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-tablet/current-scrollport-operations-center-chromium-tablet-footer.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "0b24581ffde96e85b62f4d87950333c101c4e720bf2e053caf61a4559026d969"
+    },
+    {
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-tablet/current-scrollport-operations-center-chromium-tablet-middle.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "6914e767020e429e88357af6d8485514c377ba1c96899ea26f9eca6875395903"
+    },
+    {
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-tablet/current-scrollport-operations-center-chromium-tablet-top.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "183ba7a93eadfea8005bc7c1f7095210092a9fb40a7b970039c66bc75a0e4426"
+    },
+    {
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-tablet/current-scrollport-top.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "550e5e1a2ac04465b7b631b7996688ad64150ec5becd7ba79efc8879c08f09b3"
+    },
+    {
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-tablet/operations-center-chromium-tablet-actual.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "actual",
+      "sha256": "183ba7a93eadfea8005bc7c1f7095210092a9fb40a7b970039c66bc75a0e4426"
+    },
+    {
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-tablet/test-failed-1.png",
+      "method": "contact-sheet-overview",
+      "role": "failure",
+      "sha256": "9fab301d9831a813b5b739e074fbf4c93cf9aaeb9689c4b6c37e626787987785"
+    }
+  ],
+  "kind": "technical-review",
+  "manifest": "runs/41314740935-1-124872282068-13086134664.json",
+  "manifestSha256": "e9b31d7d1bf4c9ecbfa65049e7bdaf95aaafb63d3d3553ec8598c0848a552f98",
+  "notes": "Desktop cancellation confirmation is completely visible with consequence text and both actions; white heading focus outline visible. Backdrop stops at viewport boundary in fullPage PNG, also present in expected reference; not a newly proven runtime defect. Recovery empty/error/partial/reauth/read-only states now captured. Read-only removes replay/cancel and acknowledge controls; reauth/stale banners visible. No independent new severe clipping/overlap found in retained states. Existing footer System evidence current remains misleading in unavailable/stale recovery states.",
+  "schemaVersion": 2
+}

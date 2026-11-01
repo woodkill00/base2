@@ -1,0 +1,350 @@
+{
+  "archiveSha256": "0ed3c53fe33561e6ef3f64b0210bec00a3ae2fd9ce0693e1be01f1c9c09c7f23",
+  "artifactId": 13086956669,
+  "attempt": 1,
+  "captures": [
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "chromium-reduced-motion.zip",
+          "sha256": "a816b49ae21a7ffa8bcd19db7b272185c0814266a255afcc7cf7f09a8df62173"
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-reduced-motion/current-media-library-viewport-0.png",
+          "sha256": "eca10438764bf3e0f8657f6a776e337ab200317c24685167a759dc24f632af5a"
+        }
+      ],
+      "bytes": 588171,
+      "dimensions": [
+        1280,
+        900
+      ],
+      "identityBasis": "native-report",
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-reduced-motion/current-media-library-viewport-0.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-report",
+        "project": "chromium-reduced-motion",
+        "title": "media library is accessible responsive and visually reviewed"
+      },
+      "project": "chromium-reduced-motion",
+      "role": "current",
+      "sha256": "eca10438764bf3e0f8657f6a776e337ab200317c24685167a759dc24f632af5a",
+      "storage": "objects/eca10438764bf3e0f8657f6a776e337ab200317c24685167a759dc24f632af5a.png",
+      "test": "media library is accessible responsive and visually reviewed",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "chromium-reduced-motion.zip",
+          "sha256": "a816b49ae21a7ffa8bcd19db7b272185c0814266a255afcc7cf7f09a8df62173"
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-reduced-motion/current-media-library-viewport-2.png",
+          "sha256": "eca10438764bf3e0f8657f6a776e337ab200317c24685167a759dc24f632af5a"
+        }
+      ],
+      "bytes": 588171,
+      "dimensions": [
+        1280,
+        900
+      ],
+      "identityBasis": "native-report",
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-reduced-motion/current-media-library-viewport-2.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-report",
+        "project": "chromium-reduced-motion",
+        "title": "media library is accessible responsive and visually reviewed"
+      },
+      "project": "chromium-reduced-motion",
+      "role": "current",
+      "sha256": "eca10438764bf3e0f8657f6a776e337ab200317c24685167a759dc24f632af5a",
+      "storage": "objects/eca10438764bf3e0f8657f6a776e337ab200317c24685167a759dc24f632af5a.png",
+      "test": "media library is accessible responsive and visually reviewed",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "chromium-reduced-motion.zip",
+          "sha256": "a816b49ae21a7ffa8bcd19db7b272185c0814266a255afcc7cf7f09a8df62173"
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-reduced-motion/current-media-library-viewport-4.png",
+          "sha256": "51e9391b4ac3e0d385a3235a7aaae71819092893f73cdddcb7561195caeb82c9"
+        }
+      ],
+      "bytes": 534651,
+      "dimensions": [
+        1280,
+        900
+      ],
+      "identityBasis": "native-report",
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-reduced-motion/current-media-library-viewport-4.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-report",
+        "project": "chromium-reduced-motion",
+        "title": "media library is accessible responsive and visually reviewed"
+      },
+      "project": "chromium-reduced-motion",
+      "role": "current",
+      "sha256": "51e9391b4ac3e0d385a3235a7aaae71819092893f73cdddcb7561195caeb82c9",
+      "storage": "objects/51e9391b4ac3e0d385a3235a7aaae71819092893f73cdddcb7561195caeb82c9.png",
+      "test": "media library is accessible responsive and visually reviewed",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "chromium-reduced-motion.zip",
+          "sha256": "a816b49ae21a7ffa8bcd19db7b272185c0814266a255afcc7cf7f09a8df62173"
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-reduced-motion/current-media-library.png",
+          "sha256": "2dfc77c7dd5bc6aceddd20760fb7c687d462e26dfae06090035e69112be8e86c"
+        }
+      ],
+      "bytes": 781848,
+      "dimensions": [
+        1280,
+        2120
+      ],
+      "identityBasis": "native-report",
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-reduced-motion/current-media-library.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-report",
+        "project": "chromium-reduced-motion",
+        "title": "media library is accessible responsive and visually reviewed"
+      },
+      "project": "chromium-reduced-motion",
+      "role": "current",
+      "sha256": "2dfc77c7dd5bc6aceddd20760fb7c687d462e26dfae06090035e69112be8e86c",
+      "storage": "objects/2dfc77c7dd5bc6aceddd20760fb7c687d462e26dfae06090035e69112be8e86c.png",
+      "test": "media library is accessible responsive and visually reviewed",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "chromium-reduced-motion.zip",
+          "sha256": "a816b49ae21a7ffa8bcd19db7b272185c0814266a255afcc7cf7f09a8df62173"
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-reduced-motion/media-library-chromium-reduced-motion-actual.png",
+          "sha256": "2dfc77c7dd5bc6aceddd20760fb7c687d462e26dfae06090035e69112be8e86c"
+        }
+      ],
+      "bytes": 781848,
+      "dimensions": [
+        1280,
+        2120
+      ],
+      "identityBasis": "native-report",
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-reduced-motion/media-library-chromium-reduced-motion-actual.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-report",
+        "project": "chromium-reduced-motion",
+        "title": "media library is accessible responsive and visually reviewed"
+      },
+      "project": "chromium-reduced-motion",
+      "role": "actual",
+      "sha256": "2dfc77c7dd5bc6aceddd20760fb7c687d462e26dfae06090035e69112be8e86c",
+      "storage": "objects/2dfc77c7dd5bc6aceddd20760fb7c687d462e26dfae06090035e69112be8e86c.png",
+      "test": "media library is accessible responsive and visually reviewed",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "chromium-reduced-motion.zip",
+          "sha256": "a816b49ae21a7ffa8bcd19db7b272185c0814266a255afcc7cf7f09a8df62173"
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-reduced-motion/media-library-chromium-reduced-motion-diff.png",
+          "sha256": "c75ed36684d9ad05f4cbdbe7e9499f0cb1d7e8377c284632c31f6843233e8ade"
+        }
+      ],
+      "bytes": 289827,
+      "dimensions": [
+        1280,
+        2120
+      ],
+      "identityBasis": "native-report",
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-reduced-motion/media-library-chromium-reduced-motion-diff.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-report",
+        "project": "chromium-reduced-motion",
+        "title": "media library is accessible responsive and visually reviewed"
+      },
+      "project": "chromium-reduced-motion",
+      "role": "diff",
+      "sha256": "c75ed36684d9ad05f4cbdbe7e9499f0cb1d7e8377c284632c31f6843233e8ade",
+      "storage": "objects/c75ed36684d9ad05f4cbdbe7e9499f0cb1d7e8377c284632c31f6843233e8ade.png",
+      "test": "media library is accessible responsive and visually reviewed",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "chromium-reduced-motion.zip",
+          "sha256": "a816b49ae21a7ffa8bcd19db7b272185c0814266a255afcc7cf7f09a8df62173"
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-reduced-motion/media-library-chromium-reduced-motion-expected.png",
+          "sha256": "01d76ce731601453f186ae56a9f608e2cb52f64d2f572571d7cec0fe02a3daed"
+        }
+      ],
+      "bytes": 761973,
+      "dimensions": [
+        1280,
+        1968
+      ],
+      "identityBasis": "native-report",
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-reduced-motion/media-library-chromium-reduced-motion-expected.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-report",
+        "project": "chromium-reduced-motion",
+        "title": "media library is accessible responsive and visually reviewed"
+      },
+      "project": "chromium-reduced-motion",
+      "role": "expected",
+      "sha256": "01d76ce731601453f186ae56a9f608e2cb52f64d2f572571d7cec0fe02a3daed",
+      "storage": "objects/01d76ce731601453f186ae56a9f608e2cb52f64d2f572571d7cec0fe02a3daed.png",
+      "test": "media library is accessible responsive and visually reviewed",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "chromium-reduced-motion.zip",
+          "sha256": "a816b49ae21a7ffa8bcd19db7b272185c0814266a255afcc7cf7f09a8df62173"
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-reduced-motion/test-failed-1.png",
+          "sha256": "51e9391b4ac3e0d385a3235a7aaae71819092893f73cdddcb7561195caeb82c9"
+        }
+      ],
+      "bytes": 534651,
+      "dimensions": [
+        1280,
+        900
+      ],
+      "identityBasis": "native-report",
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-reduced-motion/test-failed-1.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-report",
+        "project": "chromium-reduced-motion",
+        "title": "media library is accessible responsive and visually reviewed"
+      },
+      "project": "chromium-reduced-motion",
+      "role": "failure",
+      "sha256": "51e9391b4ac3e0d385a3235a7aaae71819092893f73cdddcb7561195caeb82c9",
+      "storage": "objects/51e9391b4ac3e0d385a3235a7aaae71819092893f73cdddcb7561195caeb82c9.png",
+      "test": "media library is accessible responsive and visually reviewed",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    }
+  ],
+  "fixtureScope": "synthetic-project-tests",
+  "jobId": 124872315617,
+  "laterValidation": "pending",
+  "observations": [
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "chromium-reduced-motion.zip",
+          "sha256": "a816b49ae21a7ffa8bcd19db7b272185c0814266a255afcc7cf7f09a8df62173"
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-reduced-motion/media-viewport-observations.json",
+          "sha256": "39f0cd27fb08b7fd45ac8bdc90fe5b924f8e511015ffdf6e67506ee9fce8a81c"
+        }
+      ],
+      "bytes": 41873,
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-reduced-motion/media-viewport-observations.json",
+      "project": "chromium-reduced-motion",
+      "schemaVersion": 4,
+      "sha256": "39f0cd27fb08b7fd45ac8bdc90fe5b924f8e511015ffdf6e67506ee9fce8a81c",
+      "storage": "observations/39f0cd27fb08b7fd45ac8bdc90fe5b924f8e511015ffdf6e67506ee9fce8a81c.json"
+    }
+  ],
+  "originalOutcome": "failed",
+  "repository": "woodkill00/base2",
+  "requestedHead": "696f710633d81cec46e872901f21a024bf735c5f",
+  "runId": 41314752092,
+  "schemaVersion": 2,
+  "sourceCommit": "696f710633d81cec46e872901f21a024bf735c5f",
+  "sourceTree": "b395ca42a261de3c2710034787f5410ff5599501",
+  "technicalReview": "pending",
+  "transfer": {
+    "blobs": {
+      "01d76ce731601453f186ae56a9f608e2cb52f64d2f572571d7cec0fe02a3daed": "3b0f5faab6ae194a9c137e0f37a5d5cfc6eeac4e",
+      "2dfc77c7dd5bc6aceddd20760fb7c687d462e26dfae06090035e69112be8e86c": "80feb5455a58eeb78a38d0014726b8842c432383",
+      "39f0cd27fb08b7fd45ac8bdc90fe5b924f8e511015ffdf6e67506ee9fce8a81c": "20156fcf924eb2d797f93bb0857c082a97480b45",
+      "51e9391b4ac3e0d385a3235a7aaae71819092893f73cdddcb7561195caeb82c9": "3f78c2f166590612e7692ab9917c4515a73e8ee9",
+      "c75ed36684d9ad05f4cbdbe7e9499f0cb1d7e8377c284632c31f6843233e8ade": "98c4d78d44dd7689c492d6ccbc2a406cd6804f31",
+      "eca10438764bf3e0f8657f6a776e337ab200317c24685167a759dc24f632af5a": "abbcd5e2dca10db99199b159dcd9207cfa70710a"
+    },
+    "commit": "9cd69137e688113750cdc225ad4c7fce2eebc157",
+    "localVerification": "git-blob-sha256-size-dimensions-full-decode",
+    "originalArchiveVerification": "externally-verified-zip-and-members",
+    "tree": "6806be178646ad75161a0a142b2c935608c30b46"
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "conclusion": "inconclusive",
+  "inspections": [
+    {
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-webkit-mobile/current-scrollport-footer.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "5d2c2f1dac2163f340bbbdf833ab3b6717b9e578b73dae1e75ee2568420326f5"
+    },
+    {
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-webkit-mobile/current-scrollport-middle.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "ab72376ddd5b7bf28b16e41effcd8f42ea7194e07892a49b8cf43397846386ab"
+    },
+    {
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-webkit-mobile/current-scrollport-top.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "71723a79a725b012240480cc253a006f5e5a159c1452291e69d682cbeec6a357"
+    },
+    {
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-webkit-mobile/test-failed-1.png",
+      "method": "contact-sheet-overview",
+      "role": "failure",
+      "sha256": "c55aa5446317d68641d897c03e5d11d7d0efefee9fd4cb5443c242aed8f82381"
+    },
+    {
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-webkit-mobile/workspace-records-webkit-mobile-actual.png",
+      "method": "contact-sheet-overview",
+      "role": "actual",
+      "sha256": "f7f31023a9587653fca3fe9be2a4457af1295f8a5286a07645d72ddb018e2697"
+    }
+  ],
+  "kind": "technical-review",
+  "manifest": "runs/41316879851-1-124878689099-13087912891.json",
+  "manifestSha256": "937bb9879be166dd522166429a46070786f97c1b3b43c9c8f77bcd8e4aaa1a2f",
+  "notes": "Diagnostic only; no baseline or full visual acceptance. Review methods are conservative: partial image inspection maps to overview. Original run failures remain unchanged. Only allowlisted shard members retained; packager excluded PNGs recorded in suites metadata. No claim to oversized original or excluded bytes. Native failures remain failures; no baseline acceptance. Whole-page references cannot be replaced blindly by viewport-only mobile captures. Sampled images do not establish continuous content coverage or arbitrary-scroll hit testing. All new unique images overview-inspected; only four listed representatives additionally original-scale inspected. Long full-page thumbnails insufficient to inspect every glyph. Excluded native workspace screenshot family and expected/diff images from this standard pass; parent handles these. Volcano workspace-route generic service-state captures remain included. Viewport top/middle/footer samples do not establish continuous full-scroll content coverage or successful interaction, keyboard sequence, hit targets, or unseen steps. Known native compact Forward, zoom timeout and Firefox Tab failures remain independent of pixels. No baseline approval or source causal analysis. RTL About down-arrow circular border overlaps drawer/focus-ring boundary at 390px and light 200% zoom. Content unobstructed; hit-target conflict NOT established. Prior Arabic heading obstruction and blank horizontally shifted compact footer no longer present in inspected originals. Arabic HC leave-settings dialog centered and entirely visible including actions. Generic green System evidence current footer remains visible on unavailable service/content pages; not new layout regression. Reviewed supplementary route samples show named route content, unlike prior Search contamination. No blanket route-identity validation inferred.",
+  "schemaVersion": 2
+}

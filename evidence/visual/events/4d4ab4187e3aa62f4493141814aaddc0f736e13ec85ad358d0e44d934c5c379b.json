@@ -1,0 +1,94 @@
+{
+  "conclusion": "inconclusive",
+  "inspections": [
+    {
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-webkit-desktop/current-operations-center-webkit-desktop.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "21e1765b95b29331b42fd53b57de74e5107ec98be5b65719412afd0f1eff5a00"
+    },
+    {
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-webkit-desktop/operations-center-webkit-desktop-actual.png",
+      "method": "contact-sheet-overview",
+      "role": "actual",
+      "sha256": "3a3b7d7bb315f03d679dbaf382369667b9f72f4437f2054542db571a28b5e645"
+    },
+    {
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-webkit-desktop/test-failed-1.png",
+      "method": "contact-sheet-overview",
+      "role": "failure",
+      "sha256": "c1b3d1515e91d3d70de6177ccb80b4f33f3f47166957e303b632b32bb50b91e7"
+    },
+    {
+      "member": "operations-release-operati-84a1a-ul-empty-and-failure-states-webkit-desktop/current-operations-center-empty.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "ab4e86d0d7f465a38bed1b76aef90fe66f56a5c177e3732abf802a3b0e5a3375"
+    },
+    {
+      "member": "operations-release-operati-84a1a-ul-empty-and-failure-states-webkit-desktop/current-operations-center-error.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "463cd514cb0f6f8587866db665405ae546c1f25d789afaaf0a60b0470ecc2594"
+    },
+    {
+      "member": "operations-release-operati-84a1a-ul-empty-and-failure-states-webkit-desktop/operations-center-empty-actual.png",
+      "method": "contact-sheet-overview",
+      "role": "actual",
+      "sha256": "e0be3ab0bb859ca80818e7dcae65e1040858cdfd1bfde780df593fc5801cad2f"
+    },
+    {
+      "member": "operations-release-operati-84a1a-ul-empty-and-failure-states-webkit-desktop/operations-center-error-actual.png",
+      "method": "contact-sheet-overview",
+      "role": "actual",
+      "sha256": "c5cdbc407ff155008701b20453f83ee80e4d8f0045b0f80491bdba3a77e9f32a"
+    },
+    {
+      "member": "operations-release-operati-84a1a-ul-empty-and-failure-states-webkit-desktop/test-failed-1.png",
+      "method": "contact-sheet-overview",
+      "role": "failure",
+      "sha256": "96796bd5153355f12bfaf9980b625aa7dd55a184c07978f4909da1d58f4787bc"
+    },
+    {
+      "member": "operations-release-operati-e5f8f-d-read-only-recovery-states-webkit-desktop/current-operations-center-partial.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "dd7cc19f8249ff6d94b7cbc1cb62ab50df7f928a04babf13ad57d74c2e5c9691"
+    },
+    {
+      "member": "operations-release-operati-e5f8f-d-read-only-recovery-states-webkit-desktop/current-operations-center-read-only.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "0ade581254692f411d7238b8f349d02b9a7c24406ff3355d900caf107ed3b312"
+    },
+    {
+      "member": "operations-release-operati-e5f8f-d-read-only-recovery-states-webkit-desktop/current-operations-center-reauth.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "0e814bbe1a9ca1eda84d107356abb46bd05e2be0c151037aa3b606a9ca95c210"
+    },
+    {
+      "member": "operations-release-operati-e5f8f-d-read-only-recovery-states-webkit-desktop/operations-center-partial-actual.png",
+      "method": "contact-sheet-overview",
+      "role": "actual",
+      "sha256": "a3fea0493d5c99a94b4d928490d188a656fe7b3810b77c4d7d21e987e377059d"
+    },
+    {
+      "member": "operations-release-operati-e5f8f-d-read-only-recovery-states-webkit-desktop/operations-center-read-only-actual.png",
+      "method": "contact-sheet-overview",
+      "role": "actual",
+      "sha256": "64683b02d27388dad27d06399239b979102511955d76302a6f3b4d7a9ca61204"
+    },
+    {
+      "member": "operations-release-operati-e5f8f-d-read-only-recovery-states-webkit-desktop/operations-center-reauth-actual.png",
+      "method": "contact-sheet-overview",
+      "role": "actual",
+      "sha256": "5496249aae5d4a6fbd02ab2293ecad83e3753fcb06f870b35f57d1bddb408e4f"
+    }
+  ],
+  "kind": "technical-review",
+  "manifest": "runs/41316938996-1-124878862228-13087454738.json",
+  "manifestSha256": "f63db9a452ee1795ab5e0350731f328044af22e32d7a8674ae284787a537f4a5",
+  "notes": "Diagnostic only; no baseline or full visual acceptance. Review methods are conservative: partial image inspection maps to overview. Original run failures remain unchanged. Most new images assessed as scaled contact-sheet overviews, not original-size detailed inspection of every label/control. Three new images additionally inspected top1500px at original scale. 135 actual/current/failure instances reviewed directly or by exact-byte equivalence; comparison expected/diff images not reviewed in this pass. No WebKit or mobile cancellation-dialog PNG retained; desktop popup cannot establish cross-browser/viewport popup coverage. Mobile viewport-sized snapshots and top/middle/footer samples do not establish full continuous content coverage or arbitrary-scroll hit tests. No source causal inspection/browser execution or native pass/acceptance claim. Parent verifies provenance and native inventory. No uploads or baseline/source changes. Newly retained WebKit desktop main/empty/error/partial/reauth/read-only states have readable, contained layout. Reauth/stale/unavailable distinctions visible; read-only action removal visible. No independent new severe clipping or overlap identified. Fixed large-text main image remains byte-identical to previously reviewed696f71; readable 8 passed, Replay safely and Cancel retained. Desktop gutters and mobile reserved bottom controls remain intentional layout differences from old references. Compact/tablet/landscape sampled middle/footer states remain readable, with drawer toggles outside content. Desktop cancellation confirmation fully visible with consequence text and both actions. FullPage backdrop stops at viewport boundary, consistent with earlier retained rendering; not newly established runtime defect. Existing misleading System evidence current footer persists in unavailable/stale states.",
+  "schemaVersion": 2
+}

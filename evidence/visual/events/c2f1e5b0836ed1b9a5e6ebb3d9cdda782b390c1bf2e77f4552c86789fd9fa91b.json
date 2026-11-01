@@ -1,0 +1,118 @@
+{
+  "conclusion": "inconclusive",
+  "inspections": [
+    {
+      "member": "media-release-media-detail-fa505-age-and-consequence-context-chromium-compact/current-media-detail-completed.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "4501d86f53aa277d76d68cb856c006e839c2e6f7e2fcb057403feec68f9dc3ad"
+    },
+    {
+      "member": "media-release-media-detail-fa505-age-and-consequence-context-chromium-compact/current-media-detail-restored.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "a9c6bce320af56773f21a2bf7e9be62ce1702d474e570edcfbc7f021459080f0"
+    },
+    {
+      "member": "media-release-media-detail-fa505-age-and-consequence-context-chromium-compact/current-media-detail-top.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "547f0cf788d5a638f2b900348a041fa30b3a217e9ebe652d6f3acf823c3eac42"
+    },
+    {
+      "member": "media-release-media-detail-fa505-age-and-consequence-context-chromium-compact/current-media-detail.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "010cadcb65e100f7379b02c697111fba1054c0f1a0d471c77179c366cd4342d1"
+    },
+    {
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-compact/current-media-library-viewport-0.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "b5a5c5a684a5198c7e4f99e0e2698aaafdcfdaf43d998a596f97a0d4d6b72136"
+    },
+    {
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-compact/current-media-library-viewport-2.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "4e86b50e2f4625608da791c13451139f58a2983b502f95a44cd3e5f06e7cd635"
+    },
+    {
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-compact/current-media-library-viewport-4.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "854414863195ff22cea67d3ca877d5b2d284ec3b589f1cea4c06f5b646a29168"
+    },
+    {
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-compact/current-media-library.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "051cb23247651cf77b937c24c09a4a9800f13e1d2e9d59a37bf81ef732535c44"
+    },
+    {
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-compact/current-scrollport-footer.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "1384cf7db4034916fbaf444692b4365bcdc7549a5e663c0fbf412fcd5bb3e743"
+    },
+    {
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-compact/current-scrollport-middle.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "38b10cbe22c5ebd192c915aa8f4584d349b2a63f9b1dfa9c6df0e2e27c8e335f"
+    },
+    {
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-compact/current-scrollport-top.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "051cb23247651cf77b937c24c09a4a9800f13e1d2e9d59a37bf81ef732535c44"
+    },
+    {
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-compact/media-library-chromium-compact-actual.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "actual",
+      "sha256": "051cb23247651cf77b937c24c09a4a9800f13e1d2e9d59a37bf81ef732535c44"
+    },
+    {
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-compact/test-failed-1.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "failure",
+      "sha256": "854414863195ff22cea67d3ca877d5b2d284ec3b589f1cea4c06f5b646a29168"
+    },
+    {
+      "member": "media-release-media-picker-72bf8-ontained-in-a-real-workflow-chromium-compact/current-media-picker-bottom.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "3a7707ea8b31410f701cdb868cd732b2c105c6448231f3dfd2777ba02371477e"
+    },
+    {
+      "member": "media-release-media-picker-72bf8-ontained-in-a-real-workflow-chromium-compact/current-media-picker.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "8b6f62199b0e9c6cc31e5d9d1f096f1cc3400b99f3ac089c26f3bc347d5018fb"
+    },
+    {
+      "member": "media-release-media-picker-72bf8-ontained-in-a-real-workflow-chromium-compact/current-scrollport-footer.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "541a6823a6eded1fe1ffbe6c7cf7537abd51c80583298b8a7b23761a4e524a7b"
+    },
+    {
+      "member": "media-release-media-picker-72bf8-ontained-in-a-real-workflow-chromium-compact/current-scrollport-middle.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "b9da3f174f821fa6f132b949676f0253e13fe27aa1eb80ebf0c68eb0d458c08e"
+    },
+    {
+      "member": "media-release-media-picker-72bf8-ontained-in-a-real-workflow-chromium-compact/current-scrollport-top.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "9ccdc9289e5fe7cf7e3006ca2374ed877e0d85bafeb19059a30eaebcec4c2362"
+    }
+  ],
+  "kind": "technical-review",
+  "manifest": "runs/41316950722-1-124878897702-13087811951.json",
+  "manifestSha256": "c2304fa0be6a2055748eebce0ca4614f89d0395cc04c6de2e072b3f5ad28361b",
+  "notes": "Diagnostic only; no baseline or full visual acceptance. Review methods are conservative: partial image inspection maps to overview. Original run failures remain unchanged. Technical pixel review is not baseline promotion or complete visual acceptance. Mobile viewport-only primary references do not cover the entire inner scrollport. Supplemental top/middle/footer captures and geometry improve evidence but do not replace full stitched/tiled visual reference coverage. No open utility popup evidence in these matrices; no standardlocal-reference/focus-journey claim. Standard is separately running. Scaled overview inspection is not pixel-level acceptance of every small glyph. High-contrast Caption textarea system-palette gap repaired: black Canvas surface with visible white boundary; explicit system-control assertion precedes snapshot. High-contrast detail comparison remains failed, but soft comparison allows hard lifecycle assertions through ready version 3, request If-Match preconditions, settled aria-busy, focus restoration and axe before restored capture. All six supported detail projects retain restored-state PNGs; six other detail combinations remain declared skips. No new independent severe visual regression found. Library differences remain predominantly approved-shell gutters/reflow and mobile inner-scrollport capture extent; high-contrast detail differences are intentional system-palette correction. All 587 native library target observations have zero persistent-shell-control overlap and zero blocked centers inside unobscured content viewport.",
+  "schemaVersion": 2
+}

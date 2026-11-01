@@ -1,0 +1,34 @@
+{
+  "conclusion": "inconclusive",
+  "inspections": [
+    {
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-ultrawide/current-media-library-viewport-0.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "376204b2b746a3d18eea2e4706b97431008c6dac0b0919095fec9b079d493396"
+    },
+    {
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-ultrawide/current-media-library-viewport-2.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "376204b2b746a3d18eea2e4706b97431008c6dac0b0919095fec9b079d493396"
+    },
+    {
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-ultrawide/current-media-library-viewport-4.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "cb8debd5887ed7e24c8a2c09f051ad81c688dfbe4dbab326aa497ad0b6311f81"
+    },
+    {
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-ultrawide/current-media-library.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "17fb1f412225047daf479b7a3425a0dc86b3513d38743af305b4a34fc2c9d304"
+    }
+  ],
+  "kind": "technical-review",
+  "manifest": "runs/41314752092-1-124872315617-13086841910.json",
+  "manifestSha256": "0cb2b6f32284da0a54cc6c06cab58bf2152d4d94f5bdedc251f84195dc3c3ea4",
+  "notes": "Diagnostic only; no baseline or full visual acceptance. Review methods are conservative: partial image inspection maps to overview. Original run failures remain unchanged. Original PNG bytes unchanged; contact-sheet review is overview only, not detailed acceptance. High-contrast detail snapshot failure prevents later completed lifecycle steps/captures. Standard browser suites never ran; no workspace/compact journey/Firefox focus validation. No open drawer/utility popup state captured here. Mobile main fullPage PNG is only viewport-sized: reference coverage strategy needs explicit review; supplementary top/middle/footer do not show every intervening scroll position. Overview-scale review cannot certify every small text/control in tall images. Mobile drawer toggles now reserved in bottom dock; previously obscured footer copy visible at sampled scroll states. Compact/400%zoom/desktop/light/RTL detail lifecycle reaches soft-deleted completed/Prepare restore; pending alignment repaired. HC pending alignment reaches snapshot but comparison fails before completed step. HCdetail difference predominantly intended system palette on input/buttons versus authored normal-style expected controls. Residual caption textarea remains authored dark fill/border in both expected andactual; forced palette selector excludes textarea, no detail system-border assertion. Library discrepancies predominantly intentional desktop gutter reflow and mobile inner-scrollport viewport-sized capture. Not automatic reference approval. No blocked target center inside unobscured content area and no shell-control target overlaps in587schema4 observations across12projects. Generic System evidence current footer still appears in unavailable/stale contexts; separately scoped existing concern.",
+  "schemaVersion": 2
+}

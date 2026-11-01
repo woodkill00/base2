@@ -1,0 +1,65 @@
+{
+  "archiveSha256": "f4314a7a54178db46998a40dd6b1df99551815e003969354c0ed94fce8a3531e",
+  "artifactId": 13086074688,
+  "attempt": 1,
+  "captures": [
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "chromium-ultrawide.zip",
+          "sha256": "66688e686ba0bd98af5ae80ee3dceb65479977bc2c6ea2d2205d85889850c078"
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-ultrawide/current-operations-center-chromium-ultrawide.png",
+          "sha256": "b4bdffa0c1923b73d5e4c4ea902d859912495f0288684dad71980e944f95d617"
+        }
+      ],
+      "bytes": 1413677,
+      "dimensions": [
+        2560,
+        2916
+      ],
+      "identityBasis": "native-report",
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-ultrawide/current-operations-center-chromium-ultrawide.png",
+      "originalOutcome": "passed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "passed"
+        ],
+        "basis": "retained-native-report",
+        "project": "chromium-ultrawide",
+        "title": "operations center is accessible responsive and visually stable"
+      },
+      "project": "chromium-ultrawide",
+      "role": "current",
+      "sha256": "b4bdffa0c1923b73d5e4c4ea902d859912495f0288684dad71980e944f95d617",
+      "storage": "objects/b4bdffa0c1923b73d5e4c4ea902d859912495f0288684dad71980e944f95d617.png",
+      "test": "operations center is accessible responsive and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    }
+  ],
+  "fixtureScope": "synthetic-project-tests",
+  "jobId": 124872282068,
+  "laterValidation": "pending",
+  "observations": [],
+  "originalOutcome": "failed",
+  "repository": "woodkill00/base2",
+  "requestedHead": "696f710633d81cec46e872901f21a024bf735c5f",
+  "runId": 41314740935,
+  "schemaVersion": 2,
+  "sourceCommit": "696f710633d81cec46e872901f21a024bf735c5f",
+  "sourceTree": "b395ca42a261de3c2710034787f5410ff5599501",
+  "technicalReview": "pending",
+  "transfer": {
+    "blobs": {
+      "b4bdffa0c1923b73d5e4c4ea902d859912495f0288684dad71980e944f95d617": "692c87ab299b6ce28f290c3deadfd2dcc425d185"
+    },
+    "commit": "9cd69137e688113750cdc225ad4c7fce2eebc157",
+    "localVerification": "git-blob-sha256-size-dimensions-full-decode",
+    "originalArchiveVerification": "externally-verified-zip-and-members",
+    "tree": "6806be178646ad75161a0a142b2c935608c30b46"
+  }
+}

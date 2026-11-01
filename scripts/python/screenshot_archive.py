@@ -614,6 +614,9 @@ def validate_archive(repo: Path) -> int:
         raw = safe_path(root, str(event_path.relative_to(root))).read_bytes()
         require(event_path.stem == digest(raw), "event digest mismatch")
         validate_event(repo, json.loads(raw))
+    from scripts.python.archive_support import validate_support
+
+    validate_support(repo)
     return count
 
 

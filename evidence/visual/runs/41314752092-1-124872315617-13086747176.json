@@ -1,0 +1,768 @@
+{
+  "archiveSha256": "3bbe615c42a777ac4402ad81448c90f38c3c05d46aa323905166f6935727891f",
+  "artifactId": 13086747176,
+  "attempt": 1,
+  "captures": [
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "chromium-compact.zip",
+          "sha256": "87323b34ad3704ad5f3f3ef9d25361af8e90e0c0263b3b5be664722d6d971d4b"
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "media-release-media-detail-fa505-age-and-consequence-context-chromium-compact/current-media-detail-completed.png",
+          "sha256": "4501d86f53aa277d76d68cb856c006e839c2e6f7e2fcb057403feec68f9dc3ad"
+        }
+      ],
+      "bytes": 28816,
+      "dimensions": [
+        300,
+        540
+      ],
+      "identityBasis": "native-report",
+      "member": "media-release-media-detail-fa505-age-and-consequence-context-chromium-compact/current-media-detail-completed.png",
+      "originalOutcome": "passed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "passed"
+        ],
+        "basis": "retained-native-report",
+        "project": "chromium-compact",
+        "title": "media detail preserves safe preview usage and consequence context"
+      },
+      "project": "chromium-compact",
+      "role": "current",
+      "sha256": "4501d86f53aa277d76d68cb856c006e839c2e6f7e2fcb057403feec68f9dc3ad",
+      "storage": "objects/4501d86f53aa277d76d68cb856c006e839c2e6f7e2fcb057403feec68f9dc3ad.png",
+      "test": "media detail preserves safe preview usage and consequence context",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "chromium-compact.zip",
+          "sha256": "87323b34ad3704ad5f3f3ef9d25361af8e90e0c0263b3b5be664722d6d971d4b"
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "media-release-media-detail-fa505-age-and-consequence-context-chromium-compact/current-media-detail-top.png",
+          "sha256": "547f0cf788d5a638f2b900348a041fa30b3a217e9ebe652d6f3acf823c3eac42"
+        }
+      ],
+      "bytes": 52874,
+      "dimensions": [
+        300,
+        540
+      ],
+      "identityBasis": "native-report",
+      "member": "media-release-media-detail-fa505-age-and-consequence-context-chromium-compact/current-media-detail-top.png",
+      "originalOutcome": "passed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "passed"
+        ],
+        "basis": "retained-native-report",
+        "project": "chromium-compact",
+        "title": "media detail preserves safe preview usage and consequence context"
+      },
+      "project": "chromium-compact",
+      "role": "current",
+      "sha256": "547f0cf788d5a638f2b900348a041fa30b3a217e9ebe652d6f3acf823c3eac42",
+      "storage": "objects/547f0cf788d5a638f2b900348a041fa30b3a217e9ebe652d6f3acf823c3eac42.png",
+      "test": "media detail preserves safe preview usage and consequence context",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "chromium-compact.zip",
+          "sha256": "87323b34ad3704ad5f3f3ef9d25361af8e90e0c0263b3b5be664722d6d971d4b"
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "media-release-media-detail-fa505-age-and-consequence-context-chromium-compact/current-media-detail.png",
+          "sha256": "010cadcb65e100f7379b02c697111fba1054c0f1a0d471c77179c366cd4342d1"
+        }
+      ],
+      "bytes": 35362,
+      "dimensions": [
+        300,
+        540
+      ],
+      "identityBasis": "native-report",
+      "member": "media-release-media-detail-fa505-age-and-consequence-context-chromium-compact/current-media-detail.png",
+      "originalOutcome": "passed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "passed"
+        ],
+        "basis": "retained-native-report",
+        "project": "chromium-compact",
+        "title": "media detail preserves safe preview usage and consequence context"
+      },
+      "project": "chromium-compact",
+      "role": "current",
+      "sha256": "010cadcb65e100f7379b02c697111fba1054c0f1a0d471c77179c366cd4342d1",
+      "storage": "objects/010cadcb65e100f7379b02c697111fba1054c0f1a0d471c77179c366cd4342d1.png",
+      "test": "media detail preserves safe preview usage and consequence context",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "chromium-compact.zip",
+          "sha256": "87323b34ad3704ad5f3f3ef9d25361af8e90e0c0263b3b5be664722d6d971d4b"
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-compact/current-media-library-viewport-0.png",
+          "sha256": "b5a5c5a684a5198c7e4f99e0e2698aaafdcfdaf43d998a596f97a0d4d6b72136"
+        }
+      ],
+      "bytes": 126673,
+      "dimensions": [
+        320,
+        568
+      ],
+      "identityBasis": "native-report",
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-compact/current-media-library-viewport-0.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-report",
+        "project": "chromium-compact",
+        "title": "media library is accessible responsive and visually reviewed"
+      },
+      "project": "chromium-compact",
+      "role": "current",
+      "sha256": "b5a5c5a684a5198c7e4f99e0e2698aaafdcfdaf43d998a596f97a0d4d6b72136",
+      "storage": "objects/b5a5c5a684a5198c7e4f99e0e2698aaafdcfdaf43d998a596f97a0d4d6b72136.png",
+      "test": "media library is accessible responsive and visually reviewed",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "chromium-compact.zip",
+          "sha256": "87323b34ad3704ad5f3f3ef9d25361af8e90e0c0263b3b5be664722d6d971d4b"
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-compact/current-media-library-viewport-2.png",
+          "sha256": "4e86b50e2f4625608da791c13451139f58a2983b502f95a44cd3e5f06e7cd635"
+        }
+      ],
+      "bytes": 126073,
+      "dimensions": [
+        320,
+        568
+      ],
+      "identityBasis": "native-report",
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-compact/current-media-library-viewport-2.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-report",
+        "project": "chromium-compact",
+        "title": "media library is accessible responsive and visually reviewed"
+      },
+      "project": "chromium-compact",
+      "role": "current",
+      "sha256": "4e86b50e2f4625608da791c13451139f58a2983b502f95a44cd3e5f06e7cd635",
+      "storage": "objects/4e86b50e2f4625608da791c13451139f58a2983b502f95a44cd3e5f06e7cd635.png",
+      "test": "media library is accessible responsive and visually reviewed",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "chromium-compact.zip",
+          "sha256": "87323b34ad3704ad5f3f3ef9d25361af8e90e0c0263b3b5be664722d6d971d4b"
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-compact/current-media-library-viewport-4.png",
+          "sha256": "854414863195ff22cea67d3ca877d5b2d284ec3b589f1cea4c06f5b646a29168"
+        }
+      ],
+      "bytes": 124246,
+      "dimensions": [
+        320,
+        568
+      ],
+      "identityBasis": "native-report",
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-compact/current-media-library-viewport-4.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-report",
+        "project": "chromium-compact",
+        "title": "media library is accessible responsive and visually reviewed"
+      },
+      "project": "chromium-compact",
+      "role": "current",
+      "sha256": "854414863195ff22cea67d3ca877d5b2d284ec3b589f1cea4c06f5b646a29168",
+      "storage": "objects/854414863195ff22cea67d3ca877d5b2d284ec3b589f1cea4c06f5b646a29168.png",
+      "test": "media library is accessible responsive and visually reviewed",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "chromium-compact.zip",
+          "sha256": "87323b34ad3704ad5f3f3ef9d25361af8e90e0c0263b3b5be664722d6d971d4b"
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-compact/current-media-library.png",
+          "sha256": "051cb23247651cf77b937c24c09a4a9800f13e1d2e9d59a37bf81ef732535c44"
+        }
+      ],
+      "bytes": 149705,
+      "dimensions": [
+        320,
+        568
+      ],
+      "identityBasis": "native-report",
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-compact/current-media-library.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-report",
+        "project": "chromium-compact",
+        "title": "media library is accessible responsive and visually reviewed"
+      },
+      "project": "chromium-compact",
+      "role": "current",
+      "sha256": "051cb23247651cf77b937c24c09a4a9800f13e1d2e9d59a37bf81ef732535c44",
+      "storage": "objects/051cb23247651cf77b937c24c09a4a9800f13e1d2e9d59a37bf81ef732535c44.png",
+      "test": "media library is accessible responsive and visually reviewed",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "chromium-compact.zip",
+          "sha256": "87323b34ad3704ad5f3f3ef9d25361af8e90e0c0263b3b5be664722d6d971d4b"
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-compact/current-scrollport-footer.png",
+          "sha256": "1384cf7db4034916fbaf444692b4365bcdc7549a5e663c0fbf412fcd5bb3e743"
+        }
+      ],
+      "bytes": 50605,
+      "dimensions": [
+        320,
+        568
+      ],
+      "identityBasis": "native-report",
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-compact/current-scrollport-footer.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-report",
+        "project": "chromium-compact",
+        "title": "media library is accessible responsive and visually reviewed"
+      },
+      "project": "chromium-compact",
+      "role": "current",
+      "sha256": "1384cf7db4034916fbaf444692b4365bcdc7549a5e663c0fbf412fcd5bb3e743",
+      "storage": "objects/1384cf7db4034916fbaf444692b4365bcdc7549a5e663c0fbf412fcd5bb3e743.png",
+      "test": "media library is accessible responsive and visually reviewed",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "chromium-compact.zip",
+          "sha256": "87323b34ad3704ad5f3f3ef9d25361af8e90e0c0263b3b5be664722d6d971d4b"
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-compact/current-scrollport-middle.png",
+          "sha256": "38b10cbe22c5ebd192c915aa8f4584d349b2a63f9b1dfa9c6df0e2e27c8e335f"
+        }
+      ],
+      "bytes": 126868,
+      "dimensions": [
+        320,
+        568
+      ],
+      "identityBasis": "native-report",
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-compact/current-scrollport-middle.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-report",
+        "project": "chromium-compact",
+        "title": "media library is accessible responsive and visually reviewed"
+      },
+      "project": "chromium-compact",
+      "role": "current",
+      "sha256": "38b10cbe22c5ebd192c915aa8f4584d349b2a63f9b1dfa9c6df0e2e27c8e335f",
+      "storage": "objects/38b10cbe22c5ebd192c915aa8f4584d349b2a63f9b1dfa9c6df0e2e27c8e335f.png",
+      "test": "media library is accessible responsive and visually reviewed",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "chromium-compact.zip",
+          "sha256": "87323b34ad3704ad5f3f3ef9d25361af8e90e0c0263b3b5be664722d6d971d4b"
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-compact/current-scrollport-top.png",
+          "sha256": "051cb23247651cf77b937c24c09a4a9800f13e1d2e9d59a37bf81ef732535c44"
+        }
+      ],
+      "bytes": 149705,
+      "dimensions": [
+        320,
+        568
+      ],
+      "identityBasis": "native-report",
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-compact/current-scrollport-top.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-report",
+        "project": "chromium-compact",
+        "title": "media library is accessible responsive and visually reviewed"
+      },
+      "project": "chromium-compact",
+      "role": "current",
+      "sha256": "051cb23247651cf77b937c24c09a4a9800f13e1d2e9d59a37bf81ef732535c44",
+      "storage": "objects/051cb23247651cf77b937c24c09a4a9800f13e1d2e9d59a37bf81ef732535c44.png",
+      "test": "media library is accessible responsive and visually reviewed",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "chromium-compact.zip",
+          "sha256": "87323b34ad3704ad5f3f3ef9d25361af8e90e0c0263b3b5be664722d6d971d4b"
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-compact/media-library-chromium-compact-actual.png",
+          "sha256": "051cb23247651cf77b937c24c09a4a9800f13e1d2e9d59a37bf81ef732535c44"
+        }
+      ],
+      "bytes": 149705,
+      "dimensions": [
+        320,
+        568
+      ],
+      "identityBasis": "native-report",
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-compact/media-library-chromium-compact-actual.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-report",
+        "project": "chromium-compact",
+        "title": "media library is accessible responsive and visually reviewed"
+      },
+      "project": "chromium-compact",
+      "role": "actual",
+      "sha256": "051cb23247651cf77b937c24c09a4a9800f13e1d2e9d59a37bf81ef732535c44",
+      "storage": "objects/051cb23247651cf77b937c24c09a4a9800f13e1d2e9d59a37bf81ef732535c44.png",
+      "test": "media library is accessible responsive and visually reviewed",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "chromium-compact.zip",
+          "sha256": "87323b34ad3704ad5f3f3ef9d25361af8e90e0c0263b3b5be664722d6d971d4b"
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-compact/media-library-chromium-compact-diff.png",
+          "sha256": "a35c1f4b746f6324a4c6c1a533b9b277239f6ed454b3f66b2814dea36dd63e10"
+        }
+      ],
+      "bytes": 113272,
+      "dimensions": [
+        320,
+        3128
+      ],
+      "identityBasis": "native-report",
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-compact/media-library-chromium-compact-diff.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-report",
+        "project": "chromium-compact",
+        "title": "media library is accessible responsive and visually reviewed"
+      },
+      "project": "chromium-compact",
+      "role": "diff",
+      "sha256": "a35c1f4b746f6324a4c6c1a533b9b277239f6ed454b3f66b2814dea36dd63e10",
+      "storage": "objects/a35c1f4b746f6324a4c6c1a533b9b277239f6ed454b3f66b2814dea36dd63e10.png",
+      "test": "media library is accessible responsive and visually reviewed",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "chromium-compact.zip",
+          "sha256": "87323b34ad3704ad5f3f3ef9d25361af8e90e0c0263b3b5be664722d6d971d4b"
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-compact/media-library-chromium-compact-expected.png",
+          "sha256": "35fa12709b41ad3b88b9dd22d9f22eb2c7bebefbc17ccb46fb71b5eb8a0c46e7"
+        }
+      ],
+      "bytes": 345158,
+      "dimensions": [
+        320,
+        3128
+      ],
+      "identityBasis": "native-report",
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-compact/media-library-chromium-compact-expected.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-report",
+        "project": "chromium-compact",
+        "title": "media library is accessible responsive and visually reviewed"
+      },
+      "project": "chromium-compact",
+      "role": "expected",
+      "sha256": "35fa12709b41ad3b88b9dd22d9f22eb2c7bebefbc17ccb46fb71b5eb8a0c46e7",
+      "storage": "objects/35fa12709b41ad3b88b9dd22d9f22eb2c7bebefbc17ccb46fb71b5eb8a0c46e7.png",
+      "test": "media library is accessible responsive and visually reviewed",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "chromium-compact.zip",
+          "sha256": "87323b34ad3704ad5f3f3ef9d25361af8e90e0c0263b3b5be664722d6d971d4b"
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-compact/test-failed-1.png",
+          "sha256": "854414863195ff22cea67d3ca877d5b2d284ec3b589f1cea4c06f5b646a29168"
+        }
+      ],
+      "bytes": 124246,
+      "dimensions": [
+        320,
+        568
+      ],
+      "identityBasis": "native-report",
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-compact/test-failed-1.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-report",
+        "project": "chromium-compact",
+        "title": "media library is accessible responsive and visually reviewed"
+      },
+      "project": "chromium-compact",
+      "role": "failure",
+      "sha256": "854414863195ff22cea67d3ca877d5b2d284ec3b589f1cea4c06f5b646a29168",
+      "storage": "objects/854414863195ff22cea67d3ca877d5b2d284ec3b589f1cea4c06f5b646a29168.png",
+      "test": "media library is accessible responsive and visually reviewed",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "chromium-compact.zip",
+          "sha256": "87323b34ad3704ad5f3f3ef9d25361af8e90e0c0263b3b5be664722d6d971d4b"
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "media-release-media-picker-72bf8-ontained-in-a-real-workflow-chromium-compact/current-media-picker-bottom.png",
+          "sha256": "3a7707ea8b31410f701cdb868cd732b2c105c6448231f3dfd2777ba02371477e"
+        }
+      ],
+      "bytes": 27225,
+      "dimensions": [
+        300,
+        540
+      ],
+      "identityBasis": "native-report",
+      "member": "media-release-media-picker-72bf8-ontained-in-a-real-workflow-chromium-compact/current-media-picker-bottom.png",
+      "originalOutcome": "passed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "passed"
+        ],
+        "basis": "retained-native-report",
+        "project": "chromium-compact",
+        "title": "media picker is visually and keyboard contained in a real workflow"
+      },
+      "project": "chromium-compact",
+      "role": "current",
+      "sha256": "3a7707ea8b31410f701cdb868cd732b2c105c6448231f3dfd2777ba02371477e",
+      "storage": "objects/3a7707ea8b31410f701cdb868cd732b2c105c6448231f3dfd2777ba02371477e.png",
+      "test": "media picker is visually and keyboard contained in a real workflow",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "chromium-compact.zip",
+          "sha256": "87323b34ad3704ad5f3f3ef9d25361af8e90e0c0263b3b5be664722d6d971d4b"
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "media-release-media-picker-72bf8-ontained-in-a-real-workflow-chromium-compact/current-media-picker.png",
+          "sha256": "8b6f62199b0e9c6cc31e5d9d1f096f1cc3400b99f3ac089c26f3bc347d5018fb"
+        }
+      ],
+      "bytes": 23929,
+      "dimensions": [
+        300,
+        540
+      ],
+      "identityBasis": "native-report",
+      "member": "media-release-media-picker-72bf8-ontained-in-a-real-workflow-chromium-compact/current-media-picker.png",
+      "originalOutcome": "passed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "passed"
+        ],
+        "basis": "retained-native-report",
+        "project": "chromium-compact",
+        "title": "media picker is visually and keyboard contained in a real workflow"
+      },
+      "project": "chromium-compact",
+      "role": "current",
+      "sha256": "8b6f62199b0e9c6cc31e5d9d1f096f1cc3400b99f3ac089c26f3bc347d5018fb",
+      "storage": "objects/8b6f62199b0e9c6cc31e5d9d1f096f1cc3400b99f3ac089c26f3bc347d5018fb.png",
+      "test": "media picker is visually and keyboard contained in a real workflow",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "chromium-compact.zip",
+          "sha256": "87323b34ad3704ad5f3f3ef9d25361af8e90e0c0263b3b5be664722d6d971d4b"
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "media-release-media-picker-72bf8-ontained-in-a-real-workflow-chromium-compact/current-scrollport-footer.png",
+          "sha256": "541a6823a6eded1fe1ffbe6c7cf7537abd51c80583298b8a7b23761a4e524a7b"
+        }
+      ],
+      "bytes": 52483,
+      "dimensions": [
+        320,
+        568
+      ],
+      "identityBasis": "native-report",
+      "member": "media-release-media-picker-72bf8-ontained-in-a-real-workflow-chromium-compact/current-scrollport-footer.png",
+      "originalOutcome": "passed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "passed"
+        ],
+        "basis": "retained-native-report",
+        "project": "chromium-compact",
+        "title": "media picker is visually and keyboard contained in a real workflow"
+      },
+      "project": "chromium-compact",
+      "role": "current",
+      "sha256": "541a6823a6eded1fe1ffbe6c7cf7537abd51c80583298b8a7b23761a4e524a7b",
+      "storage": "objects/541a6823a6eded1fe1ffbe6c7cf7537abd51c80583298b8a7b23761a4e524a7b.png",
+      "test": "media picker is visually and keyboard contained in a real workflow",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "chromium-compact.zip",
+          "sha256": "87323b34ad3704ad5f3f3ef9d25361af8e90e0c0263b3b5be664722d6d971d4b"
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "media-release-media-picker-72bf8-ontained-in-a-real-workflow-chromium-compact/current-scrollport-middle.png",
+          "sha256": "b9da3f174f821fa6f132b949676f0253e13fe27aa1eb80ebf0c68eb0d458c08e"
+        }
+      ],
+      "bytes": 129866,
+      "dimensions": [
+        320,
+        568
+      ],
+      "identityBasis": "native-report",
+      "member": "media-release-media-picker-72bf8-ontained-in-a-real-workflow-chromium-compact/current-scrollport-middle.png",
+      "originalOutcome": "passed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "passed"
+        ],
+        "basis": "retained-native-report",
+        "project": "chromium-compact",
+        "title": "media picker is visually and keyboard contained in a real workflow"
+      },
+      "project": "chromium-compact",
+      "role": "current",
+      "sha256": "b9da3f174f821fa6f132b949676f0253e13fe27aa1eb80ebf0c68eb0d458c08e",
+      "storage": "objects/b9da3f174f821fa6f132b949676f0253e13fe27aa1eb80ebf0c68eb0d458c08e.png",
+      "test": "media picker is visually and keyboard contained in a real workflow",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "chromium-compact.zip",
+          "sha256": "87323b34ad3704ad5f3f3ef9d25361af8e90e0c0263b3b5be664722d6d971d4b"
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "media-release-media-picker-72bf8-ontained-in-a-real-workflow-chromium-compact/current-scrollport-top.png",
+          "sha256": "9ccdc9289e5fe7cf7e3006ca2374ed877e0d85bafeb19059a30eaebcec4c2362"
+        }
+      ],
+      "bytes": 150770,
+      "dimensions": [
+        320,
+        568
+      ],
+      "identityBasis": "native-report",
+      "member": "media-release-media-picker-72bf8-ontained-in-a-real-workflow-chromium-compact/current-scrollport-top.png",
+      "originalOutcome": "passed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "passed"
+        ],
+        "basis": "retained-native-report",
+        "project": "chromium-compact",
+        "title": "media picker is visually and keyboard contained in a real workflow"
+      },
+      "project": "chromium-compact",
+      "role": "current",
+      "sha256": "9ccdc9289e5fe7cf7e3006ca2374ed877e0d85bafeb19059a30eaebcec4c2362",
+      "storage": "objects/9ccdc9289e5fe7cf7e3006ca2374ed877e0d85bafeb19059a30eaebcec4c2362.png",
+      "test": "media picker is visually and keyboard contained in a real workflow",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    }
+  ],
+  "fixtureScope": "synthetic-project-tests",
+  "jobId": 124872315617,
+  "laterValidation": "pending",
+  "observations": [
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "chromium-compact.zip",
+          "sha256": "87323b34ad3704ad5f3f3ef9d25361af8e90e0c0263b3b5be664722d6d971d4b"
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-compact/media-viewport-observations.json",
+          "sha256": "19db0b3d5fd7c715d9ec751961ab98db69cb5a7709819e8c2cce028bfa557b70"
+        }
+      ],
+      "bytes": 17043,
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-compact/media-viewport-observations.json",
+      "project": "chromium-compact",
+      "schemaVersion": 4,
+      "sha256": "19db0b3d5fd7c715d9ec751961ab98db69cb5a7709819e8c2cce028bfa557b70",
+      "storage": "observations/19db0b3d5fd7c715d9ec751961ab98db69cb5a7709819e8c2cce028bfa557b70.json"
+    }
+  ],
+  "originalOutcome": "failed",
+  "repository": "woodkill00/base2",
+  "requestedHead": "696f710633d81cec46e872901f21a024bf735c5f",
+  "runId": 41314752092,
+  "schemaVersion": 2,
+  "sourceCommit": "696f710633d81cec46e872901f21a024bf735c5f",
+  "sourceTree": "b395ca42a261de3c2710034787f5410ff5599501",
+  "technicalReview": "pending",
+  "transfer": {
+    "blobs": {
+      "010cadcb65e100f7379b02c697111fba1054c0f1a0d471c77179c366cd4342d1": "a338caa6bb187270562264cef24721a44df63e5e",
+      "051cb23247651cf77b937c24c09a4a9800f13e1d2e9d59a37bf81ef732535c44": "fe3b22a6a1db03f3b4d0b77871211c6d3e49ac38",
+      "1384cf7db4034916fbaf444692b4365bcdc7549a5e663c0fbf412fcd5bb3e743": "115cc3eb22177bb6511ab224f3c69f9270574b8c",
+      "19db0b3d5fd7c715d9ec751961ab98db69cb5a7709819e8c2cce028bfa557b70": "0449810fc7c01724b98075eeeb74289225793b5c",
+      "35fa12709b41ad3b88b9dd22d9f22eb2c7bebefbc17ccb46fb71b5eb8a0c46e7": "e4735e23a40462b2245ac19c6dda5cd7a190b40d",
+      "38b10cbe22c5ebd192c915aa8f4584d349b2a63f9b1dfa9c6df0e2e27c8e335f": "2a62b73d29db5ec1658d5755998001e796d2ae92",
+      "3a7707ea8b31410f701cdb868cd732b2c105c6448231f3dfd2777ba02371477e": "075012af8dfd63ac76ac4789b1c47262505def98",
+      "4501d86f53aa277d76d68cb856c006e839c2e6f7e2fcb057403feec68f9dc3ad": "0d2db9b839864366cac412efa657c763abd86864",
+      "4e86b50e2f4625608da791c13451139f58a2983b502f95a44cd3e5f06e7cd635": "ee31cbf2f179a5d85df96409adf737740975e514",
+      "541a6823a6eded1fe1ffbe6c7cf7537abd51c80583298b8a7b23761a4e524a7b": "f3275232f2548e807a6feecd151ea2b8cbb5e0df",
+      "547f0cf788d5a638f2b900348a041fa30b3a217e9ebe652d6f3acf823c3eac42": "5313095f318f916212e0964e7b6f0b7f7ec0f58c",
+      "854414863195ff22cea67d3ca877d5b2d284ec3b589f1cea4c06f5b646a29168": "4e3f6fff8f3f0e805a6015f1717bfff0aa07e269",
+      "8b6f62199b0e9c6cc31e5d9d1f096f1cc3400b99f3ac089c26f3bc347d5018fb": "e2ff8326fb3136fd58d07b13966cf409f48b1c0c",
+      "9ccdc9289e5fe7cf7e3006ca2374ed877e0d85bafeb19059a30eaebcec4c2362": "b5d5299748c480e3189dcc81f29012bb4cee26b4",
+      "a35c1f4b746f6324a4c6c1a533b9b277239f6ed454b3f66b2814dea36dd63e10": "a98ff0d9a9dba12b1350ff51dc935fa6dffa278c",
+      "b5a5c5a684a5198c7e4f99e0e2698aaafdcfdaf43d998a596f97a0d4d6b72136": "7ad3dd4b4576d0aba98c4f1cb3f218b2c81bb73c",
+      "b9da3f174f821fa6f132b949676f0253e13fe27aa1eb80ebf0c68eb0d458c08e": "70447301a92f09eedf134329904ee5e1fb5007c2"
+    },
+    "commit": "9cd69137e688113750cdc225ad4c7fce2eebc157",
+    "localVerification": "git-blob-sha256-size-dimensions-full-decode",
+    "originalArchiveVerification": "externally-verified-zip-and-members",
+    "tree": "6806be178646ad75161a0a142b2c935608c30b46"
+  }
+}

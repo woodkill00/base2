@@ -1,0 +1,46 @@
+{
+  "conclusion": "inconclusive",
+  "inspections": [
+    {
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-large-text/current-media-library-viewport-0.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "37cc3d4c9547efc9953c4d34f14f41a2dac57191d1b289061f9d965811118e94"
+    },
+    {
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-large-text/current-media-library-viewport-2.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "d4f38fb8474de94e2c0d87a4f0fdeffa3b5d36c7209814b510470a9fab017f0c"
+    },
+    {
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-large-text/current-media-library-viewport-4.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "793b30d98f10ef6df4cc22224b5173e57880ce01c90b12d7f8500bacd7e4e947"
+    },
+    {
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-large-text/current-media-library.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "6d2993d63e6a93cf68b643b4615401f1f121da0b7a0a8c5a660eef9b5275674c"
+    },
+    {
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-large-text/media-library-chromium-large-text-actual.png",
+      "method": "individual-pixels",
+      "role": "actual",
+      "sha256": "1805ceb7030f80ea137546eeb6d23832f58f8288727d67e2a35f232448ff2569"
+    },
+    {
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-large-text/test-failed-1.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "failure",
+      "sha256": "793b30d98f10ef6df4cc22224b5173e57880ce01c90b12d7f8500bacd7e4e947"
+    }
+  ],
+  "kind": "technical-review",
+  "manifest": "runs/41314752092-1-124872315617-13086589759.json",
+  "manifestSha256": "fb8eee5e6693069ec9875dcc9453dc2550d44c7b06a02df7d19b6e2abf5e27b2",
+  "notes": "Diagnostic only; no baseline or full visual acceptance. Review methods are conservative: partial image inspection maps to overview. Original run failures remain unchanged. Original PNG bytes unchanged; contact-sheet review is overview only, not detailed acceptance. High-contrast detail snapshot failure prevents later completed lifecycle steps/captures. Standard browser suites never ran; no workspace/compact journey/Firefox focus validation. No open drawer/utility popup state captured here. Mobile main fullPage PNG is only viewport-sized: reference coverage strategy needs explicit review; supplementary top/middle/footer do not show every intervening scroll position. Overview-scale review cannot certify every small text/control in tall images. Mobile drawer toggles now reserved in bottom dock; previously obscured footer copy visible at sampled scroll states. Compact/400%zoom/desktop/light/RTL detail lifecycle reaches soft-deleted completed/Prepare restore; pending alignment repaired. HC pending alignment reaches snapshot but comparison fails before completed step. HCdetail difference predominantly intended system palette on input/buttons versus authored normal-style expected controls. Residual caption textarea remains authored dark fill/border in both expected andactual; forced palette selector excludes textarea, no detail system-border assertion. Library discrepancies predominantly intentional desktop gutter reflow and mobile inner-scrollport viewport-sized capture. Not automatic reference approval. No blocked target center inside unobscured content area and no shell-control target overlaps in587schema4 observations across12projects. Generic System evidence current footer still appears in unavailable/stale contexts; separately scoped existing concern.",
+  "schemaVersion": 2
+}

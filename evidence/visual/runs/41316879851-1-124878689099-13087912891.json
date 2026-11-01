@@ -1,0 +1,251 @@
+{
+  "archiveSha256": "fc0f7df20fbb6f396b4afac14d0b73c234b98fec1087b0dcb540006380d98b02",
+  "artifactId": 13087912891,
+  "attempt": 1,
+  "captures": [
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-firefox-desktop/workspace-records-firefox-desktop-expected.png",
+          "sha256": "b6f49fb71469b16c8ce91e821841e78bc92e0f7c54ad9cbe705e1cf7f13a5429"
+        }
+      ],
+      "bytes": 725424,
+      "dimensions": [
+        1440,
+        2029
+      ],
+      "identityBasis": "archive-directory",
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-firefox-desktop/workspace-records-firefox-desktop-expected.png",
+      "originalOutcome": "unknown",
+      "outcomeEvidence": {
+        "basis": "per-case-result-unavailable"
+      },
+      "project": "unknown-project",
+      "role": "expected",
+      "sha256": "b6f49fb71469b16c8ce91e821841e78bc92e0f7c54ad9cbe705e1cf7f13a5429",
+      "storage": "objects/b6f49fb71469b16c8ce91e821841e78bc92e0f7c54ad9cbe705e1cf7f13a5429.png",
+      "test": "workspace-release-workspac-d0657-ponsive-and-visually-stable-firefox-desktop",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-webkit-mobile/current-scrollport-footer.png",
+          "sha256": "5d2c2f1dac2163f340bbbdf833ab3b6717b9e578b73dae1e75ee2568420326f5"
+        }
+      ],
+      "bytes": 317035,
+      "dimensions": [
+        1170,
+        2532
+      ],
+      "identityBasis": "archive-directory",
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-webkit-mobile/current-scrollport-footer.png",
+      "originalOutcome": "unknown",
+      "outcomeEvidence": {
+        "basis": "per-case-result-unavailable"
+      },
+      "project": "unknown-project",
+      "role": "current",
+      "sha256": "5d2c2f1dac2163f340bbbdf833ab3b6717b9e578b73dae1e75ee2568420326f5",
+      "storage": "objects/5d2c2f1dac2163f340bbbdf833ab3b6717b9e578b73dae1e75ee2568420326f5.png",
+      "test": "workspace-release-workspac-d0657-ponsive-and-visually-stable-webkit-mobile",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-webkit-mobile/current-scrollport-middle.png",
+          "sha256": "ab72376ddd5b7bf28b16e41effcd8f42ea7194e07892a49b8cf43397846386ab"
+        }
+      ],
+      "bytes": 683993,
+      "dimensions": [
+        1170,
+        2532
+      ],
+      "identityBasis": "archive-directory",
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-webkit-mobile/current-scrollport-middle.png",
+      "originalOutcome": "unknown",
+      "outcomeEvidence": {
+        "basis": "per-case-result-unavailable"
+      },
+      "project": "unknown-project",
+      "role": "current",
+      "sha256": "ab72376ddd5b7bf28b16e41effcd8f42ea7194e07892a49b8cf43397846386ab",
+      "storage": "objects/ab72376ddd5b7bf28b16e41effcd8f42ea7194e07892a49b8cf43397846386ab.png",
+      "test": "workspace-release-workspac-d0657-ponsive-and-visually-stable-webkit-mobile",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-webkit-mobile/current-scrollport-top.png",
+          "sha256": "71723a79a725b012240480cc253a006f5e5a159c1452291e69d682cbeec6a357"
+        }
+      ],
+      "bytes": 1086109,
+      "dimensions": [
+        1170,
+        2532
+      ],
+      "identityBasis": "archive-directory",
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-webkit-mobile/current-scrollport-top.png",
+      "originalOutcome": "unknown",
+      "outcomeEvidence": {
+        "basis": "per-case-result-unavailable"
+      },
+      "project": "unknown-project",
+      "role": "current",
+      "sha256": "71723a79a725b012240480cc253a006f5e5a159c1452291e69d682cbeec6a357",
+      "storage": "objects/71723a79a725b012240480cc253a006f5e5a159c1452291e69d682cbeec6a357.png",
+      "test": "workspace-release-workspac-d0657-ponsive-and-visually-stable-webkit-mobile",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-webkit-mobile/test-failed-1.png",
+          "sha256": "c55aa5446317d68641d897c03e5d11d7d0efefee9fd4cb5443c242aed8f82381"
+        }
+      ],
+      "bytes": 1086055,
+      "dimensions": [
+        1170,
+        2532
+      ],
+      "identityBasis": "archive-directory",
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-webkit-mobile/test-failed-1.png",
+      "originalOutcome": "unknown",
+      "outcomeEvidence": {
+        "basis": "per-case-result-unavailable"
+      },
+      "project": "unknown-project",
+      "role": "failure",
+      "sha256": "c55aa5446317d68641d897c03e5d11d7d0efefee9fd4cb5443c242aed8f82381",
+      "storage": "objects/c55aa5446317d68641d897c03e5d11d7d0efefee9fd4cb5443c242aed8f82381.png",
+      "test": "workspace-release-workspac-d0657-ponsive-and-visually-stable-webkit-mobile",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-webkit-mobile/workspace-records-webkit-mobile-actual.png",
+          "sha256": "f7f31023a9587653fca3fe9be2a4457af1295f8a5286a07645d72ddb018e2697"
+        }
+      ],
+      "bytes": 244559,
+      "dimensions": [
+        390,
+        844
+      ],
+      "identityBasis": "archive-directory",
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-webkit-mobile/workspace-records-webkit-mobile-actual.png",
+      "originalOutcome": "unknown",
+      "outcomeEvidence": {
+        "basis": "per-case-result-unavailable"
+      },
+      "project": "unknown-project",
+      "role": "actual",
+      "sha256": "f7f31023a9587653fca3fe9be2a4457af1295f8a5286a07645d72ddb018e2697",
+      "storage": "objects/f7f31023a9587653fca3fe9be2a4457af1295f8a5286a07645d72ddb018e2697.png",
+      "test": "workspace-release-workspac-d0657-ponsive-and-visually-stable-webkit-mobile",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-webkit-mobile/workspace-records-webkit-mobile-diff.png",
+          "sha256": "bb493c155c42f1ec0c3154dc2fc13e294af5e5ebc18c28ac0066181d1a2b5d5a"
+        }
+      ],
+      "bytes": 98480,
+      "dimensions": [
+        390,
+        2807
+      ],
+      "identityBasis": "archive-directory",
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-webkit-mobile/workspace-records-webkit-mobile-diff.png",
+      "originalOutcome": "unknown",
+      "outcomeEvidence": {
+        "basis": "per-case-result-unavailable"
+      },
+      "project": "unknown-project",
+      "role": "diff",
+      "sha256": "bb493c155c42f1ec0c3154dc2fc13e294af5e5ebc18c28ac0066181d1a2b5d5a",
+      "storage": "objects/bb493c155c42f1ec0c3154dc2fc13e294af5e5ebc18c28ac0066181d1a2b5d5a.png",
+      "test": "workspace-release-workspac-d0657-ponsive-and-visually-stable-webkit-mobile",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-webkit-mobile/workspace-records-webkit-mobile-expected.png",
+          "sha256": "66bff880077d908f6143f1f798bf5e2d2d6fb172bb4afb0016e46723268bfa5c"
+        }
+      ],
+      "bytes": 377776,
+      "dimensions": [
+        390,
+        2807
+      ],
+      "identityBasis": "archive-directory",
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-webkit-mobile/workspace-records-webkit-mobile-expected.png",
+      "originalOutcome": "unknown",
+      "outcomeEvidence": {
+        "basis": "per-case-result-unavailable"
+      },
+      "project": "unknown-project",
+      "role": "expected",
+      "sha256": "66bff880077d908f6143f1f798bf5e2d2d6fb172bb4afb0016e46723268bfa5c",
+      "storage": "objects/66bff880077d908f6143f1f798bf5e2d2d6fb172bb4afb0016e46723268bfa5c.png",
+      "test": "workspace-release-workspac-d0657-ponsive-and-visually-stable-webkit-mobile",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    }
+  ],
+  "fixtureScope": "synthetic-project-tests",
+  "jobId": 124878689099,
+  "laterValidation": "pending",
+  "observations": [],
+  "originalOutcome": "failed",
+  "repository": "woodkill00/base2",
+  "requestedHead": "da4d0a72c1e7893e069b95a60c7f3cfcbfa6004a",
+  "runId": 41316879851,
+  "schemaVersion": 2,
+  "sourceCommit": "41978d1807f4b0e601a0a1448b2f2958a73f517c",
+  "sourceTree": "315d2db4a8e4b62ef0ae4b434d6906f2c0f4d30c",
+  "technicalReview": "pending",
+  "transfer": {
+    "blobs": {
+      "5d2c2f1dac2163f340bbbdf833ab3b6717b9e578b73dae1e75ee2568420326f5": "5f92324f118ee8c0bf28110057c056f03a1b98d1",
+      "66bff880077d908f6143f1f798bf5e2d2d6fb172bb4afb0016e46723268bfa5c": "696a69b2964cc889b8ef6052f6a11715150bc329",
+      "71723a79a725b012240480cc253a006f5e5a159c1452291e69d682cbeec6a357": "dcdea822744c2da8a539229eaa130a09895a6772",
+      "ab72376ddd5b7bf28b16e41effcd8f42ea7194e07892a49b8cf43397846386ab": "68401b0feb865bc11640ec8c95d778fc2f981778",
+      "b6f49fb71469b16c8ce91e821841e78bc92e0f7c54ad9cbe705e1cf7f13a5429": "28ff6ecd97d00514c7d0ca02fe6922f2e19a084c",
+      "bb493c155c42f1ec0c3154dc2fc13e294af5e5ebc18c28ac0066181d1a2b5d5a": "06d2b73e4791f8ae19d33c1c8b8182daa369137c",
+      "c55aa5446317d68641d897c03e5d11d7d0efefee9fd4cb5443c242aed8f82381": "b9203fd0003abda0ec37e3a875d6426c43143cb7",
+      "f7f31023a9587653fca3fe9be2a4457af1295f8a5286a07645d72ddb018e2697": "57b5d40763b82be62fbcfff8794bb69434ac71e2"
+    },
+    "commit": "9cd69137e688113750cdc225ad4c7fce2eebc157",
+    "localVerification": "git-blob-sha256-size-dimensions-full-decode",
+    "originalArchiveVerification": "externally-verified-zip-and-members",
+    "tree": "6806be178646ad75161a0a142b2c935608c30b46"
+  }
+}

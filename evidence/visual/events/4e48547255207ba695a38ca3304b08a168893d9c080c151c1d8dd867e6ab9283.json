@@ -1,0 +1,28 @@
+{
+  "conclusion": "inconclusive",
+  "inspections": [
+    {
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-light/current-operations-center-chromium-light.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "ca221c33c93e8a9b43dfc568950b02a38227c35441c328307c767cf154cec9f0"
+    },
+    {
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-light/operations-center-chromium-light-actual.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "actual",
+      "sha256": "ca221c33c93e8a9b43dfc568950b02a38227c35441c328307c767cf154cec9f0"
+    },
+    {
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-light/test-failed-1.png",
+      "method": "contact-sheet-overview",
+      "role": "failure",
+      "sha256": "73c812174c82a221ee1b80fc08b764981cf0316b22881d9e6ab2e0195f22b294"
+    }
+  ],
+  "kind": "technical-review",
+  "manifest": "runs/41316938996-1-124878862228-13087599266.json",
+  "manifestSha256": "29835de1242e642d57ee60f7a7670d4c3306eae79cf379b51a8802c3bebf7fd8",
+  "notes": "Expected/diff inspections withheld: aggregate review states these were not inspected despite per-image flags.",
+  "schemaVersion": 2
+}

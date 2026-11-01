@@ -1,0 +1,106 @@
+{
+  "conclusion": "inconclusive",
+  "inspections": [
+    {
+      "member": "media-release-media-detail-fa505-age-and-consequence-context-chromium-high-contrast/current-media-detail-completed.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "6a8b2c445e9462af6e4059b8d452eb737d7de6b522f12016da5d4191455ac028"
+    },
+    {
+      "member": "media-release-media-detail-fa505-age-and-consequence-context-chromium-high-contrast/current-media-detail-restored.png",
+      "method": "individual-pixels",
+      "role": "current",
+      "sha256": "2310e9517222413bdc1f9c4b3a099ef78a61bd804c18e4e09f02f95397583ad1"
+    },
+    {
+      "member": "media-release-media-detail-fa505-age-and-consequence-context-chromium-high-contrast/current-media-detail-top.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "6055edbb60f3ac2d7765d3f4d8f32236170f35b6711b89e17219e0ce1571b09b"
+    },
+    {
+      "member": "media-release-media-detail-fa505-age-and-consequence-context-chromium-high-contrast/current-media-detail.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "c4f05d82ef462c3a059971f06959bf3516b061fa82a6332d43934ee36558b49f"
+    },
+    {
+      "member": "media-release-media-detail-fa505-age-and-consequence-context-chromium-high-contrast/media-detail-chromium-high-contrast-actual.png",
+      "method": "individual-pixels",
+      "role": "actual",
+      "sha256": "c4f05d82ef462c3a059971f06959bf3516b061fa82a6332d43934ee36558b49f"
+    },
+    {
+      "member": "media-release-media-detail-fa505-age-and-consequence-context-chromium-high-contrast/media-detail-chromium-high-contrast-diff.png",
+      "method": "individual-pixels",
+      "role": "diff",
+      "sha256": "de0bebf9c800e287dc08213ae7a6b1b6e27c48c58f89d177e25996d2e146d795"
+    },
+    {
+      "member": "media-release-media-detail-fa505-age-and-consequence-context-chromium-high-contrast/media-detail-chromium-high-contrast-expected.png",
+      "method": "individual-pixels",
+      "role": "expected",
+      "sha256": "bb29d8cf1a3f5614a05a131821561017f62c7dba8434270135c0394a1ed80175"
+    },
+    {
+      "member": "media-release-media-detail-fa505-age-and-consequence-context-chromium-high-contrast/test-failed-1.png",
+      "method": "contact-sheet-overview",
+      "role": "failure",
+      "sha256": "8f3e3e7233de03edbba68e00d5c15543c790ec040701f58b129a71d995a869ad"
+    },
+    {
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-high-contrast/current-media-library-viewport-0.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "ab7bf4b55eb1380f6f6b13d3286944604ec77fd9ffb0454f79f16de5629fd790"
+    },
+    {
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-high-contrast/current-media-library-viewport-2.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "ab7bf4b55eb1380f6f6b13d3286944604ec77fd9ffb0454f79f16de5629fd790"
+    },
+    {
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-high-contrast/current-media-library-viewport-4.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "434748161678c2b474a07d23955628a4b95a2fce7d4e5b09cc2ec1dc418e238c"
+    },
+    {
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-high-contrast/current-media-library.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "ded11fa2ffbe33de8d00f6748a246cfec4b1a008b7fcd45dc4db717e59ef2e16"
+    },
+    {
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-high-contrast/media-library-chromium-high-contrast-actual.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "actual",
+      "sha256": "ded11fa2ffbe33de8d00f6748a246cfec4b1a008b7fcd45dc4db717e59ef2e16"
+    },
+    {
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-high-contrast/test-failed-1.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "failure",
+      "sha256": "434748161678c2b474a07d23955628a4b95a2fce7d4e5b09cc2ec1dc418e238c"
+    },
+    {
+      "member": "media-release-media-picker-72bf8-ontained-in-a-real-workflow-chromium-high-contrast/current-media-picker-bottom.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "eccb3e18f1e71c5a8dcb4ee94949e3a242b90f90c72c16efc0d666cd07750a59"
+    },
+    {
+      "member": "media-release-media-picker-72bf8-ontained-in-a-real-workflow-chromium-high-contrast/current-media-picker.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "eccb3e18f1e71c5a8dcb4ee94949e3a242b90f90c72c16efc0d666cd07750a59"
+    }
+  ],
+  "kind": "technical-review",
+  "manifest": "runs/41316950722-1-124878897702-13087168377.json",
+  "manifestSha256": "03890ab8424944a9facb9a76594bc04b732e4fff956ffdb9734a0475cd15af1d",
+  "notes": "Diagnostic only; no baseline or full visual acceptance. Review methods are conservative: partial image inspection maps to overview. Original run failures remain unchanged. Technical pixel review is not baseline promotion or complete visual acceptance. Mobile viewport-only primary references do not cover the entire inner scrollport. Supplemental top/middle/footer captures and geometry improve evidence but do not replace full stitched/tiled visual reference coverage. No open utility popup evidence in these matrices; no standardlocal-reference/focus-journey claim. Standard is separately running. Scaled overview inspection is not pixel-level acceptance of every small glyph. High-contrast Caption textarea system-palette gap repaired: black Canvas surface with visible white boundary; explicit system-control assertion precedes snapshot. High-contrast detail comparison remains failed, but soft comparison allows hard lifecycle assertions through ready version 3, request If-Match preconditions, settled aria-busy, focus restoration and axe before restored capture. All six supported detail projects retain restored-state PNGs; six other detail combinations remain declared skips. No new independent severe visual regression found. Library differences remain predominantly approved-shell gutters/reflow and mobile inner-scrollport capture extent; high-contrast detail differences are intentional system-palette correction. All 587 native library target observations have zero persistent-shell-control overlap and zero blocked centers inside unobscured content viewport.",
+  "schemaVersion": 2
+}

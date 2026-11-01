@@ -1,0 +1,225 @@
+{
+  "schemaVersion": 1,
+  "sourceCommit": "696f710633d81cec46e872901f21a024bf735c5f",
+  "sourceTree": "b395ca42a261de3c2710034787f5410ff5599501",
+  "matrix": "operations",
+  "runId": "41314740935",
+  "attempt": "1",
+  "originalReporterOutput": {
+    "sha256": "2ab8fe705f0640ee47a09cd5ed0d247da64abba3262bfb5be670b7112ed31d89",
+    "mtimeNs": 1793542168758539830
+  },
+  "snapshotUpdates": "none",
+  "expectedTests": [
+    {
+      "project": "chromium-compact",
+      "title": "operations center is accessible responsive and visually stable",
+      "expectedStatus": "passed"
+    },
+    {
+      "project": "chromium-compact",
+      "title": "operations center shows truthful empty and failure states",
+      "expectedStatus": "passed"
+    },
+    {
+      "project": "chromium-compact",
+      "title": "operations center exposes stale, reauthentication, and read-only recovery states",
+      "expectedStatus": "passed"
+    },
+    {
+      "project": "chromium-landscape-touch",
+      "title": "operations center is accessible responsive and visually stable",
+      "expectedStatus": "passed"
+    },
+    {
+      "project": "chromium-landscape-touch",
+      "title": "operations center shows truthful empty and failure states",
+      "expectedStatus": "skipped"
+    },
+    {
+      "project": "chromium-landscape-touch",
+      "title": "operations center exposes stale, reauthentication, and read-only recovery states",
+      "expectedStatus": "skipped"
+    },
+    {
+      "project": "chromium-tablet",
+      "title": "operations center is accessible responsive and visually stable",
+      "expectedStatus": "passed"
+    },
+    {
+      "project": "chromium-tablet",
+      "title": "operations center shows truthful empty and failure states",
+      "expectedStatus": "skipped"
+    },
+    {
+      "project": "chromium-tablet",
+      "title": "operations center exposes stale, reauthentication, and read-only recovery states",
+      "expectedStatus": "skipped"
+    },
+    {
+      "project": "chromium-desktop",
+      "title": "operations center is accessible responsive and visually stable",
+      "expectedStatus": "passed"
+    },
+    {
+      "project": "chromium-desktop",
+      "title": "operations center shows truthful empty and failure states",
+      "expectedStatus": "passed"
+    },
+    {
+      "project": "chromium-desktop",
+      "title": "operations center exposes stale, reauthentication, and read-only recovery states",
+      "expectedStatus": "passed"
+    },
+    {
+      "project": "chromium-ultrawide",
+      "title": "operations center is accessible responsive and visually stable",
+      "expectedStatus": "passed"
+    },
+    {
+      "project": "chromium-ultrawide",
+      "title": "operations center shows truthful empty and failure states",
+      "expectedStatus": "skipped"
+    },
+    {
+      "project": "chromium-ultrawide",
+      "title": "operations center exposes stale, reauthentication, and read-only recovery states",
+      "expectedStatus": "skipped"
+    },
+    {
+      "project": "chromium-large-text",
+      "title": "operations center is accessible responsive and visually stable",
+      "expectedStatus": "passed"
+    },
+    {
+      "project": "chromium-large-text",
+      "title": "operations center shows truthful empty and failure states",
+      "expectedStatus": "skipped"
+    },
+    {
+      "project": "chromium-large-text",
+      "title": "operations center exposes stale, reauthentication, and read-only recovery states",
+      "expectedStatus": "skipped"
+    },
+    {
+      "project": "chromium-400-zoom",
+      "title": "operations center is accessible responsive and visually stable",
+      "expectedStatus": "passed"
+    },
+    {
+      "project": "chromium-400-zoom",
+      "title": "operations center shows truthful empty and failure states",
+      "expectedStatus": "skipped"
+    },
+    {
+      "project": "chromium-400-zoom",
+      "title": "operations center exposes stale, reauthentication, and read-only recovery states",
+      "expectedStatus": "skipped"
+    },
+    {
+      "project": "chromium-light",
+      "title": "operations center is accessible responsive and visually stable",
+      "expectedStatus": "passed"
+    },
+    {
+      "project": "chromium-light",
+      "title": "operations center shows truthful empty and failure states",
+      "expectedStatus": "skipped"
+    },
+    {
+      "project": "chromium-light",
+      "title": "operations center exposes stale, reauthentication, and read-only recovery states",
+      "expectedStatus": "skipped"
+    },
+    {
+      "project": "chromium-high-contrast",
+      "title": "operations center is accessible responsive and visually stable",
+      "expectedStatus": "passed"
+    },
+    {
+      "project": "chromium-high-contrast",
+      "title": "operations center shows truthful empty and failure states",
+      "expectedStatus": "skipped"
+    },
+    {
+      "project": "chromium-high-contrast",
+      "title": "operations center exposes stale, reauthentication, and read-only recovery states",
+      "expectedStatus": "skipped"
+    },
+    {
+      "project": "chromium-rtl",
+      "title": "operations center is accessible responsive and visually stable",
+      "expectedStatus": "passed"
+    },
+    {
+      "project": "chromium-rtl",
+      "title": "operations center shows truthful empty and failure states",
+      "expectedStatus": "skipped"
+    },
+    {
+      "project": "chromium-rtl",
+      "title": "operations center exposes stale, reauthentication, and read-only recovery states",
+      "expectedStatus": "skipped"
+    },
+    {
+      "project": "chromium-german",
+      "title": "operations center is accessible responsive and visually stable",
+      "expectedStatus": "passed"
+    },
+    {
+      "project": "chromium-german",
+      "title": "operations center shows truthful empty and failure states",
+      "expectedStatus": "skipped"
+    },
+    {
+      "project": "chromium-german",
+      "title": "operations center exposes stale, reauthentication, and read-only recovery states",
+      "expectedStatus": "skipped"
+    },
+    {
+      "project": "chromium-reduced-motion",
+      "title": "operations center is accessible responsive and visually stable",
+      "expectedStatus": "passed"
+    },
+    {
+      "project": "chromium-reduced-motion",
+      "title": "operations center shows truthful empty and failure states",
+      "expectedStatus": "skipped"
+    },
+    {
+      "project": "chromium-reduced-motion",
+      "title": "operations center exposes stale, reauthentication, and read-only recovery states",
+      "expectedStatus": "skipped"
+    },
+    {
+      "project": "firefox-desktop",
+      "title": "operations center is accessible responsive and visually stable",
+      "expectedStatus": "passed"
+    },
+    {
+      "project": "firefox-desktop",
+      "title": "operations center shows truthful empty and failure states",
+      "expectedStatus": "passed"
+    },
+    {
+      "project": "firefox-desktop",
+      "title": "operations center exposes stale, reauthentication, and read-only recovery states",
+      "expectedStatus": "passed"
+    },
+    {
+      "project": "webkit-desktop",
+      "title": "operations center is accessible responsive and visually stable",
+      "expectedStatus": "passed"
+    },
+    {
+      "project": "webkit-desktop",
+      "title": "operations center shows truthful empty and failure states",
+      "expectedStatus": "passed"
+    },
+    {
+      "project": "webkit-desktop",
+      "title": "operations center exposes stale, reauthentication, and read-only recovery states",
+      "expectedStatus": "passed"
+    }
+  ]
+}

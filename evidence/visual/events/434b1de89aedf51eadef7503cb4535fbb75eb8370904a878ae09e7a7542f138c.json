@@ -1,0 +1,34 @@
+{
+  "conclusion": "inconclusive",
+  "inspections": [
+    {
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-ultrawide/current-media-library-viewport-0.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "376204b2b746a3d18eea2e4706b97431008c6dac0b0919095fec9b079d493396"
+    },
+    {
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-ultrawide/current-media-library-viewport-2.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "376204b2b746a3d18eea2e4706b97431008c6dac0b0919095fec9b079d493396"
+    },
+    {
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-ultrawide/current-media-library-viewport-4.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "cb8debd5887ed7e24c8a2c09f051ad81c688dfbe4dbab326aa497ad0b6311f81"
+    },
+    {
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-ultrawide/current-media-library.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "17fb1f412225047daf479b7a3425a0dc86b3513d38743af305b4a34fc2c9d304"
+    }
+  ],
+  "kind": "technical-review",
+  "manifest": "runs/41316950722-1-124878897702-13087312928.json",
+  "manifestSha256": "36d87592db578793cd749469ee25a42e6e0fed0b46c5834fad91f03045402e5a",
+  "notes": "Diagnostic only; no baseline or full visual acceptance. Review methods are conservative: partial image inspection maps to overview. Original run failures remain unchanged. Technical pixel review is not baseline promotion or complete visual acceptance. Mobile viewport-only primary references do not cover the entire inner scrollport. Supplemental top/middle/footer captures and geometry improve evidence but do not replace full stitched/tiled visual reference coverage. No open utility popup evidence in these matrices; no standardlocal-reference/focus-journey claim. Standard is separately running. Scaled overview inspection is not pixel-level acceptance of every small glyph. High-contrast Caption textarea system-palette gap repaired: black Canvas surface with visible white boundary; explicit system-control assertion precedes snapshot. High-contrast detail comparison remains failed, but soft comparison allows hard lifecycle assertions through ready version 3, request If-Match preconditions, settled aria-busy, focus restoration and axe before restored capture. All six supported detail projects retain restored-state PNGs; six other detail combinations remain declared skips. No new independent severe visual regression found. Library differences remain predominantly approved-shell gutters/reflow and mobile inner-scrollport capture extent; high-contrast detail differences are intentional system-palette correction. All 587 native library target observations have zero persistent-shell-control overlap and zero blocked centers inside unobscured content viewport.",
+  "schemaVersion": 2
+}

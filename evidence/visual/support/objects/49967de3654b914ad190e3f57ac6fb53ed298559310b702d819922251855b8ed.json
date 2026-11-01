@@ -1,0 +1,773 @@
+{
+  "schemaVersion": 1,
+  "sourceCommit": "da4d0a72c1e7893e069b95a60c7f3cfcbfa6004a",
+  "matrix": "media",
+  "runId": "41316950722",
+  "attempt": "1",
+  "nativeOutcome": "failure",
+  "stats": {
+    "expected": 12,
+    "unexpected": 12,
+    "skipped": 12,
+    "flaky": 0,
+    "duration": 135422.753
+  },
+  "declaredTests": 36,
+  "statusCounts": {
+    "expected": 12,
+    "unexpected": 12,
+    "skipped": 12
+  },
+  "tests": [
+    {
+      "project": "chromium-compact",
+      "title": "media detail preserves safe preview usage and consequence context",
+      "status": "expected",
+      "attemptStatuses": [
+        "passed"
+      ],
+      "receiptCaptures": []
+    },
+    {
+      "project": "chromium-compact",
+      "title": "media picker is visually and keyboard contained in a real workflow",
+      "status": "expected",
+      "attemptStatuses": [
+        "passed"
+      ],
+      "receiptCaptures": []
+    },
+    {
+      "project": "chromium-compact",
+      "title": "media library is accessible responsive and visually reviewed",
+      "status": "unexpected",
+      "attemptStatuses": [
+        "failed"
+      ],
+      "receiptCaptures": []
+    },
+    {
+      "project": "chromium-phone-dpr3",
+      "title": "media detail preserves safe preview usage and consequence context",
+      "status": "skipped",
+      "attemptStatuses": [
+        "skipped"
+      ],
+      "receiptCaptures": []
+    },
+    {
+      "project": "chromium-phone-dpr3",
+      "title": "media picker is visually and keyboard contained in a real workflow",
+      "status": "skipped",
+      "attemptStatuses": [
+        "skipped"
+      ],
+      "receiptCaptures": []
+    },
+    {
+      "project": "chromium-phone-dpr3",
+      "title": "media library is accessible responsive and visually reviewed",
+      "status": "unexpected",
+      "attemptStatuses": [
+        "failed"
+      ],
+      "receiptCaptures": []
+    },
+    {
+      "project": "chromium-landscape-touch",
+      "title": "media detail preserves safe preview usage and consequence context",
+      "status": "skipped",
+      "attemptStatuses": [
+        "skipped"
+      ],
+      "receiptCaptures": []
+    },
+    {
+      "project": "chromium-landscape-touch",
+      "title": "media picker is visually and keyboard contained in a real workflow",
+      "status": "skipped",
+      "attemptStatuses": [
+        "skipped"
+      ],
+      "receiptCaptures": []
+    },
+    {
+      "project": "chromium-landscape-touch",
+      "title": "media library is accessible responsive and visually reviewed",
+      "status": "unexpected",
+      "attemptStatuses": [
+        "failed"
+      ],
+      "receiptCaptures": []
+    },
+    {
+      "project": "chromium-tablet",
+      "title": "media detail preserves safe preview usage and consequence context",
+      "status": "skipped",
+      "attemptStatuses": [
+        "skipped"
+      ],
+      "receiptCaptures": []
+    },
+    {
+      "project": "chromium-tablet",
+      "title": "media picker is visually and keyboard contained in a real workflow",
+      "status": "skipped",
+      "attemptStatuses": [
+        "skipped"
+      ],
+      "receiptCaptures": []
+    },
+    {
+      "project": "chromium-tablet",
+      "title": "media library is accessible responsive and visually reviewed",
+      "status": "unexpected",
+      "attemptStatuses": [
+        "failed"
+      ],
+      "receiptCaptures": []
+    },
+    {
+      "project": "chromium-desktop",
+      "title": "media detail preserves safe preview usage and consequence context",
+      "status": "expected",
+      "attemptStatuses": [
+        "passed"
+      ],
+      "receiptCaptures": []
+    },
+    {
+      "project": "chromium-desktop",
+      "title": "media picker is visually and keyboard contained in a real workflow",
+      "status": "expected",
+      "attemptStatuses": [
+        "passed"
+      ],
+      "receiptCaptures": []
+    },
+    {
+      "project": "chromium-desktop",
+      "title": "media library is accessible responsive and visually reviewed",
+      "status": "unexpected",
+      "attemptStatuses": [
+        "failed"
+      ],
+      "receiptCaptures": []
+    },
+    {
+      "project": "chromium-ultrawide",
+      "title": "media detail preserves safe preview usage and consequence context",
+      "status": "skipped",
+      "attemptStatuses": [
+        "skipped"
+      ],
+      "receiptCaptures": []
+    },
+    {
+      "project": "chromium-ultrawide",
+      "title": "media picker is visually and keyboard contained in a real workflow",
+      "status": "skipped",
+      "attemptStatuses": [
+        "skipped"
+      ],
+      "receiptCaptures": []
+    },
+    {
+      "project": "chromium-ultrawide",
+      "title": "media library is accessible responsive and visually reviewed",
+      "status": "expected",
+      "attemptStatuses": [
+        "passed"
+      ],
+      "receiptCaptures": []
+    },
+    {
+      "project": "chromium-large-text",
+      "title": "media detail preserves safe preview usage and consequence context",
+      "status": "skipped",
+      "attemptStatuses": [
+        "skipped"
+      ],
+      "receiptCaptures": []
+    },
+    {
+      "project": "chromium-large-text",
+      "title": "media picker is visually and keyboard contained in a real workflow",
+      "status": "skipped",
+      "attemptStatuses": [
+        "skipped"
+      ],
+      "receiptCaptures": []
+    },
+    {
+      "project": "chromium-large-text",
+      "title": "media library is accessible responsive and visually reviewed",
+      "status": "unexpected",
+      "attemptStatuses": [
+        "failed"
+      ],
+      "receiptCaptures": []
+    },
+    {
+      "project": "chromium-400-zoom",
+      "title": "media detail preserves safe preview usage and consequence context",
+      "status": "expected",
+      "attemptStatuses": [
+        "passed"
+      ],
+      "receiptCaptures": []
+    },
+    {
+      "project": "chromium-400-zoom",
+      "title": "media picker is visually and keyboard contained in a real workflow",
+      "status": "expected",
+      "attemptStatuses": [
+        "passed"
+      ],
+      "receiptCaptures": []
+    },
+    {
+      "project": "chromium-400-zoom",
+      "title": "media library is accessible responsive and visually reviewed",
+      "status": "unexpected",
+      "attemptStatuses": [
+        "failed"
+      ],
+      "receiptCaptures": []
+    },
+    {
+      "project": "chromium-light",
+      "title": "media detail preserves safe preview usage and consequence context",
+      "status": "expected",
+      "attemptStatuses": [
+        "passed"
+      ],
+      "receiptCaptures": []
+    },
+    {
+      "project": "chromium-light",
+      "title": "media picker is visually and keyboard contained in a real workflow",
+      "status": "expected",
+      "attemptStatuses": [
+        "passed"
+      ],
+      "receiptCaptures": []
+    },
+    {
+      "project": "chromium-light",
+      "title": "media library is accessible responsive and visually reviewed",
+      "status": "unexpected",
+      "attemptStatuses": [
+        "failed"
+      ],
+      "receiptCaptures": []
+    },
+    {
+      "project": "chromium-high-contrast",
+      "title": "media detail preserves safe preview usage and consequence context",
+      "status": "unexpected",
+      "attemptStatuses": [
+        "failed"
+      ],
+      "receiptCaptures": []
+    },
+    {
+      "project": "chromium-high-contrast",
+      "title": "media picker is visually and keyboard contained in a real workflow",
+      "status": "expected",
+      "attemptStatuses": [
+        "passed"
+      ],
+      "receiptCaptures": []
+    },
+    {
+      "project": "chromium-high-contrast",
+      "title": "media library is accessible responsive and visually reviewed",
+      "status": "unexpected",
+      "attemptStatuses": [
+        "failed"
+      ],
+      "receiptCaptures": []
+    },
+    {
+      "project": "chromium-rtl",
+      "title": "media detail preserves safe preview usage and consequence context",
+      "status": "expected",
+      "attemptStatuses": [
+        "passed"
+      ],
+      "receiptCaptures": []
+    },
+    {
+      "project": "chromium-rtl",
+      "title": "media picker is visually and keyboard contained in a real workflow",
+      "status": "expected",
+      "attemptStatuses": [
+        "passed"
+      ],
+      "receiptCaptures": []
+    },
+    {
+      "project": "chromium-rtl",
+      "title": "media library is accessible responsive and visually reviewed",
+      "status": "unexpected",
+      "attemptStatuses": [
+        "failed"
+      ],
+      "receiptCaptures": []
+    },
+    {
+      "project": "chromium-reduced-motion",
+      "title": "media detail preserves safe preview usage and consequence context",
+      "status": "skipped",
+      "attemptStatuses": [
+        "skipped"
+      ],
+      "receiptCaptures": []
+    },
+    {
+      "project": "chromium-reduced-motion",
+      "title": "media picker is visually and keyboard contained in a real workflow",
+      "status": "skipped",
+      "attemptStatuses": [
+        "skipped"
+      ],
+      "receiptCaptures": []
+    },
+    {
+      "project": "chromium-reduced-motion",
+      "title": "media library is accessible responsive and visually reviewed",
+      "status": "unexpected",
+      "attemptStatuses": [
+        "failed"
+      ],
+      "receiptCaptures": []
+    }
+  ],
+  "currentCaptures": [
+    {
+      "path": "test-results/media-release-media-detail-fa505-age-and-consequence-context-chromium-400-zoom/current-media-detail-completed.png",
+      "sha256": "8fdde8078ca51fa5b72b5a6aa48d1463763533daf908f2b8c4878997e6844364"
+    },
+    {
+      "path": "test-results/media-release-media-detail-fa505-age-and-consequence-context-chromium-400-zoom/current-media-detail-restored.png",
+      "sha256": "55e7e37ff30b74a3dfbfb815bf6b86ac3449e215f68a6763e20c70579b04d5a8"
+    },
+    {
+      "path": "test-results/media-release-media-detail-fa505-age-and-consequence-context-chromium-400-zoom/current-media-detail-top.png",
+      "sha256": "8d40764d51647aa2d112503b8eb20f68f65d466a5e56a5fb169da510d8f1fff0"
+    },
+    {
+      "path": "test-results/media-release-media-detail-fa505-age-and-consequence-context-chromium-400-zoom/current-media-detail.png",
+      "sha256": "c558abba772eed9c11f4cf5bc6d7282379faaabd62cd8721ec3fb720560b83d7"
+    },
+    {
+      "path": "test-results/media-release-media-detail-fa505-age-and-consequence-context-chromium-compact/current-media-detail-completed.png",
+      "sha256": "4501d86f53aa277d76d68cb856c006e839c2e6f7e2fcb057403feec68f9dc3ad"
+    },
+    {
+      "path": "test-results/media-release-media-detail-fa505-age-and-consequence-context-chromium-compact/current-media-detail-restored.png",
+      "sha256": "a9c6bce320af56773f21a2bf7e9be62ce1702d474e570edcfbc7f021459080f0"
+    },
+    {
+      "path": "test-results/media-release-media-detail-fa505-age-and-consequence-context-chromium-compact/current-media-detail-top.png",
+      "sha256": "547f0cf788d5a638f2b900348a041fa30b3a217e9ebe652d6f3acf823c3eac42"
+    },
+    {
+      "path": "test-results/media-release-media-detail-fa505-age-and-consequence-context-chromium-compact/current-media-detail.png",
+      "sha256": "010cadcb65e100f7379b02c697111fba1054c0f1a0d471c77179c366cd4342d1"
+    },
+    {
+      "path": "test-results/media-release-media-detail-fa505-age-and-consequence-context-chromium-desktop/current-media-detail-completed.png",
+      "sha256": "dd6d4da58b2408c65b4dd2961f3cde24e90b33af83def1a28d46ba41ca7232c2"
+    },
+    {
+      "path": "test-results/media-release-media-detail-fa505-age-and-consequence-context-chromium-desktop/current-media-detail-restored.png",
+      "sha256": "55a2e86407c17cba3565b433e25d6ee7f6f7ed49d326180b1f4a46b9ded3606b"
+    },
+    {
+      "path": "test-results/media-release-media-detail-fa505-age-and-consequence-context-chromium-desktop/current-media-detail-top.png",
+      "sha256": "487318eb1bda0a8dcf2aa66884560b5d2cb123a900330a83bd59e1b997d98425"
+    },
+    {
+      "path": "test-results/media-release-media-detail-fa505-age-and-consequence-context-chromium-desktop/current-media-detail.png",
+      "sha256": "9155cf96710b2427a766da936106e8ee17517521c73fe328c378df5647450529"
+    },
+    {
+      "path": "test-results/media-release-media-detail-fa505-age-and-consequence-context-chromium-high-contrast/current-media-detail-completed.png",
+      "sha256": "6a8b2c445e9462af6e4059b8d452eb737d7de6b522f12016da5d4191455ac028"
+    },
+    {
+      "path": "test-results/media-release-media-detail-fa505-age-and-consequence-context-chromium-high-contrast/current-media-detail-restored.png",
+      "sha256": "2310e9517222413bdc1f9c4b3a099ef78a61bd804c18e4e09f02f95397583ad1"
+    },
+    {
+      "path": "test-results/media-release-media-detail-fa505-age-and-consequence-context-chromium-high-contrast/current-media-detail-top.png",
+      "sha256": "6055edbb60f3ac2d7765d3f4d8f32236170f35b6711b89e17219e0ce1571b09b"
+    },
+    {
+      "path": "test-results/media-release-media-detail-fa505-age-and-consequence-context-chromium-high-contrast/current-media-detail.png",
+      "sha256": "c4f05d82ef462c3a059971f06959bf3516b061fa82a6332d43934ee36558b49f"
+    },
+    {
+      "path": "test-results/media-release-media-detail-fa505-age-and-consequence-context-chromium-light/current-media-detail-completed.png",
+      "sha256": "3fc28dad910cd8af4c52211a5f645bded1753e003c1b4205a12855e0f4fb4661"
+    },
+    {
+      "path": "test-results/media-release-media-detail-fa505-age-and-consequence-context-chromium-light/current-media-detail-restored.png",
+      "sha256": "7633526918e638fc132bfc59310b1e226053d88e96866e1a2ca758cbc878a053"
+    },
+    {
+      "path": "test-results/media-release-media-detail-fa505-age-and-consequence-context-chromium-light/current-media-detail-top.png",
+      "sha256": "cef7621f56f556330665bf907e6f05e7df8c0011b7bda12a3901b9fdceb56232"
+    },
+    {
+      "path": "test-results/media-release-media-detail-fa505-age-and-consequence-context-chromium-light/current-media-detail.png",
+      "sha256": "d42b3a72eaad8b26b9d3307b0a146074d5f37067aec4b195e6bd7b0546dc0e48"
+    },
+    {
+      "path": "test-results/media-release-media-detail-fa505-age-and-consequence-context-chromium-rtl/current-media-detail-completed.png",
+      "sha256": "3cdb91e5be312844fc5ef679bb8fe63aa71c4f71b6ade7cbf47b129852224085"
+    },
+    {
+      "path": "test-results/media-release-media-detail-fa505-age-and-consequence-context-chromium-rtl/current-media-detail-restored.png",
+      "sha256": "e81137d72a8ca269a1d458406ce0147a96fefd7f1acef80222ecb2dc77ccc35c"
+    },
+    {
+      "path": "test-results/media-release-media-detail-fa505-age-and-consequence-context-chromium-rtl/current-media-detail-top.png",
+      "sha256": "49280a292b1008d213fa4b1e0d8d90cd6f78f18f456bbd2ab54c1eaeee0b2e47"
+    },
+    {
+      "path": "test-results/media-release-media-detail-fa505-age-and-consequence-context-chromium-rtl/current-media-detail.png",
+      "sha256": "2492019406835b7bdb3e4ada2bf45f8bb91fb7468c4b040b78abe8e5ef4f32eb"
+    },
+    {
+      "path": "test-results/media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-400-zoom/current-media-library-viewport-0.png",
+      "sha256": "c7f612b0e4983df053699d72cbe65b5617ef5b42250405c0fbf22c7e8d055d4b"
+    },
+    {
+      "path": "test-results/media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-400-zoom/current-media-library-viewport-2.png",
+      "sha256": "3823166536c8b09d31e223f02842741268bb23d4827c7364bd26e4eebb2aacac"
+    },
+    {
+      "path": "test-results/media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-400-zoom/current-media-library-viewport-4.png",
+      "sha256": "ae21b636b2eb100357f0a868b9ba39931218fed3d61080bc6d99c44e755dd660"
+    },
+    {
+      "path": "test-results/media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-400-zoom/current-media-library.png",
+      "sha256": "42917358e05c87451102b975cafafd2728df889601a103d00c7f8c4966a12dc8"
+    },
+    {
+      "path": "test-results/media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-400-zoom/current-scrollport-footer.png",
+      "sha256": "6d703c128517e80d6d1e0a34ddfb1363b809a9a6ae996265fd9d91776c602599"
+    },
+    {
+      "path": "test-results/media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-400-zoom/current-scrollport-middle.png",
+      "sha256": "96ccf0744913ae8993dfd36b575cc84cd8ce51dcc61b613931ce9bc310a1f5d9"
+    },
+    {
+      "path": "test-results/media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-400-zoom/current-scrollport-top.png",
+      "sha256": "42917358e05c87451102b975cafafd2728df889601a103d00c7f8c4966a12dc8"
+    },
+    {
+      "path": "test-results/media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-compact/current-media-library-viewport-0.png",
+      "sha256": "b5a5c5a684a5198c7e4f99e0e2698aaafdcfdaf43d998a596f97a0d4d6b72136"
+    },
+    {
+      "path": "test-results/media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-compact/current-media-library-viewport-2.png",
+      "sha256": "4e86b50e2f4625608da791c13451139f58a2983b502f95a44cd3e5f06e7cd635"
+    },
+    {
+      "path": "test-results/media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-compact/current-media-library-viewport-4.png",
+      "sha256": "854414863195ff22cea67d3ca877d5b2d284ec3b589f1cea4c06f5b646a29168"
+    },
+    {
+      "path": "test-results/media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-compact/current-media-library.png",
+      "sha256": "051cb23247651cf77b937c24c09a4a9800f13e1d2e9d59a37bf81ef732535c44"
+    },
+    {
+      "path": "test-results/media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-compact/current-scrollport-footer.png",
+      "sha256": "1384cf7db4034916fbaf444692b4365bcdc7549a5e663c0fbf412fcd5bb3e743"
+    },
+    {
+      "path": "test-results/media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-compact/current-scrollport-middle.png",
+      "sha256": "38b10cbe22c5ebd192c915aa8f4584d349b2a63f9b1dfa9c6df0e2e27c8e335f"
+    },
+    {
+      "path": "test-results/media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-compact/current-scrollport-top.png",
+      "sha256": "051cb23247651cf77b937c24c09a4a9800f13e1d2e9d59a37bf81ef732535c44"
+    },
+    {
+      "path": "test-results/media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-desktop/current-media-library-viewport-0.png",
+      "sha256": "853ae189a46946da8d3eb5543e69ebfd9143b61f438ef98817f9b71e612c2195"
+    },
+    {
+      "path": "test-results/media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-desktop/current-media-library-viewport-2.png",
+      "sha256": "853ae189a46946da8d3eb5543e69ebfd9143b61f438ef98817f9b71e612c2195"
+    },
+    {
+      "path": "test-results/media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-desktop/current-media-library-viewport-4.png",
+      "sha256": "df07dd94ae5a6be595b898a3624ac40f2defde8991d114b23a1229a0534e2a34"
+    },
+    {
+      "path": "test-results/media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-desktop/current-media-library.png",
+      "sha256": "d5cabc50b2d6bc31812114e4de353d16a1e1f238608ad914c9bbf8f0a168917e"
+    },
+    {
+      "path": "test-results/media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-high-contrast/current-media-library-viewport-0.png",
+      "sha256": "ab7bf4b55eb1380f6f6b13d3286944604ec77fd9ffb0454f79f16de5629fd790"
+    },
+    {
+      "path": "test-results/media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-high-contrast/current-media-library-viewport-2.png",
+      "sha256": "ab7bf4b55eb1380f6f6b13d3286944604ec77fd9ffb0454f79f16de5629fd790"
+    },
+    {
+      "path": "test-results/media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-high-contrast/current-media-library-viewport-4.png",
+      "sha256": "434748161678c2b474a07d23955628a4b95a2fce7d4e5b09cc2ec1dc418e238c"
+    },
+    {
+      "path": "test-results/media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-high-contrast/current-media-library.png",
+      "sha256": "ded11fa2ffbe33de8d00f6748a246cfec4b1a008b7fcd45dc4db717e59ef2e16"
+    },
+    {
+      "path": "test-results/media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-landscape-touch/current-media-library-viewport-0.png",
+      "sha256": "2ea7e312b72425afbcae6718ed645934834b7cd4834f565e08617da73be14a5a"
+    },
+    {
+      "path": "test-results/media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-landscape-touch/current-media-library-viewport-2.png",
+      "sha256": "617fee9722714a225ee557eec2c19233346ca0c7cc1866873ff3b73094bf5832"
+    },
+    {
+      "path": "test-results/media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-landscape-touch/current-media-library-viewport-4.png",
+      "sha256": "53e99df1d227cd35eca3f8fce59b1c703c11e066ac714d3ab17161e8edf3dc4c"
+    },
+    {
+      "path": "test-results/media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-landscape-touch/current-media-library.png",
+      "sha256": "9f32ba0a4af5c3eecd65667139622a82d6ae4f93fb11a5a8af08dcb5eae78bad"
+    },
+    {
+      "path": "test-results/media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-landscape-touch/current-scrollport-footer.png",
+      "sha256": "e075904bfcee2b3e1beb596beb15b2d47e306192cd434cbff3c9f8914f11a68e"
+    },
+    {
+      "path": "test-results/media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-landscape-touch/current-scrollport-middle.png",
+      "sha256": "1bb2a0b0911ae7e0ef58a8e4ca145a9cc8a586bf90af989571e70ede36a7bd0f"
+    },
+    {
+      "path": "test-results/media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-landscape-touch/current-scrollport-top.png",
+      "sha256": "9f32ba0a4af5c3eecd65667139622a82d6ae4f93fb11a5a8af08dcb5eae78bad"
+    },
+    {
+      "path": "test-results/media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-large-text/current-media-library-viewport-0.png",
+      "sha256": "37cc3d4c9547efc9953c4d34f14f41a2dac57191d1b289061f9d965811118e94"
+    },
+    {
+      "path": "test-results/media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-large-text/current-media-library-viewport-2.png",
+      "sha256": "d4f38fb8474de94e2c0d87a4f0fdeffa3b5d36c7209814b510470a9fab017f0c"
+    },
+    {
+      "path": "test-results/media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-large-text/current-media-library-viewport-4.png",
+      "sha256": "793b30d98f10ef6df4cc22224b5173e57880ce01c90b12d7f8500bacd7e4e947"
+    },
+    {
+      "path": "test-results/media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-large-text/current-media-library.png",
+      "sha256": "6d2993d63e6a93cf68b643b4615401f1f121da0b7a0a8c5a660eef9b5275674c"
+    },
+    {
+      "path": "test-results/media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-light/current-media-library-viewport-0.png",
+      "sha256": "55f59c744940a6fc26f6fb070435422bdb967f27336208c57756d3e678572308"
+    },
+    {
+      "path": "test-results/media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-light/current-media-library-viewport-2.png",
+      "sha256": "55f59c744940a6fc26f6fb070435422bdb967f27336208c57756d3e678572308"
+    },
+    {
+      "path": "test-results/media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-light/current-media-library-viewport-4.png",
+      "sha256": "6ab4aa81e8d0d2d6ac9d751916ddabfcce683ce1e34ab693d25609c64c4f20e2"
+    },
+    {
+      "path": "test-results/media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-light/current-media-library.png",
+      "sha256": "a4a1a624d4b4a8ec424ef6a51ce25ffc0ca7479ba62e48fe4511664dc7045446"
+    },
+    {
+      "path": "test-results/media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-phone-dpr3/current-media-library-viewport-0.png",
+      "sha256": "5e260da37e87c6bce263caca5707e7e72dc2c0979c7f7701696d3513d92145f5"
+    },
+    {
+      "path": "test-results/media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-phone-dpr3/current-media-library-viewport-2.png",
+      "sha256": "c30c5c388aabfb2b759671dfffa3dd66b4e151a0d7d25e1df6e9b5be7e31dc5b"
+    },
+    {
+      "path": "test-results/media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-phone-dpr3/current-media-library-viewport-4.png",
+      "sha256": "effcace6265bc7dea7d4ebf2ed4f401d271c0df7b4d695326a05846091adaff0"
+    },
+    {
+      "path": "test-results/media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-phone-dpr3/current-media-library.png",
+      "sha256": "3417d7660fe45cc8e6dcbd208f526761deeb992b5fa6ee59a7672053609b67a6"
+    },
+    {
+      "path": "test-results/media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-phone-dpr3/current-scrollport-footer.png",
+      "sha256": "0f54f951ca77ec6983f8f913d7a435408d89706543dca744e19ad82af738047c"
+    },
+    {
+      "path": "test-results/media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-phone-dpr3/current-scrollport-middle.png",
+      "sha256": "d424524fce0a53db2ebb91c70aa1500b10c879ddcb3fb3067cb21829cf5dc075"
+    },
+    {
+      "path": "test-results/media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-phone-dpr3/current-scrollport-top.png",
+      "sha256": "3417d7660fe45cc8e6dcbd208f526761deeb992b5fa6ee59a7672053609b67a6"
+    },
+    {
+      "path": "test-results/media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-reduced-motion/current-media-library-viewport-0.png",
+      "sha256": "c7de586e13812290a9634405c164567d1afb816e21e9181a6abb9712ef7680a5"
+    },
+    {
+      "path": "test-results/media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-reduced-motion/current-media-library-viewport-2.png",
+      "sha256": "c7de586e13812290a9634405c164567d1afb816e21e9181a6abb9712ef7680a5"
+    },
+    {
+      "path": "test-results/media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-reduced-motion/current-media-library-viewport-4.png",
+      "sha256": "ed52860810fec3114cfe1681208f56421c87134d59cc9eedca88b92ad1c22122"
+    },
+    {
+      "path": "test-results/media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-reduced-motion/current-media-library.png",
+      "sha256": "aed0f7865083f85e35fc8081de7b7e23566837a16bd363c832b2b6873334be9e"
+    },
+    {
+      "path": "test-results/media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-rtl/current-media-library-viewport-0.png",
+      "sha256": "66d65a26ddecdc277f22230a647e82423874d081db058e169fe6330e57906afa"
+    },
+    {
+      "path": "test-results/media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-rtl/current-media-library-viewport-2.png",
+      "sha256": "66d65a26ddecdc277f22230a647e82423874d081db058e169fe6330e57906afa"
+    },
+    {
+      "path": "test-results/media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-rtl/current-media-library-viewport-4.png",
+      "sha256": "34d3c1eb822b15f13929311b0701df8d430a28d09d286c674cdcf98bcd60c17a"
+    },
+    {
+      "path": "test-results/media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-rtl/current-media-library.png",
+      "sha256": "a8e0b40d6a70df3d55332422870dc1fc2ecce071b1f17bd951f217dcd57ecc68"
+    },
+    {
+      "path": "test-results/media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-tablet/current-media-library-viewport-0.png",
+      "sha256": "2975b0c54c0700449753229286dcf022d62dba83fad913fe5cbd319c7ae113d8"
+    },
+    {
+      "path": "test-results/media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-tablet/current-media-library-viewport-2.png",
+      "sha256": "2975b0c54c0700449753229286dcf022d62dba83fad913fe5cbd319c7ae113d8"
+    },
+    {
+      "path": "test-results/media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-tablet/current-media-library-viewport-4.png",
+      "sha256": "d045ddaa89c403a5546854952c3ddde5cfd126f8144c7e34f891dbe6e01f3e3b"
+    },
+    {
+      "path": "test-results/media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-tablet/current-media-library.png",
+      "sha256": "4ef2977b8d432084551bff74834e60f818907d585d2c82b7da3ccba8eb5abe68"
+    },
+    {
+      "path": "test-results/media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-tablet/current-scrollport-footer.png",
+      "sha256": "776cbf545c449dba1328c69bd20a723a2b22d89604f1a3f17bc55d9b6a3308dc"
+    },
+    {
+      "path": "test-results/media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-tablet/current-scrollport-middle.png",
+      "sha256": "e94403047202e30b52e66196a3ffeff455e738ad82b191ebfca3a69777d8f577"
+    },
+    {
+      "path": "test-results/media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-tablet/current-scrollport-top.png",
+      "sha256": "c455eefd7e3fad2f5bf99a962964344c21d42adbf9054374e548dd955d134bbd"
+    },
+    {
+      "path": "test-results/media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-ultrawide/current-media-library-viewport-0.png",
+      "sha256": "376204b2b746a3d18eea2e4706b97431008c6dac0b0919095fec9b079d493396"
+    },
+    {
+      "path": "test-results/media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-ultrawide/current-media-library-viewport-2.png",
+      "sha256": "376204b2b746a3d18eea2e4706b97431008c6dac0b0919095fec9b079d493396"
+    },
+    {
+      "path": "test-results/media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-ultrawide/current-media-library-viewport-4.png",
+      "sha256": "cb8debd5887ed7e24c8a2c09f051ad81c688dfbe4dbab326aa497ad0b6311f81"
+    },
+    {
+      "path": "test-results/media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-ultrawide/current-media-library.png",
+      "sha256": "17fb1f412225047daf479b7a3425a0dc86b3513d38743af305b4a34fc2c9d304"
+    },
+    {
+      "path": "test-results/media-release-media-picker-72bf8-ontained-in-a-real-workflow-chromium-400-zoom/current-media-picker-bottom.png",
+      "sha256": "a78e1fb21154dcb072a5723f972d082efb8442d6007e57bf35e9b6f73b4a80d6"
+    },
+    {
+      "path": "test-results/media-release-media-picker-72bf8-ontained-in-a-real-workflow-chromium-400-zoom/current-media-picker.png",
+      "sha256": "a78e1fb21154dcb072a5723f972d082efb8442d6007e57bf35e9b6f73b4a80d6"
+    },
+    {
+      "path": "test-results/media-release-media-picker-72bf8-ontained-in-a-real-workflow-chromium-400-zoom/current-scrollport-footer.png",
+      "sha256": "fde769bd3631617e3d8e3712dfff221de64111724b1fe8c48dadcf147abbfbde"
+    },
+    {
+      "path": "test-results/media-release-media-picker-72bf8-ontained-in-a-real-workflow-chromium-400-zoom/current-scrollport-middle.png",
+      "sha256": "9ec685a129fada9eafb1832c110cdde7cb6d05d863c2f1d9300365f979a939f0"
+    },
+    {
+      "path": "test-results/media-release-media-picker-72bf8-ontained-in-a-real-workflow-chromium-400-zoom/current-scrollport-top.png",
+      "sha256": "295a0fd0085d4114bec24d9650f5bcde9af697abb169a6ace979ce3037138271"
+    },
+    {
+      "path": "test-results/media-release-media-picker-72bf8-ontained-in-a-real-workflow-chromium-compact/current-media-picker-bottom.png",
+      "sha256": "3a7707ea8b31410f701cdb868cd732b2c105c6448231f3dfd2777ba02371477e"
+    },
+    {
+      "path": "test-results/media-release-media-picker-72bf8-ontained-in-a-real-workflow-chromium-compact/current-media-picker.png",
+      "sha256": "8b6f62199b0e9c6cc31e5d9d1f096f1cc3400b99f3ac089c26f3bc347d5018fb"
+    },
+    {
+      "path": "test-results/media-release-media-picker-72bf8-ontained-in-a-real-workflow-chromium-compact/current-scrollport-footer.png",
+      "sha256": "541a6823a6eded1fe1ffbe6c7cf7537abd51c80583298b8a7b23761a4e524a7b"
+    },
+    {
+      "path": "test-results/media-release-media-picker-72bf8-ontained-in-a-real-workflow-chromium-compact/current-scrollport-middle.png",
+      "sha256": "b9da3f174f821fa6f132b949676f0253e13fe27aa1eb80ebf0c68eb0d458c08e"
+    },
+    {
+      "path": "test-results/media-release-media-picker-72bf8-ontained-in-a-real-workflow-chromium-compact/current-scrollport-top.png",
+      "sha256": "9ccdc9289e5fe7cf7e3006ca2374ed877e0d85bafeb19059a30eaebcec4c2362"
+    },
+    {
+      "path": "test-results/media-release-media-picker-72bf8-ontained-in-a-real-workflow-chromium-desktop/current-media-picker-bottom.png",
+      "sha256": "00b9afd0b734a6aabf7b54a37b785dd0cb94ae0076ae1feb76552bb82dcfeb9c"
+    },
+    {
+      "path": "test-results/media-release-media-picker-72bf8-ontained-in-a-real-workflow-chromium-desktop/current-media-picker.png",
+      "sha256": "00b9afd0b734a6aabf7b54a37b785dd0cb94ae0076ae1feb76552bb82dcfeb9c"
+    },
+    {
+      "path": "test-results/media-release-media-picker-72bf8-ontained-in-a-real-workflow-chromium-high-contrast/current-media-picker-bottom.png",
+      "sha256": "eccb3e18f1e71c5a8dcb4ee94949e3a242b90f90c72c16efc0d666cd07750a59"
+    },
+    {
+      "path": "test-results/media-release-media-picker-72bf8-ontained-in-a-real-workflow-chromium-high-contrast/current-media-picker.png",
+      "sha256": "eccb3e18f1e71c5a8dcb4ee94949e3a242b90f90c72c16efc0d666cd07750a59"
+    },
+    {
+      "path": "test-results/media-release-media-picker-72bf8-ontained-in-a-real-workflow-chromium-light/current-media-picker-bottom.png",
+      "sha256": "71f4f6cc48c2f61990cece35fae66c8171a9498aff30304ff0212040c743191f"
+    },
+    {
+      "path": "test-results/media-release-media-picker-72bf8-ontained-in-a-real-workflow-chromium-light/current-media-picker.png",
+      "sha256": "71f4f6cc48c2f61990cece35fae66c8171a9498aff30304ff0212040c743191f"
+    },
+    {
+      "path": "test-results/media-release-media-picker-72bf8-ontained-in-a-real-workflow-chromium-rtl/current-media-picker-bottom.png",
+      "sha256": "4411a2dce5389e1077a2c71427b1314df6b99264f31b76655c7fcbee8f40f271"
+    },
+    {
+      "path": "test-results/media-release-media-picker-72bf8-ontained-in-a-real-workflow-chromium-rtl/current-media-picker.png",
+      "sha256": "4411a2dce5389e1077a2c71427b1314df6b99264f31b76655c7fcbee8f40f271"
+    }
+  ],
+  "freshOperationsReceipt": false,
+  "sourceGuardErrors": [],
+  "unexpectedChangedPaths": [],
+  "scope": "Native visual matrix evidence only; declared skips are not executions or whole-project acceptance."
+}

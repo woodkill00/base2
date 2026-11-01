@@ -1,0 +1,82 @@
+{
+  "conclusion": "inconclusive",
+  "inspections": [
+    {
+      "member": "media-release-media-detail-fa505-age-and-consequence-context-chromium-desktop/current-media-detail-completed.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "dd6d4da58b2408c65b4dd2961f3cde24e90b33af83def1a28d46ba41ca7232c2"
+    },
+    {
+      "member": "media-release-media-detail-fa505-age-and-consequence-context-chromium-desktop/current-media-detail-restored.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "55a2e86407c17cba3565b433e25d6ee7f6f7ed49d326180b1f4a46b9ded3606b"
+    },
+    {
+      "member": "media-release-media-detail-fa505-age-and-consequence-context-chromium-desktop/current-media-detail-top.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "487318eb1bda0a8dcf2aa66884560b5d2cb123a900330a83bd59e1b997d98425"
+    },
+    {
+      "member": "media-release-media-detail-fa505-age-and-consequence-context-chromium-desktop/current-media-detail.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "9155cf96710b2427a766da936106e8ee17517521c73fe328c378df5647450529"
+    },
+    {
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-desktop/current-media-library-viewport-0.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "853ae189a46946da8d3eb5543e69ebfd9143b61f438ef98817f9b71e612c2195"
+    },
+    {
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-desktop/current-media-library-viewport-2.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "853ae189a46946da8d3eb5543e69ebfd9143b61f438ef98817f9b71e612c2195"
+    },
+    {
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-desktop/current-media-library-viewport-4.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "df07dd94ae5a6be595b898a3624ac40f2defde8991d114b23a1229a0534e2a34"
+    },
+    {
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-desktop/current-media-library.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "d5cabc50b2d6bc31812114e4de353d16a1e1f238608ad914c9bbf8f0a168917e"
+    },
+    {
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-desktop/media-library-chromium-desktop-actual.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "actual",
+      "sha256": "d5cabc50b2d6bc31812114e4de353d16a1e1f238608ad914c9bbf8f0a168917e"
+    },
+    {
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-desktop/test-failed-1.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "failure",
+      "sha256": "df07dd94ae5a6be595b898a3624ac40f2defde8991d114b23a1229a0534e2a34"
+    },
+    {
+      "member": "media-release-media-picker-72bf8-ontained-in-a-real-workflow-chromium-desktop/current-media-picker-bottom.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "00b9afd0b734a6aabf7b54a37b785dd0cb94ae0076ae1feb76552bb82dcfeb9c"
+    },
+    {
+      "member": "media-release-media-picker-72bf8-ontained-in-a-real-workflow-chromium-desktop/current-media-picker.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "00b9afd0b734a6aabf7b54a37b785dd0cb94ae0076ae1feb76552bb82dcfeb9c"
+    }
+  ],
+  "kind": "technical-review",
+  "manifest": "runs/41316950722-1-124878897702-13087268194.json",
+  "manifestSha256": "58483f19b5fd7c49ad0a12bfaa37e4bb866d462a6995385144df11d56a35f33e",
+  "notes": "Diagnostic only; no baseline or full visual acceptance. Review methods are conservative: partial image inspection maps to overview. Original run failures remain unchanged. Technical pixel review is not baseline promotion or complete visual acceptance. Mobile viewport-only primary references do not cover the entire inner scrollport. Supplemental top/middle/footer captures and geometry improve evidence but do not replace full stitched/tiled visual reference coverage. No open utility popup evidence in these matrices; no standardlocal-reference/focus-journey claim. Standard is separately running. Scaled overview inspection is not pixel-level acceptance of every small glyph. High-contrast Caption textarea system-palette gap repaired: black Canvas surface with visible white boundary; explicit system-control assertion precedes snapshot. High-contrast detail comparison remains failed, but soft comparison allows hard lifecycle assertions through ready version 3, request If-Match preconditions, settled aria-busy, focus restoration and axe before restored capture. All six supported detail projects retain restored-state PNGs; six other detail combinations remain declared skips. No new independent severe visual regression found. Library differences remain predominantly approved-shell gutters/reflow and mobile inner-scrollport capture extent; high-contrast detail differences are intentional system-palette correction. All 587 native library target observations have zero persistent-shell-control overlap and zero blocked centers inside unobscured content viewport.",
+  "schemaVersion": 2
+}

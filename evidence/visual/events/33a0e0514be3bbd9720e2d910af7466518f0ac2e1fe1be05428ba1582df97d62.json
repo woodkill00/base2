@@ -1,0 +1,28 @@
+{
+  "conclusion": "inconclusive",
+  "inspections": [
+    {
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-reduced-motion/current-operations-center-chromium-reduced-motion.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "6b86eeec3b74600e66851e04ccd201f5bc6793b1b4fb7e1c75d1dfa4485b9f4a"
+    },
+    {
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-reduced-motion/operations-center-chromium-reduced-motion-actual.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "actual",
+      "sha256": "6b86eeec3b74600e66851e04ccd201f5bc6793b1b4fb7e1c75d1dfa4485b9f4a"
+    },
+    {
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-reduced-motion/test-failed-1.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "failure",
+      "sha256": "e35c3d5605be592d1a58baf8976af3217f1231cdedc23da2e1be9d110212825b"
+    }
+  ],
+  "kind": "technical-review",
+  "manifest": "runs/41316938996-1-124878862228-13087674095.json",
+  "manifestSha256": "b68e4cd2e668716bcf7e11e7770e2ff1f782b61fe7793925d238037401f27a19",
+  "notes": "Expected/diff inspections withheld: aggregate review states these were not inspected despite per-image flags.",
+  "schemaVersion": 2
+}

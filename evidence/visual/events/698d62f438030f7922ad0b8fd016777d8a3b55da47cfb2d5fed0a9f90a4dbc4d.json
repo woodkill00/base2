@@ -1,0 +1,16 @@
+{
+  "conclusion": "inconclusive",
+  "inspections": [
+    {
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-ultrawide/current-operations-center-chromium-ultrawide.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "b4bdffa0c1923b73d5e4c4ea902d859912495f0288684dad71980e944f95d617"
+    }
+  ],
+  "kind": "technical-review",
+  "manifest": "runs/41316938996-1-124878862228-13087404776.json",
+  "manifestSha256": "7e513c8fa7340721aeaa2af9939452844f400763ed5d37dfc1f886c858887c11",
+  "notes": "Expected/diff inspections withheld: aggregate review states these were not inspected despite per-image flags.",
+  "schemaVersion": 2
+}

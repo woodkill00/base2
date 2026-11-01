@@ -1,0 +1,28 @@
+{
+  "conclusion": "inconclusive",
+  "inspections": [
+    {
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-german/current-operations-center-chromium-german.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "3754f0022cbf5771c807fde52b3f2e33b516713ab02ff31771fe7eb06b5cc4ad"
+    },
+    {
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-german/operations-center-chromium-german-actual.png",
+      "method": "contact-sheet-overview",
+      "role": "actual",
+      "sha256": "57954aa2d618c97586406eab33123bb47ca3049270120819e0aa81a99b483e37"
+    },
+    {
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-german/test-failed-1.png",
+      "method": "contact-sheet-overview",
+      "role": "failure",
+      "sha256": "8403bda06d68a61ce063b44ec1a8acee8ee975f3babf0b62f07e4916f285f02a"
+    }
+  ],
+  "kind": "technical-review",
+  "manifest": "runs/41314740935-1-124872282068-13086279346.json",
+  "manifestSha256": "255a47c2a01608089154a19ebbf3999caf6cd6552ff4b6fbd838a52ec0fec6e2",
+  "notes": "Diagnostic only; no baseline or full visual acceptance. Review methods are conservative: partial image inspection maps to overview. Original run failures remain unchanged. Original PNG bytes unchanged; contact-sheet review is overview only, not detailed acceptance. Standard browser suites never ran; no workspace/compact journey/Firefox focus validation. WebKit operations project was not packaged because of budget; oversized original not fetched. WebKit-desktop project images unavailable in bounded archive; not fetched and not visually reviewed. Most images reviewed as contact-sheet overview, not original-scale every text/control. Long full-page small details cannot be certified from overview. No browser interaction, hit-test or source causal inspection by this reviewer. Native pass/failed counts do not establish visual acceptance. Only three expected references reviewed separately; diffs and other references not inspected by this reviewer. Mobile snapshots remain viewport-sized due inner scrollport; top/middle/footer samples do not prove complete continuous content or all interactive states. No dedicated mobile cancellation dialog PNG in retained set; desktop dialog cannot certify mobile dialog presentation. No reference promotion or uploads. No open utility-popup screenshot or geometry receipt in bounded operations bundle; do not infer popup or standard keyboard-journey validation. Prior large-text midword wrapping is fixed: 8 passed, Operations Collect, Replay safely and Cancel are readable; adaptive two-column summaries and one-column runtime details make actual1280x7070 versus golden1280x5813. Full actual inspected in original-scale slices. Compact/tablet/landscape drawer toggles now share reserved bottom control row without covering captured content. Middle/footer recovery states are readable; no prior blank shifted-footer image seen.",
+  "schemaVersion": 2
+}

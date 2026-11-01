@@ -1,0 +1,64 @@
+{
+  "conclusion": "inconclusive",
+  "inspections": [
+    {
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-tablet/current-operations-center-chromium-tablet.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "183ba7a93eadfea8005bc7c1f7095210092a9fb40a7b970039c66bc75a0e4426"
+    },
+    {
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-tablet/current-scrollport-footer.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "293184d53bc08fe9db6025c18743ce7a42e0f625f3796b52bb8f246df6106054"
+    },
+    {
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-tablet/current-scrollport-middle.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "dede06968d9042b5a8db833839257fcd461d5db3a17fdcc404bf08a3cd5a32c2"
+    },
+    {
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-tablet/current-scrollport-operations-center-chromium-tablet-footer.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "0b24581ffde96e85b62f4d87950333c101c4e720bf2e053caf61a4559026d969"
+    },
+    {
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-tablet/current-scrollport-operations-center-chromium-tablet-middle.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "e4ab64a16fb52734cfb46aa726764b460ce8c11fbfbd48f0229233c55085cbf7"
+    },
+    {
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-tablet/current-scrollport-operations-center-chromium-tablet-top.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "183ba7a93eadfea8005bc7c1f7095210092a9fb40a7b970039c66bc75a0e4426"
+    },
+    {
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-tablet/current-scrollport-top.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "550e5e1a2ac04465b7b631b7996688ad64150ec5becd7ba79efc8879c08f09b3"
+    },
+    {
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-tablet/operations-center-chromium-tablet-actual.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "actual",
+      "sha256": "183ba7a93eadfea8005bc7c1f7095210092a9fb40a7b970039c66bc75a0e4426"
+    },
+    {
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-tablet/test-failed-1.png",
+      "method": "contact-sheet-overview",
+      "role": "failure",
+      "sha256": "07448d7f93034a4b30ccf0974e285b141de522f87b3b5701b2d9e740f9185405"
+    }
+  ],
+  "kind": "technical-review",
+  "manifest": "runs/41316938996-1-124878862228-13087853084.json",
+  "manifestSha256": "fbf3e270910973b627f8aea671ad498248a366d3e0aa2245183b0c883c4a8536",
+  "notes": "Expected/diff inspections withheld: aggregate review states these were not inspected despite per-image flags.",
+  "schemaVersion": 2
+}
