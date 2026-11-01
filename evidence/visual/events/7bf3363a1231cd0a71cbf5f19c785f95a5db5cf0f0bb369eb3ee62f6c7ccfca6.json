@@ -1,0 +1,14 @@
+{
+  "captureHashes": [
+    "b62cb714895410a8b21f8bac6d0fc650aa21fe0a3f67c4c19d02eea3cb97d495",
+    "90ee262788f063532814a7f5c892149d56b28de228a6c4986948665d28285c7f",
+    "3202876db8bc3d00102974af21ef41acb89fa1fca191b534d9aeaeea92d23c7d"
+  ],
+  "conclusion": "intended-change",
+  "evidence": "actual-expected-diff-pixels-inspected",
+  "kind": "technical-review",
+  "manifest": "runs/41277438310-1-124762365127-13071837838.json",
+  "manifestSha256": "36f7332d658c8cd77c565877bae418d5ce11cf0836441f0f3c2cef429857269a",
+  "notes": "Native actual/expected/diff review identifies forced-color system palette, control border and selected-state corrections versus stale normal-mode references. No new clipping or layout regression observed. Source mode, paint and accessibility prerequisites passed before the original snapshot failures. Original failed outcomes remain preserved; this review does not grant full-matrix acceptance.",
+  "schemaVersion": 1
+}

@@ -1,0 +1,216 @@
+{
+  "archiveSha256": "3b0f86872c852d0be649613f71b64f87389690c69d823f1410c589a2467aa857",
+  "artifactId": 13068363258,
+  "attempt": 1,
+  "captures": [
+    {
+      "bytes": 72216,
+      "dimensions": [
+        936,
+        864
+      ],
+      "member": "forced-colors-ci-41268107152-1-media/media-release-media-detail-fa505-age-and-consequence-context-chromium-high-contrast/current-media-detail.png",
+      "originalOutcome": "passed",
+      "project": "chromium-high-contrast",
+      "role": "current",
+      "sha256": "4638077e5860841f1849cd08ef23b937d7d431ed791573f1ca27ba3095c627fe",
+      "storage": "objects/4638077e5860841f1849cd08ef23b937d7d431ed791573f1ca27ba3095c627fe.png",
+      "test": "media detail preserves safe preview usage and consequence context",
+      "viewport": [
+        1280,
+        900
+      ]
+    },
+    {
+      "bytes": 549538,
+      "dimensions": [
+        1280,
+        1968
+      ],
+      "member": "forced-colors-ci-41268107152-1-media/media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-high-contrast/current-media-library.png",
+      "originalOutcome": "passed",
+      "project": "chromium-high-contrast",
+      "role": "current",
+      "sha256": "5cc6d3065a4660b632b4448c3d63510a639cb5ed240e5bac9950faec4bf3b126",
+      "storage": "objects/5cc6d3065a4660b632b4448c3d63510a639cb5ed240e5bac9950faec4bf3b126.png",
+      "test": "media library is accessible responsive and visually reviewed",
+      "viewport": [
+        1280,
+        900
+      ]
+    },
+    {
+      "bytes": 42936,
+      "dimensions": [
+        756,
+        820
+      ],
+      "member": "forced-colors-ci-41268107152-1-media/media-release-media-picker-72bf8-ontained-in-a-real-workflow-chromium-high-contrast/media-picker-chromium-high-contrast-actual.png",
+      "originalOutcome": "failed",
+      "project": "chromium-high-contrast",
+      "role": "actual",
+      "sha256": "df0d924e86f7ed4f71ce11c681b80b79dfd05198f69031fcedfd96d87b505609",
+      "storage": "git:cf2a9509ff4c223d704dd49bf0e186330809fce8:react-app/e2e/media/media-release.spec.ts-snapshots/media-picker-chromium-high-contrast-chromium-high-contrast-linux.png",
+      "test": "media picker is visually and keyboard contained in a real workflow",
+      "viewport": [
+        1280,
+        900
+      ]
+    },
+    {
+      "bytes": 43886,
+      "dimensions": [
+        756,
+        820
+      ],
+      "member": "forced-colors-ci-41268107152-1-media/media-release-media-picker-72bf8-ontained-in-a-real-workflow-chromium-high-contrast/media-picker-chromium-high-contrast-diff.png",
+      "originalOutcome": "failed",
+      "project": "chromium-high-contrast",
+      "role": "diff",
+      "sha256": "8c80e6e2867f47facbe97a5d26c4f3a3a694031af1013834a6e1ff6093f83a0f",
+      "storage": "objects/8c80e6e2867f47facbe97a5d26c4f3a3a694031af1013834a6e1ff6093f83a0f.png",
+      "test": "media picker is visually and keyboard contained in a real workflow",
+      "viewport": [
+        1280,
+        900
+      ]
+    },
+    {
+      "bytes": 48171,
+      "dimensions": [
+        756,
+        820
+      ],
+      "member": "forced-colors-ci-41268107152-1-media/media-release-media-picker-72bf8-ontained-in-a-real-workflow-chromium-high-contrast/media-picker-chromium-high-contrast-expected.png",
+      "originalOutcome": "failed",
+      "project": "chromium-high-contrast",
+      "role": "expected",
+      "sha256": "f9a4ebc843b29d034e9557dccc036760b493f330f58b874a15d73bef4c71f857",
+      "storage": "git:3cdd3716702693f650cd85941640aa083df49a0e:react-app/e2e/media/media-release.spec.ts-snapshots/media-picker-chromium-high-contrast-chromium-high-contrast-linux.png",
+      "test": "media picker is visually and keyboard contained in a real workflow",
+      "viewport": [
+        1280,
+        900
+      ]
+    },
+    {
+      "bytes": 178461,
+      "dimensions": [
+        1280,
+        900
+      ],
+      "member": "forced-colors-ci-41268107152-1-media/media-release-media-picker-72bf8-ontained-in-a-real-workflow-chromium-high-contrast/test-failed-1.png",
+      "originalOutcome": "failed",
+      "project": "chromium-high-contrast",
+      "role": "failure",
+      "sha256": "48038ba5c54b659f9c21842dd768f0f6b280686442cbf21b467b51f2ab4f9699",
+      "storage": "objects/48038ba5c54b659f9c21842dd768f0f6b280686442cbf21b467b51f2ab4f9699.png",
+      "test": "media picker is visually and keyboard contained in a real workflow",
+      "viewport": [
+        1280,
+        900
+      ]
+    },
+    {
+      "bytes": 533646,
+      "dimensions": [
+        1280,
+        2949
+      ],
+      "member": "forced-colors-ci-41268107152-1-operations/operations-release-operati-5407b-ponsive-and-visually-stable-chromium-high-contrast/operations-center-chromium-high-contrast-actual.png",
+      "originalOutcome": "failed",
+      "project": "chromium-high-contrast",
+      "role": "actual",
+      "sha256": "b2be5bb2b7727f82ab60524d796d008158bf62106672ae197c7bb94c00347b24",
+      "storage": "git:cf2a9509ff4c223d704dd49bf0e186330809fce8:react-app/e2e/operations/operations-release.spec.ts-snapshots/operations-center-chromium-high-contrast-chromium-high-contrast-linux.png",
+      "test": "operations center is accessible responsive and visually stable",
+      "viewport": [
+        1280,
+        900
+      ]
+    },
+    {
+      "bytes": 322824,
+      "dimensions": [
+        1280,
+        2949
+      ],
+      "member": "forced-colors-ci-41268107152-1-operations/operations-release-operati-5407b-ponsive-and-visually-stable-chromium-high-contrast/operations-center-chromium-high-contrast-diff.png",
+      "originalOutcome": "failed",
+      "project": "chromium-high-contrast",
+      "role": "diff",
+      "sha256": "4437ebcda45d6183860b2fe014c345c94caa70a3dd8b26e682386fc0a277d53f",
+      "storage": "objects/4437ebcda45d6183860b2fe014c345c94caa70a3dd8b26e682386fc0a277d53f.png",
+      "test": "operations center is accessible responsive and visually stable",
+      "viewport": [
+        1280,
+        900
+      ]
+    },
+    {
+      "bytes": 650720,
+      "dimensions": [
+        1280,
+        2949
+      ],
+      "member": "forced-colors-ci-41268107152-1-operations/operations-release-operati-5407b-ponsive-and-visually-stable-chromium-high-contrast/operations-center-chromium-high-contrast-expected.png",
+      "originalOutcome": "failed",
+      "project": "chromium-high-contrast",
+      "role": "expected",
+      "sha256": "e7bf415494ea5411276be0a4b532f27c3567c7d69ac11173112b7d640817eafe",
+      "storage": "git:3cdd3716702693f650cd85941640aa083df49a0e:react-app/e2e/operations/operations-release.spec.ts-snapshots/operations-center-chromium-high-contrast-chromium-high-contrast-linux.png",
+      "test": "operations center is accessible responsive and visually stable",
+      "viewport": [
+        1280,
+        900
+      ]
+    },
+    {
+      "bytes": 351698,
+      "dimensions": [
+        1280,
+        900
+      ],
+      "member": "forced-colors-ci-41268107152-1-operations/operations-release-operati-5407b-ponsive-and-visually-stable-chromium-high-contrast/test-failed-1.png",
+      "originalOutcome": "failed",
+      "project": "chromium-high-contrast",
+      "role": "failure",
+      "sha256": "7a210aac0b4ba93cc9ee5c4b8dc383ee7a46c1467b2abcc9d2c2c01c499f127f",
+      "storage": "objects/7a210aac0b4ba93cc9ee5c4b8dc383ee7a46c1467b2abcc9d2c2c01c499f127f.png",
+      "test": "operations center is accessible responsive and visually stable",
+      "viewport": [
+        1280,
+        900
+      ]
+    }
+  ],
+  "fixtureScope": "synthetic-project-tests",
+  "jobId": 124735054658,
+  "laterValidation": "pending",
+  "originalOutcome": "failed",
+  "repository": "woodkill00/base2",
+  "requestedHead": "3cdd3716702693f650cd85941640aa083df49a0e",
+  "runId": 41268107152,
+  "schemaVersion": 1,
+  "sourceCommit": "ad6e038059100eb99b4b82ad3fdd78a39e02ba1e",
+  "sourceTree": "c0911236fe2d4cc1ea17af63de41c19fd0e93dc1",
+  "technicalReview": "pending",
+  "transfer": {
+    "blobs": {
+      "4437ebcda45d6183860b2fe014c345c94caa70a3dd8b26e682386fc0a277d53f": "b9ab3791983155375fbad7f2468e9aca95678751",
+      "4638077e5860841f1849cd08ef23b937d7d431ed791573f1ca27ba3095c627fe": "a12305796ec99ef0fc84fe63987b405efcfbce76",
+      "48038ba5c54b659f9c21842dd768f0f6b280686442cbf21b467b51f2ab4f9699": "8bb5313051fe1015a0d2c9c152096ca8c80c32d8",
+      "5cc6d3065a4660b632b4448c3d63510a639cb5ed240e5bac9950faec4bf3b126": "07571323ad733a9e80e1f010b764431e9cf8055a",
+      "7a210aac0b4ba93cc9ee5c4b8dc383ee7a46c1467b2abcc9d2c2c01c499f127f": "82bedd2509cef476876d8f9343f973829afdf5aa",
+      "8c80e6e2867f47facbe97a5d26c4f3a3a694031af1013834a6e1ff6093f83a0f": "0ca974e6f0045181a4789ba69778eb5e9c4ef5af",
+      "b2be5bb2b7727f82ab60524d796d008158bf62106672ae197c7bb94c00347b24": "9f6b6146a15e2d16a7b773deef0d2d3326d50abc",
+      "df0d924e86f7ed4f71ce11c681b80b79dfd05198f69031fcedfd96d87b505609": "cf475cdc6e125dc0501e0a97f1868ed58c8a2299",
+      "e7bf415494ea5411276be0a4b532f27c3567c7d69ac11173112b7d640817eafe": "303d2f84f786225ae683c8bb8b5fe8358625bac5",
+      "f9a4ebc843b29d034e9557dccc036760b493f330f58b874a15d73bef4c71f857": "5aa618701d34143d838021ed499180732da2b194"
+    },
+    "commit": "c1fd5134f08af2905268b870a9a784db9896d003",
+    "localVerification": "git-blob-sha256-size-dimensions-full-decode",
+    "originalArchiveVerification": "externally-verified-zip-and-members",
+    "tree": "1ced85a887bd9f780ee2d141afeada53414c53d8"
+  }
+}

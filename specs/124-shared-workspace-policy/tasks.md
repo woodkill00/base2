@@ -955,3 +955,36 @@ Feature 122 repair remains prohibited, and the broader family roadmap is incompl
       This does not recover artifact 13068039288 or accept any pixels. The parent
       reports that its size exceeds the supported 32 MiB transfer limit. No transfer
       limit or proxy bypass is authorized; snapshot thresholds remain unchanged.
+
+### Screenshot lifecycle slice (preparation)
+
+- [x] T43 Test/import explicitly inventoried synthetic PNGs with archive/member hashes,
+      source ancestry, size limits, immutable original outcomes and deduplication.
+- [x] T44 Validate separate immutable technical review and later native validation;
+      preserve original failures and prohibit automatic baseline/acceptance updates.
+- [x] T45 Inventory all screenshot producers, distinguish implemented bounded workspace
+      collection from pending adapters, independently review and hold publication.
+- [ ] T46 Import verified native workspace diagnostics and four reviewed HC references
+      after byte/provenance delivery; retain first failures and run fresh native CI.
+
+Pre-transfer checkpoint: 18 archive contracts passed. Independent review found and
+resolved a PNG decode gap: CRC verification now precedes bounded full decoding;
+a malformed-IDAT regression rejects the input before writes. No remaining blocking
+review findings. At that checkpoint native archive population and fresh workspace
+comparison were pending; unit fixtures are not native acceptance evidence.
+
+
+T46 preparation: fetched unreferenced transfer commit c1fd5134f08af2905268b870a9a784db9896d003
+without changing HEAD. Verified 30 supplied records against 29 exact Git blobs,
+SHA256, byte sizes, dimensions and full PNG decode. Six immutable manifests now
+retain all 30 captures; 20 new PNG objects remain after historical-baseline reuse.
+Five technical reviews and one later targeted media/operations validation record
+preserve original failures. Prepared only four reviewed workspace HC references.
+T46 remains open for parent review/publication and fresh native workspace validation.
+
+
+Retained archive maintenance: backend API CI validates committed manifests/events,
+PNG hashes and full decoding, and historical baseline references with full checkout
+history and no persisted credentials. Exact native merge-commit object proofs bind
+tested source identity to tree-equivalent retained heads, avoiding dependency on
+unreferenced merge or transfer commits. Native visual acceptance remains separate.

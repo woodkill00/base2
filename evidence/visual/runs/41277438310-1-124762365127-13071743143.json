@@ -1,0 +1,102 @@
+{
+  "archiveSha256": "e94c7de30aae4559df0221f2ed6020fba083f48ed9e83d651fe77c2ee85ef690",
+  "artifactId": 13071743143,
+  "attempt": 1,
+  "captures": [
+    {
+      "bytes": 72178,
+      "dimensions": [
+        936,
+        864
+      ],
+      "member": "forced-colors-ci-41277438310-1-media/media-release-media-detail-fa505-age-and-consequence-context-chromium-high-contrast/current-media-detail.png",
+      "originalOutcome": "passed",
+      "project": "chromium-high-contrast",
+      "role": "current",
+      "sha256": "d893773a7562ba72cfc1a194e30d62643233ee00f84a14fd234cb0e61a37e9c1",
+      "storage": "objects/d893773a7562ba72cfc1a194e30d62643233ee00f84a14fd234cb0e61a37e9c1.png",
+      "test": "media detail preserves safe preview usage and consequence context",
+      "viewport": [
+        1280,
+        900
+      ]
+    },
+    {
+      "bytes": 549414,
+      "dimensions": [
+        1280,
+        1968
+      ],
+      "member": "forced-colors-ci-41277438310-1-media/media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-high-contrast/current-media-library.png",
+      "originalOutcome": "passed",
+      "project": "chromium-high-contrast",
+      "role": "current",
+      "sha256": "99a0ef7e5c28d1150c36577fec0374c8399dc9aed2674edc380c50faba7ff3d3",
+      "storage": "git:3cdd3716702693f650cd85941640aa083df49a0e:react-app/e2e/media/media-release.spec.ts-snapshots/media-library-chromium-high-contrast-chromium-high-contrast-linux.png",
+      "test": "media library is accessible responsive and visually reviewed",
+      "viewport": [
+        1280,
+        900
+      ]
+    },
+    {
+      "bytes": 42936,
+      "dimensions": [
+        756,
+        820
+      ],
+      "member": "forced-colors-ci-41277438310-1-media/media-release-media-picker-72bf8-ontained-in-a-real-workflow-chromium-high-contrast/current-media-picker.png",
+      "originalOutcome": "passed",
+      "project": "chromium-high-contrast",
+      "role": "current",
+      "sha256": "df0d924e86f7ed4f71ce11c681b80b79dfd05198f69031fcedfd96d87b505609",
+      "storage": "git:cf2a9509ff4c223d704dd49bf0e186330809fce8:react-app/e2e/media/media-release.spec.ts-snapshots/media-picker-chromium-high-contrast-chromium-high-contrast-linux.png",
+      "test": "media picker is visually and keyboard contained in a real workflow",
+      "viewport": [
+        1280,
+        900
+      ]
+    },
+    {
+      "bytes": 533560,
+      "dimensions": [
+        1280,
+        2949
+      ],
+      "member": "forced-colors-ci-41277438310-1-operations/operations-release-operati-5407b-ponsive-and-visually-stable-chromium-high-contrast/current-operations-center-chromium-high-contrast.png",
+      "originalOutcome": "passed",
+      "project": "chromium-high-contrast",
+      "role": "current",
+      "sha256": "1b4baf43e6ff33ebfeb30c8734940b33bf9367bfdc9ede4f11bac7763d962576",
+      "storage": "objects/1b4baf43e6ff33ebfeb30c8734940b33bf9367bfdc9ede4f11bac7763d962576.png",
+      "test": "operations center is accessible responsive and visually stable",
+      "viewport": [
+        1280,
+        900
+      ]
+    }
+  ],
+  "fixtureScope": "synthetic-project-tests",
+  "jobId": 124762365127,
+  "laterValidation": "pending",
+  "originalOutcome": "passed",
+  "repository": "woodkill00/base2",
+  "requestedHead": "cf2a9509ff4c223d704dd49bf0e186330809fce8",
+  "runId": 41277438310,
+  "schemaVersion": 1,
+  "sourceCommit": "937f476735d51351ac1e037f7bacad9f2ae077d7",
+  "sourceTree": "cba7bb9da1a5bb3a5d7d8e54be2e13d0513b753d",
+  "technicalReview": "pending",
+  "transfer": {
+    "blobs": {
+      "1b4baf43e6ff33ebfeb30c8734940b33bf9367bfdc9ede4f11bac7763d962576": "ef84596407fb12323ca7763fdc448e31fcfc5492",
+      "99a0ef7e5c28d1150c36577fec0374c8399dc9aed2674edc380c50faba7ff3d3": "4d51b403bb30a097fed9eba08b53b29b5537aecd",
+      "d893773a7562ba72cfc1a194e30d62643233ee00f84a14fd234cb0e61a37e9c1": "5a83f0b35994bc29112582d0d24c70e167d83769",
+      "df0d924e86f7ed4f71ce11c681b80b79dfd05198f69031fcedfd96d87b505609": "cf475cdc6e125dc0501e0a97f1868ed58c8a2299"
+    },
+    "commit": "c1fd5134f08af2905268b870a9a784db9896d003",
+    "localVerification": "git-blob-sha256-size-dimensions-full-decode",
+    "originalArchiveVerification": "externally-verified-zip-and-members",
+    "tree": "1ced85a887bd9f780ee2d141afeada53414c53d8"
+  }
+}

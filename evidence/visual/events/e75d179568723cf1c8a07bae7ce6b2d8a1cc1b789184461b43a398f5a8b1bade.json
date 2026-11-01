@@ -1,0 +1,17 @@
+{
+  "captureHashes": [
+    "df0d924e86f7ed4f71ce11c681b80b79dfd05198f69031fcedfd96d87b505609",
+    "8c80e6e2867f47facbe97a5d26c4f3a3a694031af1013834a6e1ff6093f83a0f",
+    "f9a4ebc843b29d034e9557dccc036760b493f330f58b874a15d73bef4c71f857",
+    "b2be5bb2b7727f82ab60524d796d008158bf62106672ae197c7bb94c00347b24",
+    "4437ebcda45d6183860b2fe014c345c94caa70a3dd8b26e682386fc0a277d53f",
+    "e7bf415494ea5411276be0a4b532f27c3567c7d69ac11173112b7d640817eafe"
+  ],
+  "conclusion": "intended-change",
+  "evidence": "actual-expected-diff-pixels-inspected",
+  "kind": "technical-review",
+  "manifest": "runs/41268107152-1-124735054658-13068363258.json",
+  "manifestSha256": "2420c04677e6504b903b3c96fdedd4572d698e4777a6ca5fbe7318ba45f651f2",
+  "notes": "Native actual/expected/diff review identifies forced-color system palette, control border and selected-state corrections versus stale normal-mode references. No new clipping or layout regression observed. Source mode, paint and accessibility prerequisites passed before the original snapshot failures. Original failed outcomes remain preserved; this review does not grant full-matrix acceptance.",
+  "schemaVersion": 1
+}

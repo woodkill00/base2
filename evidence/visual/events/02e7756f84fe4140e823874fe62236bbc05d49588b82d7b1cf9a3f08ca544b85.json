@@ -1,0 +1,19 @@
+{
+  "captureHashes": [
+    "df0d924e86f7ed4f71ce11c681b80b79dfd05198f69031fcedfd96d87b505609",
+    "8c80e6e2867f47facbe97a5d26c4f3a3a694031af1013834a6e1ff6093f83a0f",
+    "f9a4ebc843b29d034e9557dccc036760b493f330f58b874a15d73bef4c71f857",
+    "48038ba5c54b659f9c21842dd768f0f6b280686442cbf21b467b51f2ab4f9699",
+    "b2be5bb2b7727f82ab60524d796d008158bf62106672ae197c7bb94c00347b24",
+    "4437ebcda45d6183860b2fe014c345c94caa70a3dd8b26e682386fc0a277d53f",
+    "e7bf415494ea5411276be0a4b532f27c3567c7d69ac11173112b7d640817eafe",
+    "7a210aac0b4ba93cc9ee5c4b8dc383ee7a46c1467b2abcc9d2c2c01c499f127f"
+  ],
+  "conclusion": "passed",
+  "evidence": "runs/41277438310-1-124762365127-13071743143.json",
+  "kind": "native-validation",
+  "manifest": "runs/41268107152-1-124735054658-13068363258.json",
+  "manifestSha256": "2420c04677e6504b903b3c96fdedd4572d698e4777a6ca5fbe7318ba45f651f2",
+  "notes": "Run 41277438310 passed the three targeted media HC cases and one operations HC case, including post-snapshot interactions. Workflow remained failed because workspace comparison failed; no full operations/media matrix acceptance is claimed.",
+  "schemaVersion": 1
+}

@@ -59,6 +59,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          fetch-depth: 0
+          persist-credentials: false
 
       - name: Set up Python
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
@@ -87,7 +90,11 @@ jobs:
 
       - name: Frontend/E2E acceptance contracts
         if: matrix.service == 'api'
-        run: python -m pytest -q scripts/tests/test_frontend_ci_scope.py scripts/tests/test_visual_matrix_ci.py scripts/tests/test_settings_foundation_ci.py scripts/tests/test_stacked_pr_ci.py scripts/tests/test_e2e_workspace_topology.py e2e/support/test_workspace_fixture.py e2e/support/test_workspace_journey_source.py
+        run: python -m pytest -q scripts/tests/test_frontend_ci_scope.py scripts/tests/test_visual_matrix_ci.py scripts/tests/test_screenshot_archive.py scripts/tests/test_settings_foundation_ci.py scripts/tests/test_stacked_pr_ci.py scripts/tests/test_e2e_workspace_topology.py e2e/support/test_workspace_fixture.py e2e/support/test_workspace_journey_source.py
+
+      - name: Validate retained screenshot archive integrity
+        if: matrix.service == 'api'
+        run: python -m scripts.python.screenshot_archive --repo . --require-runs
 
       - name: Recovery security and disposable harness contracts
         if: matrix.service == 'api'

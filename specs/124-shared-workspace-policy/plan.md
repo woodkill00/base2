@@ -552,3 +552,31 @@ member hashes. Cap each view at 30 MiB of unchanged PNG bytes plus at most 64 Ki
 of provenance, below the 32 MiB transfer limit. Reject symlinks, oversized input
 and reused output; never truncate captures or export traces, videos or fixtures.
 Missing captures remain explicit empty inventories, not successful visual evidence.
+
+### Screenshot lifecycle slice (preparation)
+
+Add an offline explicit-inventory PNG importer/validator under scripts/python,
+content-addressed diagnostic objects, immutable per-native-artifact run manifests,
+and separate technical-review/later-validation records. Preserve existing reference
+paths and source-bound acceptance contracts. Inventory all screenshot call sites
+and failure-capture configurations; bounded native collection currently covers only
+four workspace HC views. No automated repository publication or baseline promotion.
+At the initial pre-transfer checkpoint, archive population and workspace reference
+changes awaited verified bytes. The completed preparation is recorded below;
+cf2a950's original workspace failure remains recorded.
+
+
+Git-transfer import explicitly distinguishes externally verified ZIP/member
+provenance from locally verified Git blob/PNG integrity. Six native manifests retain
+30 capture records using 20 new objects plus exact existing Git references. Five
+technical-review events and one later targeted-validation event preserve original
+failed outcomes. Four reviewed workspace HC replacements are prepared; fresh
+native validation and publication remain pending. No original ZIP was rehashed in
+this checkout, and no complete visual acceptance is granted.
+
+
+Retained archive maintenance: backend API CI validates committed manifests/events,
+PNG hashes and full decoding, and historical baseline references with full checkout
+history and no persisted credentials. Exact native merge-commit object proofs bind
+tested source identity to tree-equivalent retained heads, avoiding dependency on
+unreferenced merge or transfer commits. Native visual acceptance remains separate.
