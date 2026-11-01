@@ -9,10 +9,11 @@ from pathlib import Path
 from typing import Any
 
 NAME = re.compile(r'continuous-([a-z0-9-]{1,90})\.json')
-FRAME = re.compile(r'current-continuous-[a-z0-9-]{1,90}-[0-9]{3}\.png')
+FRAME = re.compile(r'current-continuous-[a-z0-9-]{1,90}-(?:[0-9]{3}|focus)\.png')
 BUDGET = 128 * 1024
 ERRORS = {'empty', 'limit', 'index', 'route', 'extent', 'geometry', 'gap', 'nonprogress',
-          'overlap', 'incomplete', 'end-not-reached', 'capture-or-validation-failed'}
+          'overlap', 'incomplete', 'end-not-reached', 'capture-or-validation-failed',
+          'focus-not-neutral', 'skip-overlay-visible', 'focus-restore-failed'}
 
 
 def validate(raw: bytes, path: Path, commit: str, tree: str, project: str | None = None, run: str | None = None, attempt: str | None = None) -> dict:
@@ -29,10 +30,13 @@ def validate(raw: bytes, path: Path, commit: str, tree: str, project: str | None
 
     require(len(raw) <= BUDGET and bool(NAME.fullmatch(path.name)))
     data = json.loads(raw, object_pairs_hook=unique)
-    require(set(data) == {'schemaVersion', 'fixtureScope', 'scope', 'sourceCommit', 'sourceTree',
+    version = data.get('schemaVersion')
+    require(type(version) is int and version in (1, 2))
+    extra = {'coverageKind', 'unobscuredReview', 'focus'} if version == 2 else set()
+    require(set(data) == extra | {'schemaVersion', 'fixtureScope', 'scope', 'sourceCommit', 'sourceTree',
                          'runId', 'attempt', 'project', 'test', 'route', 'state', 'target', 'extent',
                          'segmentLimit', 'reachedEnd', 'complete', 'errors', 'segments'})
-    require(data['schemaVersion'] == 1 and data['fixtureScope'] == 'synthetic-project-tests')
+    require(data['fixtureScope'] == 'synthetic-project-tests')
     require(data['scope'] == 'Diagnostic continuous viewports; not visual acceptance.')
     require(data['sourceCommit'] == commit and data['sourceTree'] == tree)
     require(bool(re.fullmatch('[0-9a-f]{40}', commit)) and bool(re.fullmatch('[0-9a-f]{40}', tree)))
@@ -54,11 +58,34 @@ def validate(raw: bytes, path: Path, commit: str, tree: str, project: str | None
     def number(value: Any) -> bool:
         return type(value) in {int, float} and math.isfinite(value) and abs(value) <= 1_000_000
 
+    def image_identity(row: dict, name: str) -> None:
+        require(set(row) == {'file', 'sha256', 'bytes'})
+        require(row['file'] == name and bool(FRAME.fullmatch(name)))
+        require(bool(re.fullmatch('[0-9a-f]{64}', row['sha256'])))
+        require(type(row['bytes']) is int and 0 < row['bytes'] <= 28 * 1024 * 1024)
+        image = path.parent / name
+        require(not any(p.is_symlink() for p in (image, *image.parents)))
+        require(image.is_file() and image.stat().st_size == row['bytes'])
+        raw_image = image.read_bytes()
+        require(raw_image.startswith(b'\x89PNG\r\n\x1a\n') and hashlib.sha256(raw_image).hexdigest() == row['sha256'])
+
+    if version == 2:
+        require(data['coverageKind'] == 'neutral-focus-geometric' and data['unobscuredReview'] == 'required')
+        focus = data['focus']
+        require(isinstance(focus, dict) and set(focus) == {'mode', 'originalHadFocus', 'restored', 'capture'})
+        require(focus['mode'] == 'neutral-content' and type(focus['originalHadFocus']) is bool and type(focus['restored']) is bool)
+        if focus['capture'] is not None:
+            image_identity(focus['capture'], f"current-continuous-{data['state']}-focus.png")
+        require(not data['complete'] or (focus['restored'] and focus['capture'] is not None))
+
     require(number(data['extent']))
     end, offset, previous_height = 0.0, -1.0, 0.0
     coverage = True
     for index, row in enumerate(data['segments']):
-        require(set(row) == {'index', 'route', 'start', 'end', 'extent', 'offset', 'file', 'sha256', 'bytes', 'height', 'inset', 'scale', 'max', 'viewport', 'rect'})
+        require(set(row) == ({'neutralFocus', 'skipOverlayClear'} if version == 2 else set()) | {'index', 'route', 'start', 'end', 'extent', 'offset', 'file', 'sha256', 'bytes', 'height', 'inset', 'scale', 'max', 'viewport', 'rect'})
+        if version == 2:
+            require(type(row['neutralFocus']) is bool and type(row['skipOverlayClear']) is bool)
+            coverage = coverage and row['neutralFocus'] and row['skipOverlayClear']
         require(row['index'] == index and row['file'] == f"current-continuous-{data['state']}-{index:03d}.png")
         require(bool(FRAME.fullmatch(row['file'])) and bool(re.fullmatch('[0-9a-f]{64}', row['sha256'])))
         require(all(number(row[k]) for k in ('start', 'end', 'extent', 'offset', 'height', 'inset', 'scale', 'max')))
@@ -105,3 +132,9 @@ def validate(raw: bytes, path: Path, commit: str, tree: str, project: str | None
     else:
         require(bool(data['errors']))
     return data
+
+
+def capture_rows(data: dict) -> list:
+    """Focus context is retained separately and never contributes to coverage."""
+    context = data.get('focus', {}).get('capture')
+    return data['segments'] + ([context] if context is not None else [])

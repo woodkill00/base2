@@ -20,10 +20,17 @@ vi.mock('@playwright/test', () => ({
   }),
 }));
 const directories: string[] = [];
-afterEach(() =>
-  directories.splice(0).forEach((directory) => rmSync(directory, { recursive: true, force: true }))
-);
-function fixture({ stalled = false, cleanupFails = false, extent = 1000 } = {}) {
+afterEach(() => {
+  directories.splice(0).forEach((directory) => rmSync(directory, { recursive: true, force: true }));
+  document.querySelectorAll('[data-continuous-unit]').forEach((node) => node.remove());
+});
+function fixture({
+  stalled = false,
+  cleanupFails = false,
+  restoreFails = false,
+  neutralFails = false,
+  extent = 1000,
+} = {}) {
   const directory = mkdtempSync(join(tmpdir(), 'continuous-unit-'));
   directories.push(directory);
   const events: string[] = [];
@@ -49,8 +56,27 @@ function fixture({ stalled = false, cleanupFails = false, extent = 1000 } = {}) 
       return fn(node, arg);
     },
   };
+  const focusedNode = document.createElement('button');
+  focusedNode.dataset.continuousUnit = 'true';
+  document.body.append(focusedNode);
+  focusedNode.focus();
   const page = {
     url: () => 'http://127.0.0.1/media',
+    evaluateHandle: async () => ({
+      evaluate: async (fn: (_node: HTMLElement) => unknown) => {
+        const source = fn.toString();
+        if (source.includes('.blur()')) {
+          events.push('blur');
+          if (neutralFails) return;
+        }
+        if (source.includes('preventScroll')) {
+          events.push('focus-restore');
+          if (restoreFails) throw new Error('focus restoration failed');
+        }
+        return fn(focusedNode);
+      },
+      dispose: async () => {},
+    }),
     evaluate: async () => {},
     screenshot: async ({ path }: { path: string }) => {
       events.push('capture');
@@ -64,13 +90,22 @@ function fixture({ stalled = false, cleanupFails = false, extent = 1000 } = {}) 
     project: { name: 'chromium-compact' },
     outputPath: (name: string) => join(directory, name),
   };
-  return { directory, events, page, info, target, node };
+  return { directory, events, page, info, target, node, focusedNode };
 }
 test('complete unit sweep restores position and writes overlapping interval provenance', async () => {
   const f = fixture();
   await captureContinuousScroll(f.page as never, f.info as never, 'unit', f.target as never);
   const data = JSON.parse(readFileSync(join(f.directory, 'continuous-unit.json'), 'utf8'));
   expect(data.complete).toBe(true);
+  expect(data.schemaVersion).toBe(2);
+  expect(data.coverageKind).toBe('neutral-focus-geometric');
+  expect(data.unobscuredReview).toBe('required');
+  expect(data.focus).toMatchObject({
+    originalHadFocus: true,
+    restored: true,
+    capture: { file: 'current-continuous-unit-focus.png' },
+  });
+  expect(document.activeElement).toBe(f.focusedNode);
   expect(data.segments.map((s: { offset: number }) => s.offset)).toEqual([0, 300, 600]);
   expect(f.node.scrollTop).toBe(20);
 });
@@ -80,7 +115,7 @@ test('nonprogress saves attempted frame and cleanup cannot replace original fail
     captureContinuousScroll(f.page as never, f.info as never, 'unit', f.target as never)
   ).rejects.toBe(original);
   const data = JSON.parse(readFileSync(join(f.directory, 'continuous-unit.json'), 'utf8'));
-  expect(f.events).toEqual(['capture', 'capture', 'cleanup']);
+  expect(f.events).toEqual(['capture', 'blur', 'capture', 'capture', 'focus-restore', 'cleanup']);
   expect(data.complete).toBe(false);
   expect(data.segments).toHaveLength(2);
 });
@@ -94,4 +129,39 @@ test('64-frame ceiling fails incomplete evidence instead of truncating success',
   expect(data.reachedEnd).toBe(false);
   expect(data.segments).toHaveLength(64);
   expect(data.errors).toContain('incomplete');
+});
+
+test('remaining focus is fatal after retaining both context and attempted neutral frame', async () => {
+  const f = fixture({ neutralFails: true });
+  await expect(
+    captureContinuousScroll(f.page as never, f.info as never, 'unit', f.target as never)
+  ).rejects.toBe(original);
+  const data = JSON.parse(readFileSync(join(f.directory, 'continuous-unit.json'), 'utf8'));
+  expect(data.complete).toBe(false);
+  expect(data.errors).toContain('focus-not-neutral');
+  expect(data.focus.capture.file).toBe('current-continuous-unit-focus.png');
+  expect(data.segments).toHaveLength(1);
+  expect(data.focus.restored).toBe(true);
+});
+
+test('focus restoration failure is recorded before writing completeness', async () => {
+  const f = fixture({ restoreFails: true });
+  await expect(
+    captureContinuousScroll(f.page as never, f.info as never, 'unit', f.target as never)
+  ).rejects.toThrow('focus restoration failed');
+  const data = JSON.parse(readFileSync(join(f.directory, 'continuous-unit.json'), 'utf8'));
+  expect(data.complete).toBe(false);
+  expect(data.focus.restored).toBe(false);
+  expect(data.errors).toContain('focus-restore-failed');
+  expect(f.node.scrollTop).toBe(20);
+});
+
+test('original coverage failure wins over focus restoration failure', async () => {
+  const f = fixture({ stalled: true, restoreFails: true });
+  await expect(
+    captureContinuousScroll(f.page as never, f.info as never, 'unit', f.target as never)
+  ).rejects.toBe(original);
+  const data = JSON.parse(readFileSync(join(f.directory, 'continuous-unit.json'), 'utf8'));
+  expect(data.complete).toBe(false);
+  expect(data.errors).toContain('focus-restore-failed');
 });

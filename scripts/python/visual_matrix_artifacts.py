@@ -303,7 +303,7 @@ def stage(source: Path, output: Path) -> dict:
         inventory["projects"][project] = entry
         try:
             continuous_count = sum(bool(continuous_evidence.FRAME.fullmatch(p.name)) for p in paths)
-            if continuous_count > 1024 or len(sweeps[project]) > 16 or len(paths) - continuous_count > 256:
+            if continuous_count > 1040 or len(sweeps[project]) > 16 or len(paths) - continuous_count > 256:
                 raise ValueError("project capture count exceeded")
             members = {}
             for path in paths:
@@ -321,7 +321,7 @@ def stage(source: Path, output: Path) -> dict:
                 data = continuous_evidence.validate(raw, receipt, before['sourceCommit'], before['sourceTree'], project, str(before['runId']), str(before['attempt']))
                 if data['test'] not in {t['title'] for t in before['expectedTests'] if t['project'] == project}:
                     raise ValueError('continuous receipt outside declared test')
-                for row in data['segments']:
+                for row in continuous_evidence.capture_rows(data):
                     name = (receipt.parent / row['file']).relative_to(results).as_posix()
                     if name not in members or name in bound_frames:
                         raise ValueError('missing or duplicate continuous frame binding')

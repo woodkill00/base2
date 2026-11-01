@@ -193,3 +193,69 @@ def test_complete_offscreen_geometry_rejected_but_failed_observation_retained(re
         check(receipt)
     receipt[1].update(complete=False, reachedEnd=False, errors=['geometry'])
     assert not check(receipt)['complete']
+
+
+def neutral_receipt(receipt):
+    path, data = receipt
+    original = data['segments'][0]
+    name = 'current-continuous-media-focus.png'
+    (path.parent / name).write_bytes((path.parent / original['file']).read_bytes())
+    data.update(schemaVersion=2, coverageKind='neutral-focus-geometric', unobscuredReview='required',
+                focus={'mode': 'neutral-content', 'originalHadFocus': True, 'restored': True,
+                       'capture': {'file': name, 'sha256': original['sha256'], 'bytes': original['bytes']}})
+    for row in data['segments']:
+        row.update(neutralFocus=True, skipOverlayClear=True)
+    return receipt
+
+
+def test_neutral_schema_separates_original_focus_from_geometric_coverage(receipt):
+    from scripts.python.continuous_evidence import capture_rows
+    data = check(neutral_receipt(receipt))
+    assert len(data['segments']) == 3 and len(capture_rows(data)) == 4
+    assert data['unobscuredReview'] == 'required'
+
+
+@pytest.mark.parametrize('change', [
+    lambda d: d['focus'].update(restored=False),
+    lambda d: d['focus'].update(capture=None),
+    lambda d: d['focus']['capture'].update(sha256='f' * 64),
+    lambda d: d['focus']['capture'].update(file='../private.png'),
+    lambda d: d['focus'].update(activeElementText='private'),
+    lambda d: d['segments'][0].update(neutralFocus=False),
+    lambda d: d['segments'][0].update(skipOverlayClear=False),
+    lambda d: d.update(unobscuredReview='approved'),
+])
+def test_neutral_schema_rejects_focus_overlay_tamper_and_acceptance_claims(receipt, change):
+    neutral_receipt(receipt)
+    change(receipt[1])
+    with pytest.raises(ValueError):
+        check(receipt)
+
+
+def test_failed_focus_restoration_is_retainable_not_complete(receipt):
+    neutral_receipt(receipt)
+    receipt[1].update(complete=False, errors=['focus-restore-failed'])
+    receipt[1]['focus']['restored'] = False
+    assert not check(receipt)['complete']
+
+
+def test_focus_context_shell_roundtrip_has_explicit_role_and_exact_binding(receipt, tmp_path):
+    from scripts.python import shell_png_evidence as shell
+    from scripts.python.continuous_evidence import capture_rows
+    path, data = neutral_receipt(receipt)
+    sources = {suite: tmp_path / suite for suite in shell.SUITES}
+    for source in sources.values():
+        source.mkdir()
+    case = sources['volcano'] / 'volcano-preservation-unit-chromium'
+    case.mkdir()
+    for row in capture_rows(data):
+        (path.parent / row['file']).rename(case / row['file'])
+    (case / path.name).write_text(json.dumps(data))
+    provenance = dict(sourceCommit='a' * 40, sourceTree='b' * 40, requestedHead='c' * 40,
+                      runId='1', attempt='1', outcomes={s: 'failure' for s in sources})
+    output = tmp_path / 'bounded'
+    shell.stage(sources, output, provenance)
+    rows = [item for p in output.rglob('provenance.json') for item in json.loads(p.read_text())['captures']]
+    assert len(rows) == 4
+    assert next(r for r in rows if r['path'].endswith('-focus.png'))['role'] == 'original-focus-context'
+    assert all(json.loads(p.read_text())['outcomes']['volcano'] == 'failure' for p in output.rglob('provenance.json'))

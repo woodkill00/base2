@@ -20,7 +20,7 @@ LAYOUT_CASES = ('appearance-preferences', 'interaction-contract', 'representativ
                 'route-families', 'settings-interruption', 'workspace-policy-settings',
                 'workspace-review', 'volcano-preservation', 'accessible-layout',
                 'google-security-policy', 'home-controls', 'negative-controls')
-COMMON = r'(?:current-scrollport-(?:top|middle|footer)|current-continuous-[a-z0-9-]{1,90}-[0-9]{3}|test-failed-[0-9]+)'
+COMMON = r'(?:current-scrollport-(?:top|middle|footer)|current-continuous-[a-z0-9-]{1,90}-(?:[0-9]{3}|focus)|test-failed-[0-9]+)'
 LAYOUT_NAMES = re.compile(
     rf'(?:{COMMON}|page|viewport|zoom|empty-auth-errors|light-zoom|'
     r'volcano-(?:390|1440)-(?:home|left|right|palette)-(?:actual|expected|diff)|'
@@ -54,6 +54,8 @@ def allowed(suite: str, relative: Path) -> bool:
 def image_role(name: str) -> str:
     if continuous_evidence.NAME.fullmatch(name):
         return 'continuous-diagnostic-receipt'
+    if continuous_evidence.FRAME.fullmatch(name) and name.endswith('-focus.png'):
+        return 'original-focus-context'
     for role in ('actual', 'expected', 'diff'):
         if name.endswith(f'-{role}.png'):
             return f'comparison-{role}'
@@ -101,7 +103,7 @@ def stage(sources: dict[str, Path], output: Path, provenance: dict) -> None:
                     raise ValueError('oversized continuous receipt')
                 raw = path.read_bytes()
                 data = continuous_evidence.validate(raw, path, provenance['sourceCommit'], provenance['sourceTree'], run=str(provenance['runId']), attempt=str(provenance['attempt']))
-                for row in data['segments']:
+                for row in continuous_evidence.capture_rows(data):
                     frame = path.parent / row['file']
                     if frame in bound_frames:
                         raise ValueError('duplicate continuous frame binding')

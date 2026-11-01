@@ -165,6 +165,12 @@
   margin-inline: auto;
   column-gap: 0;
 }
+/* Grid slots already follow writing direction. Legacy physical offsets push
+   RTL circles out of those slots and into the adjacent drawer focus ring. */
+.volcano-layout[data-movement-layout='bottom'] .home-movement-button {
+  left: auto;
+  right: auto;
+}
 .volcano-layout[data-movement-layout='bottom'] .home-left-menu-toggle {
   top: var(--volcano-dock-toggle-top);
   left: max(12px, env(safe-area-inset-left));

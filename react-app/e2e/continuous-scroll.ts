@@ -37,7 +37,15 @@ export async function captureContinuousScroll(
     max: number;
     viewport: number[];
     rect: number[];
+    neutralFocus: boolean;
+    skipOverlayClear: boolean;
   })[] = [];
+  const focused = await page.evaluateHandle(() => document.activeElement);
+  const originalHadFocus = await focused.evaluate(
+    (node) => node !== document.body && node !== document.documentElement
+  );
+  let focusCapture: { file: string; sha256: string; bytes: number } | null = null;
+  let focusRestored = false;
   const errors: string[] = [];
   let failure: unknown,
     failed = false,
@@ -55,7 +63,27 @@ export async function captureContinuousScroll(
           : 0;
       const visibleTop = Math.max(box.top, 0),
         visibleBottom = Math.min(box.bottom, innerHeight);
+      const skipOverlayClear = Array.from(
+        document.querySelectorAll<HTMLElement>('.unified-skip-link')
+      ).every((link) => {
+        const style = getComputedStyle(link),
+          rect = link.getBoundingClientRect();
+        return (
+          style.display === 'none' ||
+          style.visibility === 'hidden' ||
+          style.clipPath === 'inset(50%)' ||
+          Number(style.opacity) === 0 ||
+          rect.bottom <= 0 ||
+          rect.top >= innerHeight ||
+          rect.right <= 0 ||
+          rect.left >= innerWidth
+        );
+      });
       return {
+        neutralFocus:
+          document.activeElement === document.body ||
+          document.activeElement === document.documentElement,
+        skipOverlayClear,
         offset: node.scrollTop,
         max: node.scrollHeight - node.clientHeight,
         height: node.clientHeight,
@@ -70,6 +98,22 @@ export async function captureContinuousScroll(
       };
     });
   try {
+    // Preserve the original focused state as context, never as unobscured coverage.
+    const file = `current-continuous-${state}-focus.png`;
+    const raw = await page.screenshot({
+      path: info.outputPath(file),
+      fullPage: false,
+      animations: 'disabled',
+      caret: 'hide',
+    });
+    focusCapture = {
+      file,
+      sha256: createHash('sha256').update(raw).digest('hex'),
+      bytes: raw.length,
+    };
+    await focused.evaluate((node) => {
+      if (node instanceof HTMLElement) node.blur();
+    });
     for (let index = 0; index < 64; index++) {
       if (index === 0)
         await target.evaluate((node) => node.scrollTo({ top: 0, behavior: 'instant' }));
@@ -102,10 +146,15 @@ export async function captureContinuousScroll(
         max: m.max,
         viewport: m.viewport,
         rect: m.rect,
+        neutralFocus: m.neutralFocus,
+        skipOverlayClear: m.skipOverlayClear,
         file,
         sha256: createHash('sha256').update(raw).digest('hex'),
         bytes: raw.length,
       });
+      if (!m.neutralFocus) errors.push('focus-not-neutral');
+      if (!m.skipOverlayClear) errors.push('skip-overlay-visible');
+      expect(errors, 'Neutral content sweep must not retain a focused skip overlay').toEqual([]);
       const current = coverageErrors(segments, route, extent).filter(
         (code) => code !== 'incomplete'
       );
@@ -129,46 +178,84 @@ export async function captureContinuousScroll(
     failed = true;
     failure = error;
     errors.push('capture-or-validation-failed');
-  } finally {
-    try {
-      const data = {
-        schemaVersion: 1,
-        fixtureScope: 'synthetic-project-tests',
-        scope: 'Diagnostic continuous viewports; not visual acceptance.',
-        sourceCommit: execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(),
-        sourceTree: execFileSync('git', ['rev-parse', 'HEAD^{tree}'], { encoding: 'utf8' }).trim(),
-        runId: process.env.GITHUB_RUN_ID || '0',
-        attempt: process.env.GITHUB_RUN_ATTEMPT || '0',
-        project: info.project.name,
-        test: info.title,
-        route,
-        state,
-        target: dialog ? 'dialog' : 'content-scrollport',
-        extent,
-        segmentLimit: 64,
-        reachedEnd,
-        complete: !failed,
-        errors: [...new Set(errors)],
-        segments,
-      };
-      writeReceipt(info.outputPath(receiptName), data);
-    } catch (error) {
-      if (!failed) {
-        failed = true;
-        failure = error;
-      }
+  }
+  // The catch above records errors without returning; cleanup always follows.
+  // Restore authored focus and scroll even after a failed capture. A restoration
+  // failure is retained but cannot replace the original behavioral error.
+  try {
+    focusRestored = await focused.evaluate((node) => {
+      if (!(node instanceof HTMLElement) || !node.isConnected) return false;
+      if (node !== document.body && node !== document.documentElement)
+        node.focus({ preventScroll: true });
+      return document.activeElement === node;
+    });
+    if (!focusRestored) throw new Error('Original focus could not be restored');
+  } catch (error) {
+    errors.push('focus-restore-failed');
+    if (!failed) {
+      failed = true;
+      failure = error;
     }
-    try {
-      await target.evaluate(
-        (node, position) =>
-          node.scrollTo({ left: position.x, top: position.y, behavior: 'instant' }),
-        saved
-      );
-    } catch (error) {
-      if (!failed) {
-        failed = true;
-        failure = error;
-      }
+  }
+  try {
+    const restoredPosition = await target.evaluate((node, position) => {
+      node.scrollTo({ left: position.x, top: position.y, behavior: 'instant' });
+      return { x: node.scrollLeft, y: node.scrollTop };
+    }, saved);
+    if (Math.abs(restoredPosition.x - saved.x) > 1 || Math.abs(restoredPosition.y - saved.y) > 1)
+      throw new Error('Original scroll position could not be restored');
+    focusRestored = await focused.evaluate((node) => document.activeElement === node);
+    if (!focusRestored) throw new Error('Restored focus changed during scroll restoration');
+  } catch (error) {
+    errors.push('capture-or-validation-failed');
+    if (!failed) {
+      failed = true;
+      failure = error;
+    }
+  }
+  try {
+    await focused.dispose();
+  } catch (error) {
+    errors.push('capture-or-validation-failed');
+    if (!failed) {
+      failed = true;
+      failure = error;
+    }
+  }
+  try {
+    const data = {
+      schemaVersion: 2,
+      fixtureScope: 'synthetic-project-tests',
+      scope: 'Diagnostic continuous viewports; not visual acceptance.',
+      coverageKind: 'neutral-focus-geometric',
+      unobscuredReview: 'required',
+      focus: {
+        mode: 'neutral-content',
+        originalHadFocus,
+        restored: focusRestored,
+        capture: focusCapture,
+      },
+      sourceCommit: execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(),
+      sourceTree: execFileSync('git', ['rev-parse', 'HEAD^{tree}'], { encoding: 'utf8' }).trim(),
+      runId: process.env.GITHUB_RUN_ID || '0',
+      attempt: process.env.GITHUB_RUN_ATTEMPT || '0',
+      project: info.project.name,
+      test: info.title,
+      route,
+      state,
+      target: dialog ? 'dialog' : 'content-scrollport',
+      extent,
+      segmentLimit: 64,
+      reachedEnd,
+      complete: !failed,
+      errors: [...new Set(errors)],
+      segments,
+    };
+    writeReceipt(info.outputPath(receiptName), data);
+  } catch (error) {
+    if (!failed) {
+      failed = true;
+      failure = error;
     }
   }
   if (failed) throw failure;

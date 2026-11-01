@@ -1166,3 +1166,22 @@ Original standard 41316879851 remains 423 passed / 20 failed; media 41316950722
       count/byte ceilings fail incomplete evidence rather than truncate it.
 - [ ] T78 Review both slices independently, run complete unit/tooling/contracts,
       types/lint/archive validation, and hold publication for parent review.
+
+### Post-14a1441b native review: RTL separation and neutral-focus evidence (held)
+
+Standard run 41323136993: 808 unit + 27 tooling passed; browser suites 423 passed /
+21 failed out of 444. Compact keyed Back/Forward (100/180), zoom exact-zero Ascend,
+and the Firefox contact focus suite passed in this run. RTL and light 200% RTL
+failed the unchanged focus-ring separation assertion; no baseline was accepted.
+
+- [ ] T79 Clear legacy physical circle offsets only inside the bottom dock so
+      writing-direction-aware grid slots retain the reserved gap. Preserve target
+      dimensions, focus outlines, side/off modes and native intersection assertions.
+      Require fresh all-four-control RTL captures and geometry after review.
+- [ ] T80 Retain original focused context separately from neutral-focus content
+      sweeps; restore original focus and scroll without replacing earlier failures.
+      Schema 2 must explicitly state geometric-only completeness and require
+      independent unobscured-content review. Original schema 1 records stay intact.
+      Operations landscape run 41323158842 and six workspace mobile/tablet sweeps
+      from run 41323136993 are not eligible as unobscured reference evidence:
+      the focused Skip overlay hides content despite their geometric interval union.

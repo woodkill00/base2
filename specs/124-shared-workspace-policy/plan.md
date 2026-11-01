@@ -838,3 +838,32 @@ delivered after key change but before popstate is indistinguishable from an inco
 restoration and conservatively retains the last owned value; that exact ordering is
 covered and remains a limitation. Native compact Forward is still unresolved until
 fresh CI establishes behavior; static repair is not a blanket restoration guarantee.
+
+### Native review boundary after 14a1441b
+
+All standard and both optional runs are terminal. The three targeted functional
+checks passed on this head, without a general guarantee for every browser-history
+ordering. Standard browser results remain 423 / 444 passed; full media remains
+12 passed, 12 failed, 12 declared skips, and operations 1 passed, 21 failed,
+20 declared skips. Reference mismatches remain fatal and unaccepted; the media
+security scan still fails its high-severity threshold.
+
+Two further changes are separately reviewable. The bottom dock clears legacy
+physical left/right offsets from its grid-positioned circles; in RTL those offsets
+shifted circles outward into the drawer's five-pixel focus ring. Existing outlines,
+touch dimensions and non-bottom positioning remain unchanged. Native all-four
+focused-control proof remains required.
+
+The continuous collector previously preserved a focused Skip overlay while its
+interval union measured only target geometry. Reviewed operations landscape frames
+[0,274] and [206,480] left content y274–295 occluded in x14–245. Six workspace
+mobile/tablet sweeps also retain this flaw. Preserve their original frames/receipts;
+exclude these sequences from unobscured-reference eligibility. New schema 2 saves
+an original-focus context image, blurs focus for a separately identified content
+sweep, checks neutral focus and absence of the visible Skip overlay on each frame,
+and restores focus and the exact scroll position. Context images do not contribute
+to coverage. Schema 1 stays readable and immutable. Geometric completeness is never
+universal occlusion proof: remaining overlays and every intended content band still
+require independent pixel review, explicitly recorded as required rather than
+approved. Packaging binds all images and allows one extra context image per state
+within existing byte/part limits; no reference or threshold is changed.

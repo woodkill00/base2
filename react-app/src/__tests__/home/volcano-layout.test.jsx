@@ -295,3 +295,43 @@ test('scaled shell supplies unscaled viewport height for fixed drawer containmen
   expect(shell).toHaveAttribute('data-movement-layout', 'bottom');
   view.unmount();
 });
+
+it.each(['ltr', 'rtl'])(
+  'bottom dock grid owns circle placement in %s without legacy physical offsets',
+  (direction) => {
+    const style = document.createElement('style');
+    style.textContent =
+      readFileSync('src/styles/home.css', 'utf8') +
+      '\n' +
+      readFileSync('src/components/glass/volcano-layout.css', 'utf8');
+    const shell = document.createElement('div');
+    shell.className = 'volcano-layout';
+    shell.dir = direction;
+    shell.dataset.movementLayout = 'bottom';
+    const controls = document.createElement('div');
+    controls.className = 'home-bottom-movement-controls';
+    const up = document.createElement('button');
+    const down = document.createElement('button');
+    up.className = 'home-movement-button home-movement-button-up';
+    down.className = 'home-movement-button home-movement-button-down';
+    controls.append(up, down);
+    shell.append(controls);
+    document.head.append(style);
+    document.body.append(shell);
+    try {
+      for (const button of [up, down]) {
+        expect(getComputedStyle(button).left).toBe('auto');
+        expect(getComputedStyle(button).right).toBe('auto');
+      }
+      // The scoped repair must not change the established side/off placement.
+      for (const mode of ['sides', 'off']) {
+        shell.dataset.movementLayout = mode;
+        expect(getComputedStyle(up).left).toBe('1rem');
+        expect(getComputedStyle(down).right).toBe('1rem');
+      }
+    } finally {
+      shell.remove();
+      style.remove();
+    }
+  }
+);
