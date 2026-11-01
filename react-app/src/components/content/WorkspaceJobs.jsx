@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import GlassButton from '../glass/GlassButton';
 import { contentWorkspaceAPI, normalizeWorkspaceJob } from '../../services/contentWorkspace';
 
@@ -81,6 +81,7 @@ const useBoundedJobPolling = ({ active, read, onResult, onFailure }) => {
 };
 
 export function ImportWorkspace({ typeKey, schemaVersion, onError }) {
+  const fileStatusId = useId();
   const [file, setFile] = useState(null);
   const [format, setFormat] = useState('json');
   const [duplicatePolicy, setDuplicatePolicy] = useState('review');
@@ -204,17 +205,25 @@ export function ImportWorkspace({ typeKey, schemaVersion, onError }) {
   return (
     <div className="mt-5 space-y-4">
       <form onSubmit={start} className="grid gap-4 rounded-2xl border border-white/10 p-5">
-        <label className="space-y-1 text-sm font-medium">
+        <label className="min-w-0 space-y-1 text-sm font-medium">
           <span>Import file</span>
           <input
             type="file"
             required
+            aria-describedby={fileStatusId}
             accept={format === 'json' ? '.json,application/json' : '.csv,text/csv'}
             onChange={(event) => setFile(event.target.files?.[0] || null)}
-            className="block min-h-11 w-full rounded-xl border border-white/20 p-2"
+            className="block min-h-11 min-w-0 max-w-full rounded-xl border border-white/20 p-2"
           />
         </label>
-        <div className="grid gap-3 sm:grid-cols-3">
+        <p
+          id={fileStatusId}
+          role="status"
+          className="min-w-0 whitespace-normal break-words text-sm [overflow-wrap:anywhere]"
+        >
+          {file ? `Selected file: ${file.name}` : 'No file selected'}
+        </p>
+        <div className="grid min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,14rem),1fr))] gap-3">
           <label className="space-y-1 text-sm font-medium">
             <span>Format</span>
             <select

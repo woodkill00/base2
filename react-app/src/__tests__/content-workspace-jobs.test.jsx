@@ -39,6 +39,27 @@ describe('workspace import and export journeys', () => {
 
   afterEach(() => vi.unstubAllGlobals());
 
+  test('exposes the complete selected filename independently of native file-control clipping', async () => {
+    const user = userEvent.setup();
+    render(<ImportWorkspace typeKey="article" schemaVersion={1} onError={vi.fn()} />);
+    const input = screen.getByLabelText('Import file');
+    expect(input).toHaveAccessibleDescription('No file selected');
+    const name = 'synthetic-records-with-a-long-reviewable-filename.json';
+    await act(async () => user.upload(input, new File(['[]'], name, { type: 'application/json' })));
+    expect(input).toHaveAccessibleDescription(`Selected file: ${name}`);
+    expect(screen.getByRole('status')).toHaveTextContent(`Selected file: ${name}`);
+    expect(screen.getByRole('combobox', { name: 'Commit policy' })).toHaveDisplayValue(
+      'All or nothing'
+    );
+    await act(async () =>
+      user.selectOptions(screen.getByRole('combobox', { name: 'Commit policy' }), 'valid_rows')
+    );
+    expect(screen.getByRole('combobox', { name: 'Commit policy' })).toHaveDisplayValue(
+      'Valid rows only'
+    );
+    expect(contentWorkspaceAPI.createImport).not.toHaveBeenCalled();
+  });
+
   test('hashes, grants, validates, reviews, and explicitly commits an import', async () => {
     const user = userEvent.setup();
     contentWorkspaceAPI.createImport.mockResolvedValue({

@@ -66,7 +66,7 @@
 [data-theme='obsidian'] .app-shell-content :where(a) { color: var(--color-accent); }
 [data-theme='obsidian'] .app-shell-content :where(p, label, li) { overflow-wrap: anywhere; }
 
-[data-theme='obsidian'] .app-shell-root .base2-card {
+[data-theme='obsidian'] :is(.app-shell-root, .base2-modal-surface) .base2-card {
   background: var(--color-surface);
   color: var(--color-text);
   border-color: var(--color-border);
@@ -87,22 +87,40 @@
 }
 
 [data-theme='obsidian'] .app-shell-root .base2-input::placeholder { color: var(--color-text-muted); opacity: 1; }
-[data-theme='obsidian'] .app-shell-root .base2-button { color: var(--color-text); background: var(--color-surface-elevated); border-color: var(--color-border); }
-[data-theme='obsidian'] .app-shell-root .base2-button--primary { color: var(--color-on-accent, #fff); background: var(--color-accent); }
-[data-theme='obsidian'] .app-shell-root .base2-button--danger { color: var(--color-danger); background: var(--color-danger-surface, var(--color-surface)); }
-[data-theme='obsidian'] .app-shell-root .base2-button--ghost { background: transparent; }
-[data-theme='obsidian'] .app-shell-root .base2-button {
+[data-theme='obsidian'] :is(.app-shell-root, .base2-modal-surface) .base2-button { color: var(--color-text); background: var(--color-surface-elevated); border-color: var(--color-border); }
+[data-theme='obsidian'] :is(.app-shell-root, .base2-modal-surface) .base2-button--primary { color: var(--color-on-accent, #fff); background: var(--color-accent); }
+[data-theme='obsidian'] :is(.app-shell-root, .base2-modal-surface) .base2-button--danger { color: var(--color-danger); background: var(--color-danger-surface, var(--color-surface)); }
+[data-theme='obsidian'] :is(.app-shell-root, .base2-modal-surface) .base2-button--ghost { background: transparent; }
+[data-theme='obsidian'] :is(.app-shell-root, .base2-modal-surface) .base2-button {
   transition: border-color var(--motion-fast) var(--ease-standard), transform var(--motion-fast) var(--ease-standard);
 }
-[data-theme='obsidian'] .app-shell-root .base2-button:disabled {
+[data-theme='obsidian'] :is(.app-shell-root, .base2-modal-surface) .base2-button:disabled {
   opacity: 1;
   color: var(--color-text-muted);
   background: var(--color-surface-elevated);
 }
-[data-theme='obsidian'] .app-shell-root .base2-button:hover:not(:disabled) { filter: brightness(1.1); }
-[data-theme='obsidian'] .app-shell-root :where(input, button, select, textarea, a):focus-visible {
+[data-theme='obsidian'] :is(.app-shell-root, .base2-modal-surface) .base2-button:hover:not(:disabled) { filter: brightness(1.1); }
+[data-theme='obsidian'] :is(.app-shell-root, .base2-modal-surface) :where(input, button, select, textarea, a):focus-visible {
   outline: 2px solid var(--color-focus);
   outline-offset: 3px;
+}
+[data-theme='obsidian'] .base2-modal-surface { color: var(--color-text); }
+[data-theme='obsidian'] .base2-modal-surface :where(p, label, li) { overflow-wrap: anywhere; }
+
+@media (forced-colors: active) {
+  [data-theme='obsidian'] .base2-modal-surface .base2-card {
+    forced-color-adjust: auto;
+    color: CanvasText;
+    background: Canvas;
+    border-color: CanvasText;
+  }
+  [data-theme='obsidian'] .base2-modal-surface .base2-button {
+    forced-color-adjust: auto;
+    color: ButtonText;
+    background: ButtonFace;
+    border-color: ButtonText;
+  }
+  [data-theme='obsidian'] .base2-modal-surface .base2-button:focus-visible { outline-color: Highlight; }
 }
 [data-theme='obsidian'] .app-shell-root header nav { background: var(--color-surface); color: var(--color-text); border-color: var(--color-border); }
 [data-theme='obsidian'] .app-shell-root header .glass-btn { color: var(--color-text); }
@@ -128,5 +146,5 @@
 }
 
 @media (prefers-contrast: more) {
-  [data-theme='obsidian']:not([data-contrast='standard']) .app-shell-root { --color-border: var(--color-text); }
+  [data-theme='obsidian']:not([data-contrast='standard']) :is(.app-shell-root, .base2-modal-surface) { --color-border: var(--color-text); }
 }

@@ -351,6 +351,8 @@ def registered(suite: str, case: str, state: str) -> bool:
     if suite == "workspace":
         return case.startswith("workspace-release-") and state in {
             "workspace-records",
+            "workspace-records-selected-edit",
+            "workspace-records-selected-saved",
             "workspace-schema",
             "workspace-imports",
             "workspace-exports",

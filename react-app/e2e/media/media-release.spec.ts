@@ -472,6 +472,46 @@ test('media library is accessible responsive and visually reviewed', async ({ pa
       }))
   );
   expect(clipped).toEqual([]);
+  const cardContainment = await page.locator('.media-asset-card').evaluateAll((cards) =>
+    cards.flatMap((card, cardIndex) => {
+      const enclosure = card.getBoundingClientRect();
+      return [...card.querySelectorAll('.media-card-actions button')].flatMap(
+        (button, actionIndex) => {
+          const box = button.getBoundingClientRect();
+          const range = document.createRange();
+          range.selectNodeContents(button);
+          const text = [...range.getClientRects()];
+          const contained =
+            box.left >= enclosure.left - 1 &&
+            box.right <= enclosure.right + 1 &&
+            box.top >= enclosure.top - 1 &&
+            box.bottom <= enclosure.bottom + 1 &&
+            button.scrollWidth <= button.clientWidth + 1 &&
+            text.every(
+              (r) =>
+                r.left >= box.left - 1 &&
+                r.right <= box.right + 1 &&
+                r.top >= box.top - 1 &&
+                r.bottom <= box.bottom + 1
+            );
+          return contained
+            ? []
+            : [
+                {
+                  cardIndex,
+                  actionIndex,
+                  card: [enclosure.left, enclosure.right, enclosure.top, enclosure.bottom],
+                  button: [box.left, box.right, box.top, box.bottom],
+                  width: [button.scrollWidth, button.clientWidth],
+                },
+              ];
+        }
+      );
+    })
+  );
+  expect(cardContainment, 'Every card action border and label must fit inside its card').toEqual(
+    []
+  );
   await page.addScriptTag({ content: axeSource });
   const axeViolations = await page.evaluate(
     async () => (await window.axe.run(document)).violations

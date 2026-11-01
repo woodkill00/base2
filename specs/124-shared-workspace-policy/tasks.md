@@ -1244,3 +1244,49 @@ also exposed a direct-script import failure masked locally by PYTHONPATH.
       Source predicts 180 excluded journey outputs, but historical exact paths
       remain unavailable. One layout and one Volcano exclusion remain unidentified.
       Preserve unknown counts and require new native identities before claiming recovery.
+
+## Responsive content and modal repair (2026-11-01, source 796f11a9)
+
+Historical native comparisons remain failures; no references are renewed by this batch.
+Current scope is synthetic fixtures and existing UI, with no live writes/providers.
+
+- [ ] T88 Keep media card action borders and labels within available card width;
+      verify all visible actions numerically and inspect fresh desktop pixels.
+- [ ] T89 Give operations cancellation shared background inertness, stacking and
+      scroll-lock ownership. Prove heading Shift+Tab, background guards, Escape,
+      Keep job and asynchronous confirmation focus, including a removed row.
+- [ ] T90 Resolve T55 using neutral footer wording without a live freshness claim.
+      Require new pixels for every affected footer; retain old evidence unchanged.
+- [ ] T91 Add selected-record edit diagnostics at compact, large-text and desktop.
+      Use a per-test synthetic versioned PATCH store matching the existing journey:
+      persist explicit values/public content, reject stale If-Match, verify discard,
+      save and reload. Empty-inspector references do not prove selected editing.
+      The native workspace inventory becomes 36 identities: 27 supported cases
+      and 9 declared skips (the additional selected-state test runs in 3 projects).
+- [ ] T92 Stack import options and the shared type selector by available width;
+      retain native controls and expose the full selected filename separately.
+      Assert policy/type text fits the native controls; filename summary is not a
+      claim that the native file-control filename itself never ellipsizes.
+
+Selected-state transport adds two exact diagnostic PNG names per supported project
+and two compact continuous states (each maximum 64 segments plus original focus
+context and 3 sampled views). Successfully captured edit/saved states do not run
+a redundant generic afterEach sweep; early failures still attempt it.
+No new expected/reference PNGs or image approval. Existing
+collector per-file/part/total limits remain fatal and unchanged.
+
+Validation boundary: static, full unit/tooling, expanded contracts, type/lint and
+archive integrity precede independent review/publication. Native browser validation
+and fresh pixel review remain pending. The previously recorded WebKit-mobile
+afterEach footer ratio-zero/timeout remains an open diagnostic issue; this batch
+does not raise its timeout or weaken footer reachability. Named-route fallback
+captures prove their observed fallback states, not populated content readiness.
+
+- [ ] T93 Preserve cancellation's authored card/button/focus styling after portal
+      relocation using an explicit surface scope, never a duplicate shell root.
+      Assert light/theme token colors, keyboard focus paint, system forced colors
+      and exact-zero reduced motion in the cancellation state itself. Source-v1
+      remains retained; the portal styling correction is a distinct v2 delta.
+      Lock counts do not constitute nested-modal keyboard/focus arbitration.
+      Current cancellation settlement keeps its existing return-focus policy;
+      deliberate user focus changes during the request are not separately tracked.

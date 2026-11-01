@@ -1,3 +1,4 @@
+import { workspaceScrollCheckpoint, checkpointGeometryStable, workspaceCheckpointEnabled, continuousMeasurementStable } from './workspace-scroll-checkpoints';
 import { sequenceApplicable, registeredDocumentSequence } from './sequence-applicability';
 import { expect, type Locator, type Page, type TestInfo } from '@playwright/test';
 import { createHash } from 'node:crypto';
@@ -28,6 +29,7 @@ export async function captureContinuousScroll(
   dialog?: Locator,
   comparisonRatio?: number
 ) {
+  await workspaceScrollCheckpoint(page, info, state, 'continuous-entry');
   if (!/^[a-z0-9-]{1,90}$/.test(state)) throw new Error('invalid continuous state');
   const target =
     dialog ||
@@ -190,6 +192,7 @@ export async function captureContinuousScroll(
       const m = await measure();
       if (!index) extent = m.extent;
       const file = `current-continuous-${state}-${String(index).padStart(3, '0')}.png`;
+      const checkpointBefore = await workspaceScrollCheckpoint(page, info, state, 'capture-before', index);
       // Capture the attempted position before any route, extent or progress assertion.
       const raw = await page.screenshot({
         path: info.outputPath(file),
@@ -197,6 +200,7 @@ export async function captureContinuousScroll(
         animations: 'disabled',
         caret: 'hide',
       });
+      const checkpointAfter = await workspaceScrollCheckpoint(page, info, state, 'capture-after', index);
       segments.push({
         index,
         route: new URL(page.url()).pathname,
@@ -216,6 +220,11 @@ export async function captureContinuousScroll(
         sha256: createHash('sha256').update(raw).digest('hex'),
         bytes: raw.length,
       });
+      if (workspaceCheckpointEnabled(info, state)) {
+        const postCaptureMeasurement = await measure();
+        expect(continuousMeasurementStable(m, postCaptureMeasurement), 'Recorded coverage geometry must match post-capture geometry').toBe(true);
+        expect(checkpointGeometryStable(checkpointBefore, checkpointAfter), 'Capture endpoint scroll/focus/geometry must remain stable').toBe(true);
+      }
       const derived = deriveGeometry(m);
       expect({ start: m.start, end: m.end, extent: m.extent }).toEqual({
         start: derived.start,
@@ -232,7 +241,11 @@ export async function captureContinuousScroll(
       expect(current, 'Continuous attempted frames must stay in the same stable state').toEqual([]);
       if (Math.abs(m.offset - m.max) <= 1) {
         reachedEnd = true;
-        if (!dialog) await expect(page.locator('.volcano-footer-frame')).toBeInViewport();
+        if (!dialog) {
+          await workspaceScrollCheckpoint(page, info, state, 'continuous-footer-before');
+          await expect(page.locator('.volcano-footer-frame')).toBeInViewport();
+          await workspaceScrollCheckpoint(page, info, state, 'continuous-footer-after');
+        }
         break;
       }
       const visible = m.end - m.start;
@@ -249,7 +262,9 @@ export async function captureContinuousScroll(
     failed = true;
     failure = error;
     errors.push('capture-or-validation-failed');
+    await workspaceScrollCheckpoint(page, info, state, 'continuous-failed');
   }
+  await workspaceScrollCheckpoint(page, info, state, 'continuous-cleanup');
   // The catch above records errors without returning; cleanup always follows.
   // Restore authored focus and scroll even after a failed capture. A restoration
   // failure is retained but cannot replace the original behavioral error.
@@ -279,6 +294,7 @@ export async function captureContinuousScroll(
     if (!focusRestored) throw new Error('Restored focus changed during scroll restoration');
   } catch (error) {
     errors.push('capture-or-validation-failed');
+    await workspaceScrollCheckpoint(page, info, state, 'continuous-failed');
     if (!failed) {
       failed = true;
       failure = error;
@@ -288,6 +304,7 @@ export async function captureContinuousScroll(
     await focused.dispose();
   } catch (error) {
     errors.push('capture-or-validation-failed');
+    await workspaceScrollCheckpoint(page, info, state, 'continuous-failed');
     if (!failed) {
       failed = true;
       failure = error;

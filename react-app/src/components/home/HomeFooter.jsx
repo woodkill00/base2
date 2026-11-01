@@ -78,7 +78,7 @@ const HomeFooter = ({ manifest = siteManifest }) => {
           <p>
             Responsive proof, guarded operator routes, and staging-only delivery remain visible.
           </p>
-          <span className="base2-footer-status-pulse">System evidence current</span>
+          <span className="base2-footer-status-pulse">Status details on each page</span>
         </div>
 
         <div className="base2-footer-bottom">

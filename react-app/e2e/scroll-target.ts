@@ -1,3 +1,4 @@
+import { workspaceScrollCheckpoint, workspaceCheckpointEnabled, checkpointGeometryStable } from './workspace-scroll-checkpoints';
 import { captureContinuousScroll } from './continuous-scroll';
 import { expect, type Page } from '@playwright/test';
 
@@ -85,6 +86,7 @@ export async function captureScrollportExtent(
   const port = page.locator(
     '.volcano-layout[data-movement-layout="bottom"] .volcano-content-scrollport'
   );
+  await workspaceScrollCheckpoint(page, testInfo, state || 'current', 'sample-entry');
   const captured = await captureContinuousScroll(
     page,
     testInfo,
@@ -163,6 +165,7 @@ export async function captureScrollportExtent(
             }));
         });
       });
+      const checkpointBefore = await workspaceScrollCheckpoint(page, testInfo, state || 'current', 'sample-capture-before', ['top', 'middle', 'footer'].indexOf(name));
       let captureFailure: unknown;
       let captureFailed = false;
       try {
@@ -176,6 +179,7 @@ export async function captureScrollportExtent(
         captureFailed = true;
         captureFailure = error;
       }
+      const checkpointAfter = await workspaceScrollCheckpoint(page, testInfo, state || 'current', 'sample-capture-after', ['top', 'middle', 'footer'].indexOf(name));
       // Save the exact sampled frame and bounded geometry before any fatal check.
       // Cleanup may restore another scroll position; that must not erase evidence.
       const geometry = JSON.stringify({
@@ -203,18 +207,24 @@ export async function captureScrollportExtent(
       );
       expect(geometryWithinBound, 'Footer geometry must remain bounded').toBe(true);
       if (name === 'footer') {
+        await workspaceScrollCheckpoint(page, testInfo, state || 'current', 'sample-footer-before');
         await expect(page.locator('.volcano-footer-frame')).toBeInViewport();
         await expect
           .poll(async () => Math.abs((await pageScrollTop(page)) - max))
           .toBeLessThanOrEqual(1);
+        await workspaceScrollCheckpoint(page, testInfo, state || 'current', 'sample-footer-after');
       }
       // A capture failure cannot replace a failing behavior assertion above.
       if (captureFailed) throw captureFailure;
+      if (workspaceCheckpointEnabled(testInfo, state || 'current'))
+        expect(checkpointGeometryStable(checkpointBefore, checkpointAfter), 'Sample capture endpoint geometry must remain stable').toBe(true);
     }
   } catch (error) {
     originalFailure = true;
     failure = error;
+    await workspaceScrollCheckpoint(page, testInfo, state || 'current', 'sample-failed');
   } finally {
+    await workspaceScrollCheckpoint(page, testInfo, state || 'current', 'sample-cleanup');
     try {
       await scrollPageTo(page, saved.y, saved.x);
     } catch (cleanupError) {

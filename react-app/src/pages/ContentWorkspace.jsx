@@ -460,6 +460,11 @@ function WorkspaceContent({ locale = 'en', scopeKey, canEdit }) {
       >
         <Navigation />
         <style>{`
+          .base2-workspace { container: workspace / inline-size; }
+          .workspace-panels { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.25rem; }
+          @container workspace (min-width: 54rem) {
+            .workspace-panels { grid-template-columns: minmax(17rem, 0.32fr) minmax(0, 1fr); }
+          }
           .workspace-records-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
@@ -524,9 +529,7 @@ function WorkspaceContent({ locale = 'en', scopeKey, canEdit }) {
           ) : null}
 
           {!loading && definitions.length > 0 ? (
-            <div
-              className={`grid gap-5 lg:grid-cols-[minmax(14rem,0.32fr)_minmax(0,1fr)] ${compactAuthoring ? 'grid-cols-1' : ''}`}
-            >
+            <div className="workspace-panels">
               <GlassCard className="min-w-0">
                 <div className="p-4">
                   <label htmlFor="workspace-type" className="text-sm font-medium">

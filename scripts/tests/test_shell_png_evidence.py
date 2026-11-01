@@ -13,6 +13,27 @@ from scripts.python import shell_png_evidence as collector
 PNG = b'\x89PNG\r\n\x1a\n' + b'unit fixture, not native evidence'
 
 
+def test_selected_workspace_edit_states_are_narrowly_registered_and_preserve_exact_bytes(tmp_path):
+    sources, output, provenance = setup(tmp_path)
+    names = ['workspace-records-selected-edit-post-assert.png',
+             'workspace-records-selected-saved-post-assert.png',
+             'current-scrollport-workspace-records-selected-edit-footer.png']
+    for name in names:
+        put(sources['workspace'], 'workspace-release-selected-unit-chromium-compact/' + name)
+    for name in ['workspace-records-selected-private.png', 'private-record.json']:
+        put(sources['workspace'], 'workspace-release-selected-unit-chromium-compact/' + name)
+    collector.stage(sources, output, provenance)
+    data = json.loads((output / '00/provenance.json').read_text())
+    assert data['captureCount'] == 3
+    for row in data['captures']:
+        assert row['role'] == 'current-diagnostic'
+        assert row['sourceRoot'] == 'workspace'
+        assert row['sha256'] == hashlib.sha256(PNG).hexdigest()
+        assert (output / '00' / row['path']).read_bytes() == PNG
+    assert not collector.allowed('workspace', Path('unrelated-case/workspace-records-selected-edit-post-assert.png'))
+    assert not collector.allowed('workspace', Path('workspace-release-unit/current-scrollport-workspace-records-selected-private-footer.png'))
+
+
 def journey_producers():
     """Bind ASCII fixture titles to the inspected, pinned Playwright 1.58.2 algorithm."""
     root = Path(__file__).resolve().parents[2] / 'react-app'

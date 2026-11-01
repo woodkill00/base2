@@ -1,5 +1,6 @@
 import { captureContinuousScroll } from '../continuous-scroll';
 import { captureScrollportExtent } from '../scroll-target';
+import { readFocusPaint, focusPaintChanged } from '../scroll-target';
 import { scrollPageTo, pageScrollTop } from '../scroll-target';
 import { assertForcedColorState, assertForcedSystemControl } from '../forced-color-state';
 import { setSessionFixture, fulfillSessionFixture, getSessionFixture } from '../session-fixture';
@@ -22,6 +23,8 @@ async function captureCurrentRun(
   maxDiffPixelRatio = 0.01,
   legacyStaticHeader = false
 ) {
+  await expect(page.locator('.base2-footer-status')).toContainText('Status details on each page');
+  await expect(page.getByText('System evidence current', { exact: true })).toHaveCount(0);
   const options = { fullPage: true, animations: 'disabled' as const, caret: 'hide' as const };
   await page.evaluate(() => {
     document.documentElement.style.scrollBehavior = 'auto';
@@ -323,6 +326,7 @@ test('operations center is accessible responsive and visually stable', async ({
         ? 'Diesen Fehlerauftrag abbrechen?'
         : 'Cancel this dead-letter job?',
     cancelJob: rtl ? 'إلغاء المهمة' : german ? 'Auftrag abbrechen' : 'Cancel job',
+    keepJob: rtl ? 'إبقاء المهمة' : german ? 'Auftrag behalten' : 'Keep job',
     acknowledge: rtl ? 'إقرار' : german ? 'Bestätigen' : 'Acknowledge',
   };
   await expect(page.getByRole('heading', { name: label.title })).toBeVisible();
@@ -436,6 +440,103 @@ test('operations center is accessible responsive and visually stable', async ({
     name: label.cancelTitle,
   });
   await expect(cancelHeading).toBeFocused();
+  const cancellationDialog = page.getByRole('dialog');
+  const background = page.locator('.app-shell-root');
+  await expect(background).toHaveAttribute('inert', '');
+  await expect(background).toHaveCSS('isolation', 'isolate');
+  await expect(page.locator('body')).toHaveCSS('overflow', 'hidden');
+  const keepJob = cancellationDialog.getByRole('button', { name: label.keepJob });
+  const dangerJob = cancellationDialog.getByRole('button', { name: label.cancelJob });
+  if (testInfo.project.name === 'chromium-light') {
+    await expect(page.locator('html')).toHaveAttribute('data-color-mode', 'light');
+  }
+  const beforeKeepFocus = await keepJob.evaluate(readFocusPaint);
+  await page.keyboard.press('Shift+Tab');
+  await expect(cancellationDialog.getByRole('button', { name: label.cancelJob })).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(cancellationDialog.getByRole('button', { name: label.keepJob })).toBeFocused();
+  const afterKeepFocus = await keepJob.evaluate(readFocusPaint);
+  expect(focusPaintChanged(beforeKeepFocus, afterKeepFocus), 'Cancellation must expose a genuine keyboard focus change').toBe(true);
+  await expect(keepJob).toHaveCSS('outline-style', 'solid');
+  await expect(keepJob).toHaveCSS('outline-width', '2px');
+  await expect(keepJob).toHaveCSS('outline-offset', '3px');
+  const modalPaint = await cancellationDialog.evaluate((dialog) => {
+    const card = dialog.querySelector('.base2-card')!;
+    const danger = dialog.querySelector('.base2-button--danger')!;
+    const keep = dialog.querySelector('.base2-button--ghost')!;
+    const forced = matchMedia('(forced-colors: active)').matches;
+    const probe = document.createElement('span');
+    probe.style.cssText = 'position:fixed;visibility:hidden;pointer-events:none';
+    dialog.append(probe);
+    try {
+      probe.style.color = forced ? 'CanvasText' : 'var(--color-text)';
+      probe.style.backgroundColor = forced ? 'Canvas' : 'var(--color-surface)';
+      probe.style.borderColor = forced ? 'CanvasText' : 'var(--color-border)';
+      probe.style.outlineColor = forced ? 'Highlight' : 'var(--color-focus)';
+      const expectedCard = getComputedStyle(probe);
+      const expected = { color: expectedCard.color, background: expectedCard.backgroundColor, border: expectedCard.borderColor, focus: expectedCard.outlineColor };
+      const actual = getComputedStyle(card);
+      const actualCard = { color: actual.color, background: actual.backgroundColor, border: actual.borderColor };
+      probe.style.color = 'var(--color-danger)';
+      probe.style.backgroundColor = 'var(--color-danger-surface)';
+      const expectedDanger = getComputedStyle(probe);
+      const dangerPaint = getComputedStyle(danger);
+      const motion = [card, ...dialog.querySelectorAll('button')].flatMap((node) => [null, '::before', '::after'].map((pseudo) => {
+        const style = getComputedStyle(node, pseudo);
+        return { transition: style.transitionDuration, animation: style.animationDuration };
+      }));
+      return { forced, reduced: matchMedia('(prefers-reduced-motion: reduce)').matches, expected, actualCard, focus: getComputedStyle(keep).outlineColor,
+        danger: { color: dangerPaint.color, background: dangerPaint.backgroundColor }, expectedDanger: { color: expectedDanger.color, background: expectedDanger.backgroundColor }, motion };
+    } finally { probe.remove(); }
+  });
+  expect(modalPaint.actualCard).toEqual({ color: modalPaint.expected.color, background: modalPaint.expected.background, border: modalPaint.expected.border });
+  expect(modalPaint.focus).toBe(modalPaint.expected.focus);
+  if (modalPaint.forced) {
+    await assertForcedSystemControl(keepJob, true);
+    await assertForcedSystemControl(dangerJob, true);
+  } else {
+    expect(modalPaint.danger).toEqual(modalPaint.expectedDanger);
+  }
+  if (modalPaint.reduced) {
+    for (const paint of modalPaint.motion) {
+      expect(paint.transition).toBe('0s');
+      expect(paint.animation).toBe('0s');
+    }
+  }
+  expect(await page.evaluate(async () => (await window.axe.run(document)).violations.map((item) => item.id))).toEqual([]);
+  const protectedPoints = await page
+    .locator(
+      '[data-testid="base2-scroll-ascend"], [data-testid="base2-scroll-descend"], [data-testid="base2-left-menu-toggle"], [data-testid="base2-right-utility-toggle"]'
+    )
+    .evaluateAll((nodes) =>
+      nodes
+        .map((node) => {
+          const r = node.getBoundingClientRect(),
+            x = r.x + r.width / 2,
+            y = r.y + r.height / 2;
+          return {
+            x,
+            y,
+            visible:
+              r.width > 0 && r.height > 0 && x >= 0 && x < innerWidth && y >= 0 && y < innerHeight,
+            backgroundHit: Boolean(document.elementFromPoint(x, y)?.closest('.app-shell-root')),
+            backdropHit: document.elementFromPoint(x, y)?.getAttribute('role') === 'dialog',
+          };
+        })
+        .filter((point) => point.visible)
+    );
+  expect(protectedPoints.length).toBeGreaterThan(0);
+  for (const point of protectedPoints) {
+    expect(point.backgroundHit, 'Backdrop must paint above shell controls').toBe(false);
+    // A dialog control may legitimately occupy the former background location.
+    // Only click exposed backdrop points; never trigger an unrelated dialog action.
+    if (point.backdropHit) await page.mouse.click(point.x, point.y);
+    await expect(cancellationDialog).toBeVisible();
+    await expect(background).toHaveAttribute('inert', '');
+  }
+  await cancel.evaluate((node) => node.focus());
+  expect(await background.evaluate((node) => node.contains(document.activeElement))).toBe(false);
+  await cancelHeading.focus();
   await captureContinuousScroll(
     page,
     testInfo,
@@ -448,6 +549,11 @@ test('operations center is accessible responsive and visually stable', async ({
   }
   await page.keyboard.press('Escape');
   await expect(cancel).toBeFocused();
+  await expect(background).not.toHaveAttribute('inert', '');
+  await cancel.press('Enter');
+  await cancellationDialog.getByRole('button', { name: label.keepJob }).click();
+  await expect(cancel).toBeFocused();
+  await expect(background).not.toHaveAttribute('inert', '');
   await cancel.press('Enter');
   const confirmCancel = page.getByRole('button', {
     name: label.cancelJob,
@@ -462,6 +568,9 @@ test('operations center is accessible responsive and visually stable', async ({
   ]);
   const acknowledge = page.getByRole('button', { name: label.acknowledge });
   await expect(acknowledge).toBeEnabled();
+  await expect(cancel).toBeEnabled();
+  await expect(cancel).toBeFocused();
+  await expect(background).not.toHaveAttribute('inert', '');
   await acknowledge.focus();
   await acknowledge.press('Enter');
   await expect(page.getByRole('heading', { name: label.title })).toBeVisible();

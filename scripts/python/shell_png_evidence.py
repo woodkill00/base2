@@ -9,7 +9,7 @@ import shutil
 import subprocess
 from pathlib import Path
 
-from scripts.python import continuous_evidence, sequence_evidence
+from scripts.python import continuous_evidence, sequence_evidence, workspace_checkpoints
 
 BUDGET = 28 * 1024 * 1024
 SLOTS = 480
@@ -33,7 +33,7 @@ SETTINGS_NAMES = re.compile(
     rf'(?:{COMMON}|settings-release-before-axe|settings-negative-controls-before-axe|'
     r'settings-release-restored-after-controls|settings-release-[a-z0-9-]+-(?:actual|expected|diff))\.png')
 WORKSPACE_NAMES = re.compile(
-    rf'(?:{COMMON}|workspace-(?:records|schema|imports|exports)-(?:post-assert|'
+    rf'(?:{COMMON}|workspace-records-selected-(?:edit|saved)-post-assert|workspace-(?:records|schema|imports|exports)-(?:post-assert|'
     r'[a-z0-9-]+-(?:actual|expected|diff)))\.png')
 
 
@@ -111,6 +111,8 @@ def allowed(suite: str, relative: Path) -> bool:
 
 
 def image_role(name: str) -> str:
+    if name == workspace_checkpoints.NAME:
+        return "workspace-phase-diagnostic"
     if sequence_evidence.NAME.fullmatch(name):
         return 'sequence-comparison-receipt'
     if continuous_evidence.NAME.fullmatch(name):
@@ -167,6 +169,15 @@ def stage(sources: dict[str, Path], output: Path, provenance: dict) -> None:
                 continue
             try:
                 safe(path)
+                if path.name == workspace_checkpoints.NAME:
+                    if not workspace_checkpoints.registered(suite, relative):
+                        continue
+                    if not path.is_file() or path.stat().st_size > workspace_checkpoints.BUDGET:
+                        raise ValueError('oversized workspace checkpoint')
+                    raw = path.read_bytes()
+                    workspace_checkpoints.validate(raw)
+                    members.append((path, f'{suite}/{relative.as_posix()}', len(raw), hashlib.sha256(raw).hexdigest()))
+                    continue
                 comparison_receipt = sequence_evidence.NAME.fullmatch(path.name)
                 if comparison_receipt:
                     rel = path.relative_to(source)
