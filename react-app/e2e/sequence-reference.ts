@@ -433,6 +433,9 @@ export function sequenceDependencies() {
 
 let fontsHash: string | undefined;
 const SYSTEM_FONT_ROOTS = ['/usr/share/fonts', '/usr/local/share/fonts'];
+// Pinned Ubuntu variable fonts use axis lists such as Ubuntu[wdth,wght].ttf.
+// This adds filename punctuation only; canonical root, suffix and byte limits remain mandatory.
+const SYSTEM_FONT_NAME = /^(?:[A-Za-z0-9_ .+/-]|\[|\]|,){1,240}$/;
 export class FontIdentityError extends Error {
   constructor(readonly category: string, readonly font: string | null = null) {
     super(`sequence font identity unavailable: ${category}`);
@@ -446,7 +449,7 @@ export function systemFontIdentity(path: string, roots = SYSTEM_FONT_ROOTS) {
   if (path !== requested || rootIndex < 0) throw new FontIdentityError('outside-font-root');
   const root = resolve(roots[rootIndex]);
   const name = relative(root, requested);
-  const font = /^[A-Za-z0-9_ .+/-]{1,240}$/.test(name) ? `${rootIndex}/${name}` : null;
+  const font = SYSTEM_FONT_NAME.test(name) ? `${rootIndex}/${name}` : null;
   if (!font || !/\.(?:ttf|otf|ttc|otc|pfa|pfb|pcf(?:\.gz)?|otb)$/i.test(name))
     throw new FontIdentityError('unsupported-font-name');
   let canonicalPath: string;
@@ -457,7 +460,7 @@ export function systemFontIdentity(path: string, roots = SYSTEM_FONT_ROOTS) {
   }
   if (!canonicalPath.startsWith(root + '/')) throw new FontIdentityError('font-root-escape', font);
   const canonicalName = relative(root, canonicalPath);
-  if (!/^[A-Za-z0-9_ .+/-]{1,240}$/.test(canonicalName)
+  if (!SYSTEM_FONT_NAME.test(canonicalName)
       || !/\.(?:ttf|otf|ttc|otc|pfa|pfb|pcf(?:\.gz)?|otb)$/i.test(canonicalName))
     throw new FontIdentityError('unsupported-font-name', font);
   try {

@@ -48,6 +48,44 @@ vi.mock('@playwright/test', () => ({
   },
 }));
 const dirs: string[] = [];
+// Exact filenames in Ubuntu Noble fonts-ubuntu 0.869+git20240321-0ubuntu1.
+// Synthetic bytes exercise identity/path handling, not font rendering.
+test.each([
+  'Ubuntu-Italic[wdth,wght].ttf', 'UbuntuMono-Italic[wght].ttf',
+  'UbuntuMono[wght].ttf', 'UbuntuSans-Italic[wdth,wght].ttf',
+  'UbuntuSansMono-Italic[wght].ttf', 'UbuntuSansMono[wght].ttf',
+  'UbuntuSans[wdth,wght].ttf', 'Ubuntu[wdth,wght].ttf',
+])('pinned Ubuntu variable font identity and in-root alias: %s', (name) => {
+  const root = mkdtempSync(join(tmpdir(), 'variable-font-'));
+  dirs.push(root);
+  mkdirSync(join(root, 'truetype', 'ubuntu'), {recursive: true});
+  const path = join(root, 'truetype', 'ubuntu', name);
+  writeFileSync(path, 'synthetic variable font bytes');
+  symlinkSync(join('truetype', 'ubuntu', name), join(root, 'alias.ttf'));
+  const identity = systemFontIdentity(path, [root]);
+  expect(identity).toMatchObject({alias: `0/truetype/ubuntu/${name}`,
+    canonical: `0/truetype/ubuntu/${name}`, sha256: digest('synthetic variable font bytes')});
+  expect(systemFontIdentity(join(root, 'alias.ttf'), [root])).toMatchObject({
+    alias: '0/alias.ttf', canonical: identity.canonical, sha256: identity.sha256,
+  });
+});
+
+test('variable font punctuation never permits traversal, control characters or escaping aliases', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'variable-font-negative-'));
+  dirs.push(dir);
+  const root = join(dir, 'fonts');
+  mkdirSync(root);
+  writeFileSync(join(dir, 'Outside[wght].ttf'), 'outside');
+  symlinkSync('../Outside[wght].ttf', join(root, 'Escape[wght].ttf'));
+  expect(() => systemFontIdentity(join(root, 'Escape[wght].ttf'), [root])).toThrow('font-root-escape');
+  expect(() => systemFontIdentity(root + '/../Outside[wght].ttf', [root])).toThrow('outside-font-root');
+  for (const name of ['Control\n[wght].ttf', 'Control\t[wght].ttf', 'Control\u0000[wght].ttf',
+    'Trailing[wght].ttf\n', 'Trailing[wght].ttf\r',
+    'Private[wght].json', 'Private[wght].woff2']) {
+    expect(() => systemFontIdentity(join(root, name), [root])).toThrow('unsupported-font-name');
+  }
+});
+
 test('installed font aliases stay inside their root while reference aliases remain forbidden', () => {
   const dir = mkdtempSync(join(tmpdir(), 'font-identity-'));
   dirs.push(dir);
