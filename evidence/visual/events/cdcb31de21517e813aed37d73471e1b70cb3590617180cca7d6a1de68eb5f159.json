@@ -1,0 +1,64 @@
+{
+  "conclusion": "inconclusive",
+  "inspections": [
+    {
+      "member": "media-release-media-detail-fa505-age-and-consequence-context-chromium-high-contrast/current-media-detail-completed.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "8840a35ef33d33eca44aa0d629103d1dd730407f51f17e39dc819cd67b878f61"
+    },
+    {
+      "member": "media-release-media-detail-fa505-age-and-consequence-context-chromium-high-contrast/current-media-detail-top.png",
+      "method": "individual-pixels",
+      "role": "current",
+      "sha256": "a6ee27c4f205ece5c2bc350600cafa847e6929669e31083a126555f65d1ae97f"
+    },
+    {
+      "member": "media-release-media-detail-fa505-age-and-consequence-context-chromium-high-contrast/current-media-detail.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "d893773a7562ba72cfc1a194e30d62643233ee00f84a14fd234cb0e61a37e9c1"
+    },
+    {
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-high-contrast/current-media-library-viewport-0.png",
+      "method": "individual-pixels",
+      "role": "current",
+      "sha256": "a5dd82626438321b0822e155108410bf9e55272e456a01896161f18aa5ec8462"
+    },
+    {
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-high-contrast/current-media-library-viewport-2.png",
+      "method": "individual-pixels",
+      "role": "current",
+      "sha256": "a5dd82626438321b0822e155108410bf9e55272e456a01896161f18aa5ec8462"
+    },
+    {
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-high-contrast/current-media-library-viewport-4.png",
+      "method": "individual-pixels",
+      "role": "current",
+      "sha256": "8f8b7ff302ce945a44c39cbfe7f55ab2ca2f4a798a1234b81f3ce5c64ddc0dce"
+    },
+    {
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-high-contrast/current-media-library.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "ab00c18b9fcee40ccd0cba807fb9a99043da2457f9d7768b0ec636c3bb7516e2"
+    },
+    {
+      "member": "media-release-media-picker-72bf8-ontained-in-a-real-workflow-chromium-high-contrast/current-media-picker-bottom.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "df0d924e86f7ed4f71ce11c681b80b79dfd05198f69031fcedfd96d87b505609"
+    },
+    {
+      "member": "media-release-media-picker-72bf8-ontained-in-a-real-workflow-chromium-high-contrast/current-media-picker.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "df0d924e86f7ed4f71ce11c681b80b79dfd05198f69031fcedfd96d87b505609"
+    }
+  ],
+  "kind": "technical-review",
+  "manifest": "runs/41290408745-1-124800292922-13076902311.json",
+  "manifestSha256": "429c2452296d45bf770631cd596238069471b0fab924909e8ccde76a22270338",
+  "notes": "Diagnostic review only; no baseline approval or whole-matrix acceptance. Original supplied pixel review retained; contact-sheet overview does not verify all fine text. Exact-byte matches refer to previously inspected images. All twelve media project image bundles retained; metadata covers all36native identities. 12declared skips; Chromium-only matrix. No raw traces or detailed Playwright error report in bounded metadata; native summary22passed2failed12skipped. Viewport observations sample three scroll positions, not all scrolling. Partial modal captures are complementary top/pending/completed or picker top/bottom, not individually complete states.",
+  "schemaVersion": 2
+}

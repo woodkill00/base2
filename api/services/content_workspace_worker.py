@@ -7,9 +7,12 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID, uuid4
 
+from api.content_public_authoring import workspace_record_snapshot
 from api.db import workspace_worker_db_conn as db_conn
 from api.repositories.content_workspace import _validate_values
+from api.repositories import workspace_policy as policy_repo
 from api.security.content_workspace import canonical_digest
+from api.settings import SITE_MANIFEST
 from api.services.content_workspace_scanner import scan_content
 from api.services.content_workspace_transfer import MAX_BYTES as MAX_TRANSFER_BYTES
 from api.services.content_workspace_transfer import (
@@ -102,8 +105,10 @@ def publish_scheduled_record(*, site_id: str, record_id: UUID) -> str:
     with db_conn(tenant_id=site_id) as conn:
         try:
             with conn.cursor() as cur:
+                policy_repo.begin_effect(cur)
+                policy = policy_repo.read_policy(cur, site_id=site_id, lock=True)
                 cur.execute(
-                    """SELECT id, version, schema_version, values, state, publish_at
+                    """SELECT id, version, schema_version, values, state, publish_at, to_jsonb(sitecontent_contentrecord)
                        FROM sitecontent_contentrecord
                        WHERE id=%s AND site_id=%s FOR UPDATE""",
                     (str(record_id), site_id),
@@ -118,7 +123,20 @@ def publish_scheduled_record(*, site_id: str, record_id: UUID) -> str:
                 cur.execute('SELECT %s<=NOW()', (row[5],))
                 if not cur.fetchone()[0]:
                     return 'not_due'
-                snapshot = json.dumps(row[3], sort_keys=True, separators=(',', ':'))
+                if not policy_repo.authorize_scheduled(
+                    cur, site_id=site_id, record_id=record_id, policy=policy
+                ):
+                    policy_repo.audit(
+                        cur,
+                        site_id=site_id,
+                        actor_ref='system:scheduler',
+                        object_ref=str(record_id),
+                        action='content.publication_blocked',
+                        metadata={'reason': 'content_review_or_scheduler_authorization_required'},
+                    )
+                    conn.commit()
+                    return 'authorization_required'
+                snapshot = json.dumps(workspace_record_snapshot(row[6]), sort_keys=True, separators=(',', ':'), ensure_ascii=False)
                 cur.execute(
                     """INSERT INTO sitecontent_contentrevision
                        (id, content_id, revision, snapshot, actor_ref, created_at,
@@ -155,6 +173,15 @@ def publish_scheduled_record(*, site_id: str, record_id: UUID) -> str:
     return 'published'
 
 
+# Only these supported packs have concrete public detail renderers. Other types
+# retain the existing projection contract; this is not a generic page renderer.
+PUBLIC_PACK_PATHS = {
+    'blog-post': 'blog',
+    'doc-page': 'docs',
+    'portfolio-item': 'portfolio',
+}
+
+
 def due_index_records(*, limit: int = 25) -> list[tuple[str, str, int]]:
     """Discover records whose durable search projection is absent or stale."""
     if not 1 <= limit <= 100:
@@ -167,8 +194,13 @@ def due_index_records(*, limit: int = 25) -> list[tuple[str, str, int]]:
                  ON d.content_id=c.id AND d.site_id=c.site_id
                WHERE d.id IS NULL OR d.source_updated_at<c.updated_at
                   OR (c.deleted_at IS NOT NULL AND d.tombstoned_at IS NULL)
+                  OR (c.content_type=ANY(%s)
+                      AND d.source_updated_at=c.updated_at
+                      AND d.url_path='/' || c.content_type || '/' || c.slug
+                      AND c.deleted_at IS NULL AND c.state<>'deleted'
+                      AND d.tombstoned_at IS NULL)
                ORDER BY c.updated_at, c.id LIMIT %s""",
-            (limit,),
+            (list(PUBLIC_PACK_PATHS), limit),
         )
         return [(row[0], str(row[1]), int(row[2])) for row in cur.fetchall()]
 
@@ -189,7 +221,7 @@ def build_search_projection(
     return {
         'title': title,
         'body': body,
-        'url_path': f'/{content_type}/{slug}',
+        'url_path': f'/{PUBLIC_PACK_PATHS.get(content_type, content_type)}/{slug}',
         'visibility': (
             'public' if state == 'published' and search_visible and not tombstoned else 'private'
         ),
@@ -235,6 +267,31 @@ def index_workspace_record(*, site_id: str, record_id: UUID, job_version: int) -
                 )
                 existing = cur.fetchone()
                 if existing and existing[0] >= projection['source_updated_at']:
+                    if (
+                        existing[0] == projection['source_updated_at']
+                        and row[1] in PUBLIC_PACK_PATHS
+                        and not projection['tombstoned']
+                    ):
+                        # The source lock holds the version stable. Recheck every
+                        # projection predicate in UPDATE so a concurrent writer
+                        # cannot lose a newer version, custom path or tombstone.
+                        # URL-only repair preserves all content and timestamps.
+                        cur.execute(
+                            """UPDATE sitecontent_searchdocument SET url_path=%s
+                               WHERE content_id=%s AND site_id=%s
+                                 AND source_updated_at=%s AND url_path=%s
+                                 AND tombstoned_at IS NULL RETURNING id""",
+                            (
+                                projection['url_path'],
+                                str(record_id),
+                                site_id,
+                                projection['source_updated_at'],
+                                f'/{row[1]}/{row[2]}',
+                            ),
+                        )
+                        if cur.fetchone():
+                            conn.commit()
+                            return 'indexed'
                     return 'current'
                 cur.execute(
                     """INSERT INTO sitecontent_searchdocument
@@ -336,10 +393,9 @@ def due_media_scans(
         with db_conn(tenant_id=site_id) as conn:
             try:
                 with conn.cursor() as cur:
-                    # Serialize admission with the worker transaction, which
-                    # holds this same asset row while inspecting. An expired
-                    # lease therefore cannot create overlapping decoding; the
-                    # candidate is re-evaluated after the prior transaction.
+                    # Inspection is outside DB locks; exact version/digest and
+                    # durable attempt token are fenced again at final commit.
+                    policy_repo.begin_effect(cur)
                     cur.execute(
                         """SELECT 1 FROM sitecontent_mediaasset
                            WHERE site_id=%s AND id=%s AND status='quarantined'
@@ -361,8 +417,17 @@ def due_media_scans(
                         (str(uuid4()), site_id, asset_id, idempotency_key, digest),
                     )
                     cur.execute(
+                        """UPDATE sitecontent_mediajob SET status='failed',attempt=maximum_attempts,
+                           error_code='media_attempts_exhausted',lease_expires_at=NULL,completed_at=NOW(),updated_at=NOW()
+                           WHERE site_id=%s AND asset_id=%s AND kind='inspect' AND idempotency_key=%s
+                             AND status IN ('leased','running') AND lease_expires_at<=NOW()
+                             AND attempt+1>=maximum_attempts""",
+                        (site_id, asset_id, idempotency_key),
+                    )
+                    cur.execute(
                         """UPDATE sitecontent_mediajob
-                           SET status='leased',
+                           SET attempt=CASE WHEN status IN ('leased','running') THEN attempt+1 ELSE attempt END,
+                               status='leased',
                                lease_expires_at=NOW()+(%s*INTERVAL '1 second'),
                                updated_at=NOW()
                            WHERE site_id=%s AND asset_id=%s AND kind='inspect'
@@ -406,6 +471,8 @@ def begin_media_scan_attempt(
                            SELECT 1 FROM sitecontent_mediaasset asset
                            WHERE asset.site_id=job.site_id AND asset.id=job.asset_id
                              AND asset.status='quarantined'
+                             AND job.request_digest=asset.sha256
+                             AND job.idempotency_key=('inspect:' || asset.id::text || ':' || asset.current_object_version::text)
                          )""",
                     (site_id, str(job_id), str(asset_id), attempt - 1, lease_token),
                 )
@@ -426,7 +493,7 @@ def finish_media_scan_attempt(
     result: str,
 ) -> None:
     """Release an exact completed attempt and schedule bounded exponential retry."""
-    if result == 'not_ready':
+    if result in {'not_ready', 'not_found', 'already_ready', 'already_rejected', 'already_purged'}:
         with db_conn(tenant_id=site_id) as conn:
             try:
                 with conn.cursor() as cur:
@@ -438,10 +505,10 @@ def finish_media_scan_attempt(
                            WHERE job.site_id=%s AND job.id=%s AND job.kind='inspect'
                              AND job.status='running' AND job.attempt=%s
                              AND job.lease_expires_at=%s
-                             AND EXISTS (
+                             AND NOT EXISTS (
                                SELECT 1 FROM sitecontent_mediaasset asset
                                WHERE asset.site_id=job.site_id AND asset.id=job.asset_id
-                                 AND asset.status<>'quarantined'
+                                 AND asset.status='quarantined'
                              )
                            RETURNING job.asset_id""",
                         (attempt, site_id, str(job_id), attempt - 1, lease_token),
@@ -484,7 +551,9 @@ def finish_media_scan_attempt(
     error_code = (
         'media_inspection_rejected'
         if result in {'rejected', 'scanned_infected'}
-        else 'media_dependency_unavailable' if result in {'failed', 'quarantined'} else ''
+        else 'media_dependency_unavailable'
+        if result in {'failed', 'quarantined'}
+        else ''
     )
     with db_conn(tenant_id=site_id) as conn:
         try:
@@ -583,43 +652,60 @@ def scan_workspace_asset(
         from api.services.media_library_processor import generate_media_preview
 
         derivative_builder = generate_media_preview
+    from api.services.media_library_runtime import require_media_processing_enabled
+
+    require_media_processing_enabled()
+    # Snapshot only: no database transaction spans scanner or derivative work.
+    with db_conn(tenant_id=site_id) as conn, conn.cursor() as cur:
+        cur.execute(
+            """SELECT storage_key, sha256, status, metadata, media_type, current_object_version, lock_version
+               FROM sitecontent_mediaasset
+               WHERE id=%s AND site_id=%s""",
+            (str(asset_id), site_id),
+        )
+        row = cur.fetchone()
+        if not row:
+            return 'not_found'
+        if row[2] in {'validated', 'rejected', 'deleted'}:
+            return f'already_{row[2]}'
+        if row[2] != 'quarantined':
+            return 'not_ready'
+        metadata = row[3] if isinstance(row[3], dict) else {}
+        if metadata.get('scanStatus') == 'clean':
+            return 'already_scanned'
+    content = artifact_store.get(row[0], expected_sha256=row[1])
+    verdict = scanner(content)
+    if verdict not in {'clean', 'infected'}:
+        raise ValueError('content_scanner_response_invalid')
+    next_status = 'rejected'
+    derivative = None
+    stored_derivative = None
+    if verdict == 'clean':
+        derivative = derivative_builder(content=content, media_type=row[4])
+        stored_derivative = artifact_store.put(
+            namespace='variants',
+            site_id=site_id,
+            object_id=f'{asset_id}-v{row[5]}-safe',
+            content=derivative.content,
+        )
+        if stored_derivative.sha256 != derivative.sha256:
+            raise ValueError('content_integrity_failed')
+        next_status = 'validated'
     with db_conn(tenant_id=site_id) as conn:
         try:
             with conn.cursor() as cur:
+                policy_repo.begin_effect(cur)
+                require_media_processing_enabled()
                 cur.execute(
-                    """SELECT storage_key, sha256, status, metadata, media_type
+                    """SELECT storage_key, sha256, status, metadata, media_type,
+                              current_object_version, lock_version
                        FROM sitecontent_mediaasset
                        WHERE id=%s AND site_id=%s FOR UPDATE""",
                     (str(asset_id), site_id),
                 )
-                row = cur.fetchone()
-                if not row:
-                    return 'not_found'
-                if row[2] in {'validated', 'rejected', 'deleted'}:
-                    return f'already_{row[2]}'
-                if row[2] != 'quarantined':
-                    return 'not_ready'
-                metadata = row[3] if isinstance(row[3], dict) else {}
-                if metadata.get('scanStatus') == 'clean':
-                    return 'already_scanned'
-                content = artifact_store.get(row[0], expected_sha256=row[1])
-                verdict = scanner(content)
-                if verdict not in {'clean', 'infected'}:
-                    raise ValueError('content_scanner_response_invalid')
-                next_status = 'rejected'
-                derivative = None
-                stored_derivative = None
-                if verdict == 'clean':
-                    derivative = derivative_builder(content=content, media_type=row[4])
-                    stored_derivative = artifact_store.put(
-                        namespace='variants',
-                        site_id=site_id,
-                        object_id=f'{asset_id}-safe',
-                        content=derivative.content,
-                    )
-                    if stored_derivative.sha256 != derivative.sha256:
-                        raise ValueError('content_integrity_failed')
-                    next_status = 'validated'
+                if cur.fetchone() != row:
+                    # Never unlink a version key another attempt may have referenced.
+                    return 'stale_snapshot'
                 safe_metadata = {
                     'admission': 'content_verified',
                     'scanStatus': verdict,
@@ -714,17 +800,17 @@ def _export_payload(rows: list[dict[str, Any]], fields: list[str], output_format
 
 
 def process_export_job(*, site_id: str, job_id: UUID, artifact_store) -> str:
-    """Create one bounded permission-snapshot export and retain it encrypted at rest."""
+    """Authorize a snapshot, write private bytes outside locks, reauthorize commit."""
     with db_conn(tenant_id=site_id) as conn:
         try:
             with conn.cursor() as cur:
+                policy_repo.begin_effect(cur)
+                policy_repo.read_policy(cur, site_id=site_id, lock=True)
                 cur.execute(
-                    """SELECT j.status, j.schema_version, j.format, j.projection_digest,
-                              j.projection_fields, j.requester_ref, d.type_key,
-                              j.output_sha256, j.encrypted_object_key
-                       FROM sitecontent_exportjob j
-                       JOIN sitecontent_contenttypedefinition d ON d.id=j.definition_id
-                       WHERE j.id=%s AND j.site_id=%s AND d.site_id=%s FOR UPDATE""",
+                    """SELECT j.status,j.schema_version,j.format,j.projection_digest,
+                    j.projection_fields,j.requester_ref,d.type_key,j.output_sha256,j.encrypted_object_key
+                    FROM sitecontent_exportjob j JOIN sitecontent_contenttypedefinition d ON d.id=j.definition_id
+                    WHERE j.id=%s AND j.site_id=%s AND d.site_id=%s FOR UPDATE OF j""",
                     (str(job_id), site_id, site_id),
                 )
                 row = cur.fetchone()
@@ -734,6 +820,7 @@ def process_export_job(*, site_id: str, job_id: UUID, artifact_store) -> str:
                     return 'already_completed'
                 if row[0] != 'queued':
                     return 'not_ready'
+                policy_repo.authorize_read(cur, site_id=site_id, requester_ref=row[5])
                 fields = row[4] if isinstance(row[4], list) else []
                 if (
                     not fields
@@ -752,9 +839,8 @@ def process_export_job(*, site_id: str, job_id: UUID, artifact_store) -> str:
                 ):
                     raise ValueError('content_integrity_failed')
                 cur.execute(
-                    """SELECT values FROM sitecontent_contentrecord
-                       WHERE site_id=%s AND content_type=%s AND deleted_at IS NULL
-                       ORDER BY slug, id LIMIT %s""",
+                    """SELECT values FROM sitecontent_contentrecord WHERE site_id=%s
+                    AND content_type=%s AND deleted_at IS NULL ORDER BY slug,id LIMIT %s""",
                     (site_id, row[6], MAX_ROWS + 1),
                 )
                 records = cur.fetchall()
@@ -764,17 +850,23 @@ def process_export_job(*, site_id: str, job_id: UUID, artifact_store) -> str:
                 content = _export_payload(values, fields, row[2])
                 if not content or len(content) > MAX_TRANSFER_BYTES:
                     raise ValueError('content_limit_exceeded')
-                stored = artifact_store.put(
-                    namespace='exports',
-                    site_id=site_id,
-                    object_id=str(job_id),
-                    content=content,
-                )
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+    stored = artifact_store.put(
+        namespace='exports', site_id=site_id, object_id=str(job_id), content=content
+    )
+    with db_conn(tenant_id=site_id) as conn:
+        try:
+            with conn.cursor() as cur:
+                policy_repo.begin_effect(cur)
+                policy_repo.read_policy(cur, site_id=site_id, lock=True)
+                policy_repo.authorize_read(cur, site_id=site_id, requester_ref=row[5])
                 cur.execute(
-                    """UPDATE sitecontent_exportjob
-                       SET status='completed', output_sha256=%s, encrypted_object_key=%s,
-                           counters=%s::jsonb, completed_at=NOW(), updated_at=NOW()
-                       WHERE id=%s AND site_id=%s AND status='queued' RETURNING id""",
+                    """UPDATE sitecontent_exportjob SET status='completed',output_sha256=%s,
+                    encrypted_object_key=%s,counters=%s::jsonb,completed_at=NOW(),updated_at=NOW()
+                    WHERE id=%s AND site_id=%s AND status='queued' RETURNING id""",
                     (
                         stored.sha256,
                         stored.object_key,
@@ -784,19 +876,14 @@ def process_export_job(*, site_id: str, job_id: UUID, artifact_store) -> str:
                     ),
                 )
                 if not cur.fetchone():
-                    raise ValueError('content_job_transition_invalid')
-                cur.execute(
-                    """INSERT INTO sitecontent_workspaceauditevent
-                       (id, site_id, actor_ref, object_type, object_ref, action, outcome,
-                        correlation_id, metadata, created_at)
-                       VALUES (%s,%s,'system:export-worker','export_job',%s,
-                               'content.export_complete','accepted','',%s::jsonb,NOW())""",
-                    (
-                        str(uuid4()),
-                        site_id,
-                        str(job_id),
-                        json.dumps({'count': len(values), 'sha256': stored.sha256}),
-                    ),
+                    return 'already_completed'
+                policy_repo.audit(
+                    cur,
+                    site_id=site_id,
+                    actor_ref='system:export-worker',
+                    object_ref=str(job_id),
+                    action='content.export_complete',
+                    metadata={'count': len(values), 'sha256': stored.sha256},
                 )
             conn.commit()
         except Exception:
@@ -860,8 +947,11 @@ def expire_export_jobs(*, artifact_store, limit: int = 100) -> int:
                 for job_id, site_id, object_key, output_sha256 in rows:
                     if object_key:
                         artifact_store.delete(
-                            namespace='exports', site_id=site_id, object_id=str(job_id),
-                            object_key=object_key, expected_sha256=output_sha256,
+                            namespace='exports',
+                            site_id=site_id,
+                            object_id=str(job_id),
+                            object_key=object_key,
+                            expected_sha256=output_sha256,
                             missing_ok=True,
                         )
                     cur.execute(
@@ -885,55 +975,20 @@ def purge_workspace_retention(*, artifact_store, recovery_days: int = 30, limit:
     if not 1 <= recovery_days <= 365 or not 1 <= limit <= 500:
         raise ValueError('content_limit_exceeded')
     result = {'assets': 0, 'records': 0}
-    with db_conn() as conn:
+    trusted_site = SITE_MANIFEST['siteId']
+    from api.services.workspace_retention_assets import purge_workspace_assets
+
+    # Asset claim/IO/finalization owns separate bounded transactions.
+    result['assets'] = purge_workspace_assets(
+        artifact_store=artifact_store, site_id=trusted_site, limit=limit
+    )
+    with db_conn(tenant_id=trusted_site) as conn:
         try:
             with conn.cursor() as cur:
-                cur.execute(
-                    """SELECT a.id, a.site_id, a.storage_key, a.sha256
-                       FROM sitecontent_mediaasset a
-                       WHERE a.status='deleted' AND a.retention_until<=NOW()
-                         AND NOT EXISTS (
-                           SELECT 1 FROM sitecontent_assetbinding b WHERE b.asset_id=a.id
-                         )
-                       ORDER BY a.retention_until, a.id
-                       LIMIT %s FOR UPDATE OF a SKIP LOCKED""",
-                    (limit,),
-                )
-                assets = cur.fetchall()
-                for asset_id, site_id, storage_key, sha256 in assets:
-                    cur.execute(
-                        """SELECT name, storage_key, sha256
-                           FROM sitecontent_mediavariant WHERE asset_id=%s ORDER BY name""",
-                        (str(asset_id),),
-                    )
-                    variants = cur.fetchall()
-                    for name, variant_key, variant_sha256 in variants:
-                        artifact_store.delete(
-                            namespace='variants', site_id=site_id,
-                            object_id=f'{asset_id}-{name}', object_key=variant_key,
-                            expected_sha256=variant_sha256, missing_ok=True,
-                        )
-                    artifact_store.delete(
-                        namespace='media', site_id=site_id, object_id=str(asset_id),
-                        object_key=storage_key, expected_sha256=sha256, missing_ok=True,
-                    )
-                    cur.execute(
-                        """INSERT INTO sitecontent_workspaceauditevent
-                           (id,site_id,actor_ref,object_type,object_ref,action,outcome,
-                            correlation_id,metadata,created_at)
-                           VALUES (%s,%s,'system:retention','media_asset',%s,
-                                   'content.asset_hard_delete','accepted','',%s::jsonb,NOW())""",
-                        (str(uuid4()), site_id, str(asset_id), json.dumps({'count': 1})),
-                    )
-                    cur.execute(
-                        "DELETE FROM sitecontent_mediaasset WHERE id=%s AND site_id=%s",
-                        (str(asset_id), site_id),
-                    )
-                    result['assets'] += cur.rowcount
-
+                policy_repo.begin_effect(cur)
                 cur.execute(
                     """SELECT r.id, r.site_id FROM sitecontent_contentrecord r
-                       WHERE r.state='deleted' AND r.deleted_at<=NOW()-(%s*INTERVAL '1 day')
+                       WHERE r.site_id=current_setting('app.tenant_id',true) AND r.state='deleted' AND r.deleted_at<=NOW()-(%s*INTERVAL '1 day')
                          AND NOT EXISTS (
                            SELECT 1 FROM sitecontent_contentrelationship rel
                            WHERE rel.source_id=r.id OR rel.target_id=r.id
@@ -943,10 +998,13 @@ def purge_workspace_retention(*, artifact_store, recovery_days: int = 30, limit:
                          )
                        ORDER BY r.deleted_at, r.id
                        LIMIT %s FOR UPDATE OF r SKIP LOCKED""",
-                    (recovery_days, limit),
+                    (max(30, recovery_days), limit),
                 )
                 records = cur.fetchall()
                 for record_id, site_id in records:
+                    cur.execute(
+                        'SELECT base2_purge_review_history(%s,%s)', (site_id, str(record_id))
+                    )
                     cur.execute(
                         """INSERT INTO sitecontent_workspaceauditevent
                            (id,site_id,actor_ref,object_type,object_ref,action,outcome,
@@ -956,7 +1014,7 @@ def purge_workspace_retention(*, artifact_store, recovery_days: int = 30, limit:
                         (str(uuid4()), site_id, str(record_id), json.dumps({'count': 1})),
                     )
                     cur.execute(
-                        "DELETE FROM sitecontent_contentrecord WHERE id=%s AND site_id=%s",
+                        'DELETE FROM sitecontent_contentrecord WHERE id=%s AND site_id=%s',
                         (str(record_id), site_id),
                     )
                     result['records'] += cur.rowcount
@@ -1216,14 +1274,32 @@ def due_import_commits(*, limit: int = 10) -> list[tuple[str, str]]:
         return [(row[0], str(row[1])) for row in cur.fetchall()]
 
 
+def _prepare_import_content(*, site_id, job_id, artifact_store):
+    # External/private artifact IO is outside the feature effect lock.
+    with db_conn(tenant_id=site_id) as conn, conn.cursor() as cur:
+        cur.execute(
+            'SELECT status,source_object_key,source_sha256 FROM sitecontent_importjob WHERE id=%s AND site_id=%s',
+            (str(job_id), site_id),
+        )
+        row = cur.fetchone()
+    if not row or row[0] != 'committing' or not row[1]:
+        return None
+    return row[2], artifact_store.get(row[1], expected_sha256=row[2])
+
+
 def process_import_commit(*, site_id: str, job_id: UUID, artifact_store) -> str:
     """Apply one fully reviewed import atomically and bind every resulting row."""
+    prepared = _prepare_import_content(
+        site_id=site_id, job_id=job_id, artifact_store=artifact_store
+    )
     with db_conn(tenant_id=site_id) as conn:
         try:
             with conn.cursor() as cur:
+                policy_repo.begin_effect(cur)
+                policy_repo.read_policy(cur, site_id=site_id, lock=True)
                 cur.execute(
                     """SELECT j.status, j.schema_version, j.source_sha256, j.source_format,
-                              j.source_object_key, j.mapping, d.type_key, j.definition_id
+                              j.source_object_key, j.mapping, d.type_key, j.definition_id, j.requester_ref
                        FROM sitecontent_importjob j
                        JOIN sitecontent_contenttypedefinition d ON d.id=j.definition_id
                        WHERE j.id=%s AND j.site_id=%s AND d.site_id=%s FOR UPDATE""",
@@ -1236,7 +1312,14 @@ def process_import_commit(*, site_id: str, job_id: UUID, artifact_store) -> str:
                     return 'already_completed'
                 if job[0] != 'committing' or not job[4]:
                     return 'not_ready'
-                content = artifact_store.get(job[4], expected_sha256=job[2])
+                if prepared is None or prepared[0] != job[2]:
+                    raise ValueError('content_integrity_failed')
+                requester = str(UUID(job[8].removeprefix('user:')))
+                policy_repo.member(
+                    cur, site_id=site_id, user_id=requester, permission='write', lock=True
+                )
+                policy_repo.begin_effect(cur, actor_ref=f'user:{requester}')
+                content = prepared[1]
                 parsed = parse_json(content) if job[3] == 'json' else parse_csv(content)
                 cur.execute(
                     """SELECT field_key, field_kind, required, nullable, default_value, validation
@@ -1285,10 +1368,10 @@ def process_import_commit(*, site_id: str, job_id: UUID, artifact_store) -> str:
                             """INSERT INTO sitecontent_contentrecord
                                (id, site_id, content_type, slug, title, excerpt, body, metadata,
                                 state, publish_at, published_at, sitemap_include, search_visible,
-                                version, definition_id, schema_version, values, deleted_at,
+                                version, definition_id, schema_version, values, deleted_at, schedule_timezone,
                                 created_at, updated_at)
                                VALUES (%s,%s,%s,%s,%s,'','',%s::jsonb,'draft',NULL,NULL,TRUE,TRUE,
-                                       1,%s,%s,%s::jsonb,NULL,NOW(),NOW())""",
+                                       1,%s,%s,%s::jsonb,NULL,'',NOW(),NOW())""",
                             (
                                 str(result_id),
                                 site_id,
@@ -1307,7 +1390,7 @@ def process_import_commit(*, site_id: str, job_id: UUID, artifact_store) -> str:
                         if exact_match_id is None:
                             raise ValueError('content_integrity_failed')
                         cur.execute(
-                            """SELECT id, version, schema_version, values
+                            """SELECT id, version, schema_version, values, to_jsonb(sitecontent_contentrecord)
                                FROM sitecontent_contentrecord
                                WHERE id=%s AND site_id=%s AND content_type=%s
                                  AND deleted_at IS NULL FOR UPDATE""",
@@ -1317,19 +1400,20 @@ def process_import_commit(*, site_id: str, job_id: UUID, artifact_store) -> str:
                         if not existing:
                             raise ValueError('content_integrity_failed')
                         snapshot = json.dumps(
-                            existing[3], sort_keys=True, separators=(',', ':'), ensure_ascii=False
+                            workspace_record_snapshot(existing[4]), sort_keys=True, separators=(',', ':'), ensure_ascii=False
                         )
                         cur.execute(
                             """INSERT INTO sitecontent_contentrevision
                                (id, content_id, revision, snapshot, actor_ref, created_at,
                                 schema_version, snapshot_sha256, action, restored_from_version)
-                               VALUES (%s,%s,%s,%s::jsonb,'system:import-worker',NOW(),%s,%s,
+                               VALUES (%s,%s,%s,%s::jsonb,%s,NOW(),%s,%s,
                                        'import_update',NULL)""",
                             (
                                 str(uuid4()),
                                 str(existing[0]),
                                 existing[1],
                                 snapshot,
+                                f'user:{requester}',
                                 existing[2],
                                 hashlib.sha256(snapshot.encode()).hexdigest(),
                             ),

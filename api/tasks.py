@@ -131,6 +131,7 @@ app.conf.update(
         'app.expire_data_rights_results': {'queue': 'data-rights'},
         'app.publish_workspace_record': {'queue': 'content'},
         'app.replay_workspace_publications': {'queue': 'content'},
+        'app.process_workspace_review_notifications': {'queue': 'content'},
         'app.scan_workspace_asset': {'queue': 'content'},
         'app.replay_workspace_media_scans': {'queue': 'content'},
         'app.index_workspace_record': {'queue': 'content'},
@@ -155,6 +156,10 @@ app.conf.update(
         'expire-data-rights-results': {
             'task': 'app.expire_data_rights_results',
             'schedule': 86400.0,
+        },
+        'workspace-review-notifications': {
+            'task': 'app.process_workspace_review_notifications',
+            'schedule': 60.0,
         },
         'workspace-publish-scheduled': {
             'task': 'app.replay_workspace_publications',
@@ -641,6 +646,7 @@ class WorkspaceImportTask(Task):
     max_retries=3,
 )
 def publish_workspace_record(site_id: str, record_id: str) -> str:
+    _require_workspace_capability()
     _require_tenant_serving(site_id)
     return publish_scheduled_record(site_id=site_id, record_id=UUID(record_id))
 
@@ -695,8 +701,9 @@ def _workspace_artifact_store():
 def scan_workspace_asset_task(
     site_id: str, asset_id: str, job_id: str, attempt: int, lease_token: str
 ) -> str:
-    from api.security.restricted_preview import require_media_enabled
-    require_media_enabled()
+    from api.services.media_library_runtime import require_media_processing_enabled
+
+    require_media_processing_enabled()
     _require_tenant_serving(site_id)
     token = datetime.fromisoformat(lease_token)
     if not begin_media_scan_attempt(
@@ -712,6 +719,9 @@ def scan_workspace_asset_task(
             site_id=site_id,
             asset_id=UUID(asset_id),
             artifact_store=_workspace_artifact_store(),
+            job_id=UUID(job_id),
+            attempt=attempt,
+            lease_token=token,
         )
     except Exception:
         try:
@@ -724,6 +734,8 @@ def scan_workspace_asset_task(
         except Exception:
             logger.error('media_scan_recovery_failed')
         raise
+    if result in {'stale_attempt', 'stale_snapshot'}:
+        return result
     finish_media_scan_attempt(
         site_id=site_id,
         job_id=UUID(job_id),
@@ -737,6 +749,7 @@ def scan_workspace_asset_task(
 @app.task(name='app.replay_workspace_media_scans')
 def replay_workspace_media_scans(limit: int = 10) -> int:
     from api.security.restricted_preview import restricted_preview
+
     if restricted_preview():
         return 0
     assets = due_media_scans(limit=limit)
@@ -757,6 +770,7 @@ def replay_workspace_media_scans(limit: int = 10) -> int:
 )
 def process_media_export_task(site_id: str, export_id: str) -> str:
     from api.security.restricted_preview import require_media_enabled
+
     require_media_enabled()
     _require_tenant_serving(site_id)
     return process_media_export(
@@ -769,6 +783,7 @@ def process_media_export_task(site_id: str, export_id: str) -> str:
 @app.task(name='app.replay_media_exports')
 def replay_media_exports(limit: int = 10) -> int:
     from api.security.restricted_preview import restricted_preview
+
     if restricted_preview():
         return 0
     packages = due_media_exports(limit=limit)
@@ -782,6 +797,7 @@ def replay_media_exports(limit: int = 10) -> int:
 @app.task(name='app.apply_media_governance')
 def apply_media_governance(limit: int = 100) -> dict[str, int]:
     from api.security.restricted_preview import require_media_enabled
+
     require_media_enabled()
     return apply_due_media_governance(limit=limit)
 
@@ -796,6 +812,7 @@ def apply_media_governance(limit: int = 100) -> dict[str, int]:
     max_retries=3,
 )
 def process_workspace_export(site_id: str, job_id: str) -> str:
+    _require_workspace_capability()
     _require_tenant_serving(site_id)
     return process_export_job(
         site_id=site_id,
@@ -862,6 +879,7 @@ def replay_workspace_import_validations(limit: int = 10) -> int:
     max_retries=3,
 )
 def commit_workspace_import(site_id: str, job_id: str) -> str:
+    _require_workspace_capability()
     _require_tenant_serving(site_id)
     return process_import_commit(
         site_id=site_id,
@@ -878,3 +896,23 @@ def replay_workspace_import_commits(limit: int = 10) -> int:
             continue
         commit_workspace_import.delay(site_id, job_id)
     return len(jobs)
+
+
+@app.task(name='app.process_workspace_review_notifications')
+def process_workspace_review_notifications():
+    from api.settings import SITE_MANIFEST
+    from api.services.workspace_review_notifications import process_review_notifications
+
+    enabled = {item['id'] for item in SITE_MANIFEST.get('modules', []) if item.get('enabled')}
+    if not {'accounts', 'content-workspace'} <= enabled:
+        return {'adapter': 'local_test', 'status': 'capability_disabled'}
+    site_id = SITE_MANIFEST['siteId']
+    if not _tenant_serving(site_id):
+        return {'adapter': 'local_test', 'status': 'tenant_not_serving'}
+    return process_review_notifications(site_id=site_id)
+
+
+def _require_workspace_capability():
+    enabled = {item['id'] for item in SITE_MANIFEST.get('modules', []) if item.get('enabled')}
+    if not {'accounts', 'content-workspace'} <= enabled:
+        raise ValueError('content_capability_disabled')

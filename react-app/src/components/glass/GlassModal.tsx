@@ -1,3 +1,4 @@
+import { useScrollTargetLock } from '../../lib/scrollTarget';
 import React, { useEffect, useRef } from 'react';
 
 type Props = {
@@ -8,6 +9,7 @@ type Props = {
 };
 
 export const GlassModal: React.FC<Props> = ({ open, onClose, className, children }) => {
+  useScrollTargetLock(open, true);
   const prevFocus = useRef<HTMLElement | null>(null);
   const closeBtnRef = useRef<HTMLButtonElement | null>(null);
 
@@ -18,8 +20,6 @@ export const GlassModal: React.FC<Props> = ({ open, onClose, className, children
     if (!open) return;
 
     prevFocus.current = document.activeElement as HTMLElement | null;
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
     document.addEventListener('keydown', onKey);
 
     // Focus close button for predictable keyboard access.
@@ -29,7 +29,6 @@ export const GlassModal: React.FC<Props> = ({ open, onClose, className, children
 
     return () => {
       window.clearTimeout(focusTimer);
-      document.body.style.overflow = prevOverflow;
       document.removeEventListener('keydown', onKey);
       const el = prevFocus.current;
       if (el) {

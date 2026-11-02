@@ -1,0 +1,328 @@
+{
+  "conclusion": "inconclusive",
+  "inspections": [
+    {
+      "member": "settings/settings-release-release-p-27468-essible-and-visually-stable-chromium-ultrawide/settings-release-before-axe.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "5bd83f7fa44433cf224552d2983aed3ebf614883114e40b1d3e78366c6c1d5e4"
+    },
+    {
+      "member": "settings/settings-release-release-p-27468-essible-and-visually-stable-firefox-desktop/settings-release-before-axe.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "caa1dc407e2ced11e6af1f87f2996298bcb73496d6807404f789c02fa69389a2"
+    },
+    {
+      "member": "settings/settings-release-release-p-27468-essible-and-visually-stable-webkit-mobile/settings-release-before-axe.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "f541674b35f259752b636719de7e335543eb27faf9c4be5141d3e5ef688fd433"
+    },
+    {
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-400-zoom/current-scrollport-footer.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "add1e96bb2d8903035e6c7fa75ef9afcc2ddc8eb10df1d7a7015845927358874"
+    },
+    {
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-400-zoom/current-scrollport-middle.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "3b62e0c76d2f23cf06179a938b5d08acf5e0ffea236bc8cffb8847f5a584153d"
+    },
+    {
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-400-zoom/current-scrollport-top.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "7629f540e1885a266b44daf48d891819ed5de71f1f9e020b9e6528c67dc5d566"
+    },
+    {
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-400-zoom/test-failed-1.png",
+      "method": "contact-sheet-overview",
+      "role": "failure",
+      "sha256": "ac86afcf319a2b0d1822011aa08f3c071e598ec413531090b11ae4234f13c92a"
+    },
+    {
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-400-zoom/workspace-records-chromium-400-zoom-actual.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "actual",
+      "sha256": "7629f540e1885a266b44daf48d891819ed5de71f1f9e020b9e6528c67dc5d566"
+    },
+    {
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-compact/current-scrollport-footer.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "cffe6de4784171eed00f85ec6a079cecc478fccfe3e78bee1ffe001612c32f18"
+    },
+    {
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-compact/current-scrollport-middle.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "1a77cba21350298f4f6549a9bd2fdc1ce4d1daa92eb903a1d57e15caa74adeb7"
+    },
+    {
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-compact/current-scrollport-top.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "a5e7b15a41b0f84ac8f457d82b0e9d0f50fdb2d4978542aca1116238af26f464"
+    },
+    {
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-compact/test-failed-1.png",
+      "method": "contact-sheet-overview",
+      "role": "failure",
+      "sha256": "a0c6c8695c7570ec49ca19aebf633913239927271c5a1e9dab6fbc7930f101f1"
+    },
+    {
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-compact/workspace-records-chromium-compact-actual.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "actual",
+      "sha256": "a5e7b15a41b0f84ac8f457d82b0e9d0f50fdb2d4978542aca1116238af26f464"
+    },
+    {
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-desktop/test-failed-1.png",
+      "method": "contact-sheet-overview",
+      "role": "failure",
+      "sha256": "ee3dad0f0e3dc42edd81c09fb866e858bd504329f5a6c8adfbb436f69af5dcb0"
+    },
+    {
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-desktop/workspace-records-chromium-desktop-actual.png",
+      "method": "contact-sheet-overview",
+      "role": "actual",
+      "sha256": "ba1daa882caccce5937368ebaf44a336ee761c4382b8284105c33773c8095108"
+    },
+    {
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-high-contrast/test-failed-1.png",
+      "method": "contact-sheet-overview",
+      "role": "failure",
+      "sha256": "859a00f50b3cba7e3333787a002183fb6ac6f70984157eea289ef342a73ca610"
+    },
+    {
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-high-contrast/workspace-exports-chromium-high-contrast-actual.png",
+      "method": "contact-sheet-overview",
+      "role": "actual",
+      "sha256": "bb08d6d67724674c3b4765f119fe1fbbd57b58ccae3054193e5dc2c32be83c4b"
+    },
+    {
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-high-contrast/workspace-exports-post-assert.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "bb08d6d67724674c3b4765f119fe1fbbd57b58ccae3054193e5dc2c32be83c4b"
+    },
+    {
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-high-contrast/workspace-imports-chromium-high-contrast-actual.png",
+      "method": "contact-sheet-overview",
+      "role": "actual",
+      "sha256": "910ad014c3a4bdb0d6a3cab78ea51a22092772859ca9dcdbfe6afe860b1125ea"
+    },
+    {
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-high-contrast/workspace-imports-post-assert.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "1f033f149bc2c5819e878aabbc60b8734f249d196adb665d118ee8b53ad2cb46"
+    },
+    {
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-high-contrast/workspace-records-chromium-high-contrast-actual.png",
+      "method": "individual-pixels",
+      "role": "actual",
+      "sha256": "9a10e80d4cc62bc23e9d30604b892e6aaeadd14819e2097aaae795c4370e01ce"
+    },
+    {
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-high-contrast/workspace-records-chromium-high-contrast-diff.png",
+      "method": "contact-sheet-overview",
+      "role": "diff",
+      "sha256": "623e322020eca1bb6ce0f463d265f00e204ea706f396ae362d5b1f4b7214cbd1"
+    },
+    {
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-high-contrast/workspace-records-chromium-high-contrast-expected.png",
+      "method": "contact-sheet-overview",
+      "role": "expected",
+      "sha256": "28fbeee09d5e63280ba83a5a97b5fec76b72577985fd5b5f9a7aec2a4c8a9cb0"
+    },
+    {
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-high-contrast/workspace-records-post-assert.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "2bb76d140e783ffc2f6b0808e7f230f888c352ab0dc4f0ee033b8c1c1b0a375a"
+    },
+    {
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-high-contrast/workspace-schema-chromium-high-contrast-actual.png",
+      "method": "contact-sheet-overview",
+      "role": "actual",
+      "sha256": "7423786458865bb0ad6fd7535e8d03efb9b27350dda59bcadb3ea8529cfa1b96"
+    },
+    {
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-high-contrast/workspace-schema-post-assert.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "8f01d53345842fa44080b2a2505125ae90326ae9688fbd233a16563fe37ad396"
+    },
+    {
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-landscape-touch/current-scrollport-footer.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "63cf246cb1c2f167e43f4dfc94ad7d859435f0849170e56e9ef8cc08437503b1"
+    },
+    {
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-landscape-touch/current-scrollport-middle.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "e7a5fa86279ce54e9cebd695c24336dda82e8edb033ab3c1e0f2fdc21024c6e7"
+    },
+    {
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-landscape-touch/current-scrollport-top.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "5335b0054d3fb1b9c9b5ce4ef6c43febf7d26944b31891172739b1d734dfb106"
+    },
+    {
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-landscape-touch/test-failed-1.png",
+      "method": "contact-sheet-overview",
+      "role": "failure",
+      "sha256": "afb12cb07de339c25d4a2e360d174cdd42b7d542dcc20641243981ee118bcb65"
+    },
+    {
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-landscape-touch/workspace-records-chromium-landscape-touch-actual.png",
+      "method": "contact-sheet-overview",
+      "role": "actual",
+      "sha256": "7fff5a7eff14fba4f9417dc1dcc8ecf037be9c6ea8d4e79c5154d16ad26f784f"
+    },
+    {
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-large-text/test-failed-1.png",
+      "method": "contact-sheet-overview",
+      "role": "failure",
+      "sha256": "315a557120943a4050509c207a3a5b43babb5b7b1565ade2abcd22a40de0c5ad"
+    },
+    {
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-large-text/workspace-records-chromium-large-text-actual.png",
+      "method": "individual-pixels",
+      "role": "actual",
+      "sha256": "7febdea01fcad39523b279a5500e48d05f573beeff45f262d25be8b90ad815a1"
+    },
+    {
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-large-text/workspace-records-chromium-large-text-diff.png",
+      "method": "contact-sheet-overview",
+      "role": "diff",
+      "sha256": "ed8e7936169852cde416aacdf94e7b1cd6731d777d5ba9b7108dd7ec38688a72"
+    },
+    {
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-large-text/workspace-records-chromium-large-text-expected.png",
+      "method": "contact-sheet-overview",
+      "role": "expected",
+      "sha256": "7bdddf6ec5dba35ab6e4fb546e4eca2ab8d78de28728111cec7ae704cd8e5f58"
+    },
+    {
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-light/test-failed-1.png",
+      "method": "contact-sheet-overview",
+      "role": "failure",
+      "sha256": "67fef07654231b365d55acfa9a76a64e80646d989fc010ef9608eec5e1f01410"
+    },
+    {
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-light/workspace-records-chromium-light-actual.png",
+      "method": "individual-pixels",
+      "role": "actual",
+      "sha256": "fd95bb8ccc6ce9c4f99d6b8e07703835c1da75310b13cff7568bbc3d9aaf6100"
+    },
+    {
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-light/workspace-records-chromium-light-diff.png",
+      "method": "contact-sheet-overview",
+      "role": "diff",
+      "sha256": "0f1eac24f9f9f5d8eeacc8943fe059026d1642aa37ae20f76614849779342792"
+    },
+    {
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-light/workspace-records-chromium-light-expected.png",
+      "method": "contact-sheet-overview",
+      "role": "expected",
+      "sha256": "c4b06de96950ee685acfd752a791bd5665e32dedb76c73202ae4906563b3a690"
+    },
+    {
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-phone-dpr3/current-scrollport-footer.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "654824d06be76a3a67f86d2e0943cea5e4720563fdf86dac93b6e327257a7db4"
+    },
+    {
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-phone-dpr3/current-scrollport-middle.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "b7fd49fa5c6626411efadfdd321e89db67ca275aa28183146cb58aa53aee2951"
+    },
+    {
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-phone-dpr3/current-scrollport-top.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "3b55e29e84b4973ac52709fd5f5a0d1b5ae404a7bf35888ab9c8f011339caab9"
+    },
+    {
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-phone-dpr3/test-failed-1.png",
+      "method": "contact-sheet-overview",
+      "role": "failure",
+      "sha256": "1d86820dc25925186748c3a355aa7897411a47d4ebcb2118ef51e2dcf2f4e20d"
+    },
+    {
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-phone-dpr3/workspace-records-chromium-phone-dpr3-actual.png",
+      "method": "contact-sheet-overview",
+      "role": "actual",
+      "sha256": "6b748da8bbd81c83cacb1a69665c366eaa40e835259ced77eda00ee5a5bf6d88"
+    },
+    {
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-tablet/current-scrollport-footer.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "3a99c7e094a808fcc4320ecef6d8e56d11d87a7683d4ff59e212f87c826d34c0"
+    },
+    {
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-tablet/current-scrollport-middle.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "1385b1c0b86672e5b8ad510b2b4562d92c5f8041bbc784246eb4b3f383ee0ee3"
+    },
+    {
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-tablet/current-scrollport-top.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "711d1f9c4d3ebc377bb7f9fea4084dac1f0b9067a9b8f92616936de9d3eeb3f8"
+    },
+    {
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-tablet/test-failed-1.png",
+      "method": "contact-sheet-overview",
+      "role": "failure",
+      "sha256": "1d8722f3b72e3d89fcd9f55c3dd0cd864516346b763e1d86e6bc38cca22be721"
+    },
+    {
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-tablet/workspace-records-chromium-tablet-actual.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "actual",
+      "sha256": "711d1f9c4d3ebc377bb7f9fea4084dac1f0b9067a9b8f92616936de9d3eeb3f8"
+    },
+    {
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-ultrawide/test-failed-1.png",
+      "method": "contact-sheet-overview",
+      "role": "failure",
+      "sha256": "bd2ded161d3f17bcc55edf979443e10e614210bde5d30b2f67e6927ec69d6596"
+    },
+    {
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-ultrawide/workspace-records-chromium-ultrawide-actual.png",
+      "method": "contact-sheet-overview",
+      "role": "actual",
+      "sha256": "b93d4676169d12ce6e03698604367edc18df19bbdb22be3a46a8cefbef10dbd5"
+    },
+    {
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-firefox-desktop/test-failed-1.png",
+      "method": "contact-sheet-overview",
+      "role": "failure",
+      "sha256": "86e9af3a71189a47123881c4d240be73f249173e3c1753ab10e601dcf5751143"
+    },
+    {
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-firefox-desktop/workspace-records-firefox-desktop-actual.png",
+      "method": "contact-sheet-overview",
+      "role": "actual",
+      "sha256": "cf61fd052b38ad8d4e7905d669b44dae71bd0a1c1df2501f80f72a68c18ac7a7"
+    }
+  ],
+  "kind": "technical-review",
+  "manifest": "runs/41316879851-1-124878689099-13087534551.json",
+  "manifestSha256": "db65e0bde5fe354ee01d8b19350e7fa328c3cde201b9cd2ab658da6047cdca14",
+  "notes": "Diagnostic only; no baseline or full visual acceptance. Review methods are conservative: partial image inspection maps to overview. Original run failures remain unchanged. Only allowlisted shard members retained; packager excluded PNGs recorded in suites metadata. No claim to oversized original or excluded bytes. Native failures remain failures; no baseline acceptance. Whole-page references cannot be replaced blindly by viewport-only mobile captures. Sampled images do not establish continuous content coverage or arbitrary-scroll hit testing. All new unique images overview-inspected; only four listed representatives additionally original-scale inspected. Long full-page thumbnails insufficient to inspect every glyph. Excluded native workspace screenshot family and expected/diff images from this standard pass; parent handles these. Volcano workspace-route generic service-state captures remain included. Viewport top/middle/footer samples do not establish continuous full-scroll content coverage or successful interaction, keyboard sequence, hit targets, or unseen steps. Known native compact Forward, zoom timeout and Firefox Tab failures remain independent of pixels. No baseline approval or source causal analysis. RTL About down-arrow circular border overlaps drawer/focus-ring boundary at 390px and light 200% zoom. Content unobstructed; hit-target conflict NOT established. Prior Arabic heading obstruction and blank horizontally shifted compact footer no longer present in inspected originals. Arabic HC leave-settings dialog centered and entirely visible including actions. Generic green System evidence current footer remains visible on unavailable service/content pages; not new layout regression. Reviewed supplementary route samples show named route content, unlike prior Search contamination. No blanket route-identity validation inferred.",
+  "schemaVersion": 2
+}

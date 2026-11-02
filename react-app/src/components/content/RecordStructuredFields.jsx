@@ -103,9 +103,9 @@ function MediaControl({ typeKey, record, field, onChanged, onError }) {
       aria-labelledby={`media-${field.fieldKey}`}
       className="rounded-xl border border-white/10 p-4"
     >
-      <h5 id={`media-${field.fieldKey}`} className="font-medium">
+      <h4 id={`media-${field.fieldKey}`} className="font-medium">
         {field.label}
-      </h5>
+      </h4>
       <p className="mt-1 text-sm opacity-65">
         Files remain quarantined and cannot be attached until scanning and safe-derivative checks
         pass.
@@ -136,7 +136,12 @@ function MediaControl({ typeKey, record, field, onChanged, onError }) {
       ) : null}
       <div className="mt-3 flex flex-wrap gap-2">
         {!asset ? (
-          <GlassButton type="button" onClick={admit} disabled={busy || !file}>
+          <GlassButton
+            className="workspace-secure-file-action"
+            type="button"
+            onClick={admit}
+            disabled={busy || !file}
+          >
             {busy ? 'Securing file…' : 'Secure file'}
           </GlassButton>
         ) : null}
@@ -259,7 +264,8 @@ function RelationshipControl({ typeKey, record, fields, onChanged, onError }) {
       )}
       <form
         onSubmit={add}
-        className="mt-4 grid gap-3 md:grid-cols-[minmax(10rem,0.5fr)_minmax(14rem,1fr)_auto] md:items-end"
+        className="mt-4 grid items-end gap-3"
+        style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 14rem), 1fr))' }}
       >
         <label className="space-y-1 text-sm font-medium">
           <span>Relationship field</span>

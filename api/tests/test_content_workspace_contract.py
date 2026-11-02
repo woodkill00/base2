@@ -12,6 +12,8 @@ from api.routes import content_workspace
 from api.security.request_auth import PublicPrincipal
 
 
+ORIGINAL_WORKSPACE_ENABLED = content_workspace.workspace_enabled
+
 USER_ID = UUID('00000000-0000-0000-0000-000000001104')
 
 
@@ -169,3 +171,118 @@ def test_definition_lifecycle_requires_expected_lock_and_explicit_lossy_confirma
     assert published.status_code == 200 and published.json()['status'] == 'published'
     retired = client.post(f'{base}/retire', headers=headers, json={'expectedLockVersion': 2})
     assert retired.status_code == 200 and retired.json()['status'] == 'retired'
+
+
+@pytest.mark.parametrize(
+    'key', ['blog-post', 'doc-page', 'portfolio-item', 'old_type', 'a_', 'a' * 63]
+)
+def test_public_family_type_create_and_version_route_preserve_exact_key(key):
+    client = TestClient(app)
+    created = client.post('/api/content/v1/types', json={'typeKey': key, 'name': 'Family'})
+    assert created.status_code == 201
+    assert created.json()['typeKey'] == key
+    read = client.get(f'/api/content/v1/types/{key}/versions/1')
+    assert read.status_code == 200
+    assert read.json()['typeKey'] == key
+
+
+@pytest.mark.parametrize(
+    'key',
+    [
+        'a',
+        'a' * 64,
+        'Blog-post',
+        '-blog',
+        'blog-',
+        'blog--post',
+        'blog-_post',
+        '../blog',
+        'blog/post',
+        'blog\\post',
+        'blog post',
+        'blog;drop',
+        "blog'post",
+        'blog\n',
+        'blög',
+        'blog\u200bpost',
+        'blog%2fpost',
+    ],
+)
+def test_unsafe_type_keys_rejected_by_create_and_route_guard(key):
+    from fastapi import HTTPException
+
+    with pytest.raises(ValidationError):
+        content_workspace.DefinitionCreate(typeKey=key, name='Family')
+    with pytest.raises(HTTPException) as rejected:
+        content_workspace._valid_type_key(key)
+    assert rejected.value.status_code == 422
+
+
+@pytest.mark.parametrize('key', ['blog-post', 'doc-page', 'portfolio-item'])
+def test_type_compatibility_does_not_widen_field_or_preset_keys(key):
+    with pytest.raises(ValidationError):
+        content_workspace.DefinitionCreate(typeKey=key, name='Family', presetId=key)
+    with pytest.raises(ValidationError):
+        content_workspace.FieldDefinition(fieldKey=key, label='Field', fieldKind='short_text')
+
+
+@pytest.mark.parametrize('key', ['blog-post', 'doc-page', 'portfolio-item'])
+def test_public_family_types_do_not_bypass_disabled_workspace(monkeypatch, key):
+    monkeypatch.setattr(content_workspace, 'workspace_enabled', lambda: False)
+    client = TestClient(app)
+    assert (
+        client.post('/api/content/v1/types', json={'typeKey': key, 'name': 'Family'}).status_code
+        == 404
+    )
+    assert client.get(f'/api/content/v1/types/{key}/versions/1').status_code == 404
+
+
+@pytest.mark.parametrize('key', ['blog-post', 'doc-page', 'portfolio-item', 'old_type'])
+def test_relationship_target_type_uses_type_key_contract(key):
+    field = content_workspace.FieldDefinition(
+        fieldKey='related', label='Related', fieldKind='reference', validation={'targetType': key}
+    )
+    assert field.validation['targetType'] == key
+
+
+@pytest.mark.parametrize('key', ['blog--post', '../blog', 'Blog', 'blog\\post', 'blog\n', 'a' * 64])
+def test_relationship_target_type_rejects_unsafe_keys(key):
+    with pytest.raises(ValidationError):
+        content_workspace.FieldDefinition(
+            fieldKey='related',
+            label='Related',
+            fieldKind='reference',
+            validation={'targetType': key},
+        )
+
+
+@pytest.mark.parametrize(
+    'profile,enabled',
+    [
+        ('journey-reference', True),
+        ('base2-obsidian', True),
+        ('ember-studio', False),
+        ('northstar-library', False),
+    ],
+)
+def test_generated_manifest_still_governs_family_type_discovery_and_routes(
+    monkeypatch, profile, enabled
+):
+    import json
+    from pathlib import Path
+
+    manifest = json.loads(
+        (Path(__file__).resolve().parents[1] / 'site_profiles' / f'{profile}.json').read_text()
+    )
+    monkeypatch.setattr(content_workspace, 'SITE_MANIFEST', manifest)
+    monkeypatch.setattr(content_workspace, 'workspace_enabled', ORIGINAL_WORKSPACE_ENABLED)
+    assert content_workspace.workspace_enabled() is enabled
+    client = TestClient(app)
+    assert client.get('/api/content/v1/capabilities').status_code == (200 if enabled else 404)
+    for key in ('blog-post', 'doc-page', 'portfolio-item'):
+        assert client.post(
+            '/api/content/v1/types', json={'typeKey': key, 'name': 'Family'}
+        ).status_code == (201 if enabled else 404)
+        assert client.get(f'/api/content/v1/types/{key}/versions/1').status_code == (
+            200 if enabled else 404
+        )

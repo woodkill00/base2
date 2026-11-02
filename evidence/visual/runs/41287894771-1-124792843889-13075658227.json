@@ -1,0 +1,335 @@
+{
+  "archiveSha256": "2635c55d5dd224277d3af7173806fec5267da8e5824c899678873c6cb57ded48",
+  "artifactId": 13075658227,
+  "attempt": 1,
+  "captures": [
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "unavailable-in-retained-inventory",
+          "member": "chromium-400-zoom.zip",
+          "sha256": null
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "media-release-media-detail-fa505-age-and-consequence-context-chromium-400-zoom/test-failed-1.png",
+          "sha256": "b0042f258f163ce4c92a4cf02dff068ec99fbb02d94e216769990e0ef2ba8f15"
+        }
+      ],
+      "bytes": 69871,
+      "dimensions": [
+        320,
+        720
+      ],
+      "identityBasis": "native-report",
+      "member": "media-release-media-detail-fa505-age-and-consequence-context-chromium-400-zoom/test-failed-1.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-report",
+        "project": "chromium-400-zoom",
+        "title": "media detail preserves safe preview usage and consequence context"
+      },
+      "project": "chromium-400-zoom",
+      "role": "failure",
+      "sha256": "b0042f258f163ce4c92a4cf02dff068ec99fbb02d94e216769990e0ef2ba8f15",
+      "storage": "objects/b0042f258f163ce4c92a4cf02dff068ec99fbb02d94e216769990e0ef2ba8f15.png",
+      "test": "media detail preserves safe preview usage and consequence context",
+      "viewport": [
+        320,
+        720
+      ],
+      "viewportBasis": "native-project-config"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "unavailable-in-retained-inventory",
+          "member": "chromium-400-zoom.zip",
+          "sha256": null
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-400-zoom/current-media-library-viewport-0.png",
+          "sha256": "1dd8ddf1d228550c2e286dc79087c6b958c4e1ee36035bce5dcf7f09767e17a3"
+        }
+      ],
+      "bytes": 183117,
+      "dimensions": [
+        320,
+        720
+      ],
+      "identityBasis": "native-report",
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-400-zoom/current-media-library-viewport-0.png",
+      "originalOutcome": "passed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "passed"
+        ],
+        "basis": "retained-native-report",
+        "project": "chromium-400-zoom",
+        "title": "media library is accessible responsive and visually reviewed"
+      },
+      "project": "chromium-400-zoom",
+      "role": "current",
+      "sha256": "1dd8ddf1d228550c2e286dc79087c6b958c4e1ee36035bce5dcf7f09767e17a3",
+      "storage": "objects/1dd8ddf1d228550c2e286dc79087c6b958c4e1ee36035bce5dcf7f09767e17a3.png",
+      "test": "media library is accessible responsive and visually reviewed",
+      "viewport": [
+        320,
+        720
+      ],
+      "viewportBasis": "native-project-config"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "unavailable-in-retained-inventory",
+          "member": "chromium-400-zoom.zip",
+          "sha256": null
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-400-zoom/current-media-library-viewport-2.png",
+          "sha256": "b42f55c9b1c11b369070aa7d9e0813ce368d9f595ec3694f37dc4bfcbebe6a0f"
+        }
+      ],
+      "bytes": 191338,
+      "dimensions": [
+        320,
+        720
+      ],
+      "identityBasis": "native-report",
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-400-zoom/current-media-library-viewport-2.png",
+      "originalOutcome": "passed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "passed"
+        ],
+        "basis": "retained-native-report",
+        "project": "chromium-400-zoom",
+        "title": "media library is accessible responsive and visually reviewed"
+      },
+      "project": "chromium-400-zoom",
+      "role": "current",
+      "sha256": "b42f55c9b1c11b369070aa7d9e0813ce368d9f595ec3694f37dc4bfcbebe6a0f",
+      "storage": "objects/b42f55c9b1c11b369070aa7d9e0813ce368d9f595ec3694f37dc4bfcbebe6a0f.png",
+      "test": "media library is accessible responsive and visually reviewed",
+      "viewport": [
+        320,
+        720
+      ],
+      "viewportBasis": "native-project-config"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "unavailable-in-retained-inventory",
+          "member": "chromium-400-zoom.zip",
+          "sha256": null
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-400-zoom/current-media-library-viewport-4.png",
+          "sha256": "8c5508b5ad893640c71f9fa5070bc89dab9d85a56d41d0ee6b961b8364da4b2c"
+        }
+      ],
+      "bytes": 170607,
+      "dimensions": [
+        320,
+        720
+      ],
+      "identityBasis": "native-report",
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-400-zoom/current-media-library-viewport-4.png",
+      "originalOutcome": "passed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "passed"
+        ],
+        "basis": "retained-native-report",
+        "project": "chromium-400-zoom",
+        "title": "media library is accessible responsive and visually reviewed"
+      },
+      "project": "chromium-400-zoom",
+      "role": "current",
+      "sha256": "8c5508b5ad893640c71f9fa5070bc89dab9d85a56d41d0ee6b961b8364da4b2c",
+      "storage": "objects/8c5508b5ad893640c71f9fa5070bc89dab9d85a56d41d0ee6b961b8364da4b2c.png",
+      "test": "media library is accessible responsive and visually reviewed",
+      "viewport": [
+        320,
+        720
+      ],
+      "viewportBasis": "native-project-config"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "unavailable-in-retained-inventory",
+          "member": "chromium-400-zoom.zip",
+          "sha256": null
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-400-zoom/current-media-library.png",
+          "sha256": "ac4df5348f29b1abdfdde356d4f242fd7469f52aeb53cd7dbad7e4496dbc80a9"
+        }
+      ],
+      "bytes": 391353,
+      "dimensions": [
+        320,
+        3128
+      ],
+      "identityBasis": "native-report",
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-400-zoom/current-media-library.png",
+      "originalOutcome": "passed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "passed"
+        ],
+        "basis": "retained-native-report",
+        "project": "chromium-400-zoom",
+        "title": "media library is accessible responsive and visually reviewed"
+      },
+      "project": "chromium-400-zoom",
+      "role": "current",
+      "sha256": "ac4df5348f29b1abdfdde356d4f242fd7469f52aeb53cd7dbad7e4496dbc80a9",
+      "storage": "objects/ac4df5348f29b1abdfdde356d4f242fd7469f52aeb53cd7dbad7e4496dbc80a9.png",
+      "test": "media library is accessible responsive and visually reviewed",
+      "viewport": [
+        320,
+        720
+      ],
+      "viewportBasis": "native-project-config"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "unavailable-in-retained-inventory",
+          "member": "chromium-400-zoom.zip",
+          "sha256": null
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "media-release-media-picker-72bf8-ontained-in-a-real-workflow-chromium-400-zoom/current-media-picker-bottom.png",
+          "sha256": "6f2de7ee3f739b0ee130d015c2fb61c1d1244a80304690cd7108fa3e84246343"
+        }
+      ],
+      "bytes": 30620,
+      "dimensions": [
+        300,
+        670
+      ],
+      "identityBasis": "native-report",
+      "member": "media-release-media-picker-72bf8-ontained-in-a-real-workflow-chromium-400-zoom/current-media-picker-bottom.png",
+      "originalOutcome": "passed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "passed"
+        ],
+        "basis": "retained-native-report",
+        "project": "chromium-400-zoom",
+        "title": "media picker is visually and keyboard contained in a real workflow"
+      },
+      "project": "chromium-400-zoom",
+      "role": "current",
+      "sha256": "6f2de7ee3f739b0ee130d015c2fb61c1d1244a80304690cd7108fa3e84246343",
+      "storage": "objects/6f2de7ee3f739b0ee130d015c2fb61c1d1244a80304690cd7108fa3e84246343.png",
+      "test": "media picker is visually and keyboard contained in a real workflow",
+      "viewport": [
+        320,
+        720
+      ],
+      "viewportBasis": "native-project-config"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "unavailable-in-retained-inventory",
+          "member": "chromium-400-zoom.zip",
+          "sha256": null
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "media-release-media-picker-72bf8-ontained-in-a-real-workflow-chromium-400-zoom/current-media-picker.png",
+          "sha256": "6f2de7ee3f739b0ee130d015c2fb61c1d1244a80304690cd7108fa3e84246343"
+        }
+      ],
+      "bytes": 30620,
+      "dimensions": [
+        300,
+        670
+      ],
+      "identityBasis": "native-report",
+      "member": "media-release-media-picker-72bf8-ontained-in-a-real-workflow-chromium-400-zoom/current-media-picker.png",
+      "originalOutcome": "passed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "passed"
+        ],
+        "basis": "retained-native-report",
+        "project": "chromium-400-zoom",
+        "title": "media picker is visually and keyboard contained in a real workflow"
+      },
+      "project": "chromium-400-zoom",
+      "role": "current",
+      "sha256": "6f2de7ee3f739b0ee130d015c2fb61c1d1244a80304690cd7108fa3e84246343",
+      "storage": "objects/6f2de7ee3f739b0ee130d015c2fb61c1d1244a80304690cd7108fa3e84246343.png",
+      "test": "media picker is visually and keyboard contained in a real workflow",
+      "viewport": [
+        320,
+        720
+      ],
+      "viewportBasis": "native-project-config"
+    }
+  ],
+  "fixtureScope": "synthetic-project-tests",
+  "jobId": 124792843889,
+  "laterValidation": "pending",
+  "observations": [
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "unavailable-in-retained-inventory",
+          "member": "chromium-400-zoom.zip",
+          "sha256": null
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-400-zoom/media-viewport-observations.json",
+          "sha256": "2f4c0e655f7339e40aead06c699ebb770c38d3afe8ba7f4407ad0b556f493649"
+        }
+      ],
+      "bytes": 9310,
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-400-zoom/media-viewport-observations.json",
+      "project": "chromium-400-zoom",
+      "schemaVersion": 1,
+      "sha256": "2f4c0e655f7339e40aead06c699ebb770c38d3afe8ba7f4407ad0b556f493649",
+      "storage": "observations/2f4c0e655f7339e40aead06c699ebb770c38d3afe8ba7f4407ad0b556f493649.json"
+    }
+  ],
+  "originalOutcome": "failed",
+  "repository": "woodkill00/base2",
+  "requestedHead": "173c17eaf44e93850901f474be29b2fa7b83e2fb",
+  "runId": 41287894771,
+  "schemaVersion": 2,
+  "sourceCommit": "173c17eaf44e93850901f474be29b2fa7b83e2fb",
+  "sourceTree": "023cea326bf1cb1298dd60a0e1e9743af6746cae",
+  "technicalReview": "pending",
+  "transfer": {
+    "blobs": {
+      "1dd8ddf1d228550c2e286dc79087c6b958c4e1ee36035bce5dcf7f09767e17a3": "5b67f472683dbf80fcd43411f20a8dc348f56bc2",
+      "2f4c0e655f7339e40aead06c699ebb770c38d3afe8ba7f4407ad0b556f493649": "dedbafd7c3202446c268128f2bac73e51c17b945",
+      "6f2de7ee3f739b0ee130d015c2fb61c1d1244a80304690cd7108fa3e84246343": "a8b6b12697e3fd5f756bebf4863e5bb5554464f7",
+      "8c5508b5ad893640c71f9fa5070bc89dab9d85a56d41d0ee6b961b8364da4b2c": "d5d6ce04d6193c0a09c29331fdc6059ec2598abb",
+      "ac4df5348f29b1abdfdde356d4f242fd7469f52aeb53cd7dbad7e4496dbc80a9": "f27413f35a0e9f662bb4aef7b9dcbded22567b19",
+      "b0042f258f163ce4c92a4cf02dff068ec99fbb02d94e216769990e0ef2ba8f15": "29248e307333ffb66a8cdd25bda26216abb4a681",
+      "b42f55c9b1c11b369070aa7d9e0813ce368d9f595ec3694f37dc4bfcbebe6a0f": "aeb5544e0c17f4a6632a77e2f76f3f2383aceafb"
+    },
+    "commit": "b062a60c1319fd21480c92022cf91d5da9bca62a",
+    "localVerification": "git-blob-sha256-size-dimensions-full-decode",
+    "originalArchiveVerification": "externally-verified-zip-and-members",
+    "tree": "b3f3d390dd5497330b862e6452e4c901c345a05f"
+  }
+}

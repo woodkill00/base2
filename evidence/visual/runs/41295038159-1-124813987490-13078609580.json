@@ -1,0 +1,519 @@
+{
+  "archiveSha256": "d36d1092f6f9da5a75afed79ef208aad299ddda30d68414d25b675625f53c5e6",
+  "artifactId": 13078609580,
+  "attempt": 1,
+  "captures": [
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "firefox-desktop.zip",
+          "sha256": "f1bb1eb5ad4596239b34687ade199575b805136c6da457e50a58d387151428de"
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "operations-release-operati-5407b-ponsive-and-visually-stable-firefox-desktop/operations-center-firefox-desktop-actual.png",
+          "sha256": "a2a4c9a958a4ae5c2ad8ecab0f7f87ddf0c2ae078c9228168f6034a3949845f3"
+        }
+      ],
+      "bytes": 1109240,
+      "dimensions": [
+        1440,
+        3021
+      ],
+      "identityBasis": "native-report",
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-firefox-desktop/operations-center-firefox-desktop-actual.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-report",
+        "project": "firefox-desktop",
+        "title": "operations center is accessible responsive and visually stable"
+      },
+      "project": "firefox-desktop",
+      "role": "actual",
+      "sha256": "a2a4c9a958a4ae5c2ad8ecab0f7f87ddf0c2ae078c9228168f6034a3949845f3",
+      "storage": "objects/a2a4c9a958a4ae5c2ad8ecab0f7f87ddf0c2ae078c9228168f6034a3949845f3.png",
+      "test": "operations center is accessible responsive and visually stable",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "viewportBasis": "native-project-config"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "firefox-desktop.zip",
+          "sha256": "f1bb1eb5ad4596239b34687ade199575b805136c6da457e50a58d387151428de"
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "operations-release-operati-5407b-ponsive-and-visually-stable-firefox-desktop/operations-center-firefox-desktop-diff.png",
+          "sha256": "3a365c33d86d95d5e9d638be099e480df9ca21a3850582c5d4e10b8dc8164939"
+        }
+      ],
+      "bytes": 338464,
+      "dimensions": [
+        1440,
+        3021
+      ],
+      "identityBasis": "native-report",
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-firefox-desktop/operations-center-firefox-desktop-diff.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-report",
+        "project": "firefox-desktop",
+        "title": "operations center is accessible responsive and visually stable"
+      },
+      "project": "firefox-desktop",
+      "role": "diff",
+      "sha256": "3a365c33d86d95d5e9d638be099e480df9ca21a3850582c5d4e10b8dc8164939",
+      "storage": "objects/3a365c33d86d95d5e9d638be099e480df9ca21a3850582c5d4e10b8dc8164939.png",
+      "test": "operations center is accessible responsive and visually stable",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "viewportBasis": "native-project-config"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "firefox-desktop.zip",
+          "sha256": "f1bb1eb5ad4596239b34687ade199575b805136c6da457e50a58d387151428de"
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "operations-release-operati-5407b-ponsive-and-visually-stable-firefox-desktop/operations-center-firefox-desktop-expected.png",
+          "sha256": "a094ae700e522cda919684a716238dc95496a9bb0cd610dcf8d9cf9e2535a043"
+        }
+      ],
+      "bytes": 994124,
+      "dimensions": [
+        1440,
+        2950
+      ],
+      "identityBasis": "native-report",
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-firefox-desktop/operations-center-firefox-desktop-expected.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-report",
+        "project": "firefox-desktop",
+        "title": "operations center is accessible responsive and visually stable"
+      },
+      "project": "firefox-desktop",
+      "role": "expected",
+      "sha256": "a094ae700e522cda919684a716238dc95496a9bb0cd610dcf8d9cf9e2535a043",
+      "storage": "objects/a094ae700e522cda919684a716238dc95496a9bb0cd610dcf8d9cf9e2535a043.png",
+      "test": "operations center is accessible responsive and visually stable",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "viewportBasis": "native-project-config"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "firefox-desktop.zip",
+          "sha256": "f1bb1eb5ad4596239b34687ade199575b805136c6da457e50a58d387151428de"
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "operations-release-operati-5407b-ponsive-and-visually-stable-firefox-desktop/test-failed-1.png",
+          "sha256": "9d6bbafe6b117f3f963e9c395034d391c8f74e36e223cefca090efb2894592fd"
+        }
+      ],
+      "bytes": 778285,
+      "dimensions": [
+        1440,
+        1000
+      ],
+      "identityBasis": "native-report",
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-firefox-desktop/test-failed-1.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-report",
+        "project": "firefox-desktop",
+        "title": "operations center is accessible responsive and visually stable"
+      },
+      "project": "firefox-desktop",
+      "role": "failure",
+      "sha256": "9d6bbafe6b117f3f963e9c395034d391c8f74e36e223cefca090efb2894592fd",
+      "storage": "objects/9d6bbafe6b117f3f963e9c395034d391c8f74e36e223cefca090efb2894592fd.png",
+      "test": "operations center is accessible responsive and visually stable",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "viewportBasis": "native-project-config"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "firefox-desktop.zip",
+          "sha256": "f1bb1eb5ad4596239b34687ade199575b805136c6da457e50a58d387151428de"
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "operations-release-operati-84a1a-ul-empty-and-failure-states-firefox-desktop/operations-center-empty-actual.png",
+          "sha256": "aa60e346e9821aa587724f9f272180c5fdaad76091598b927e1e15498ae300fb"
+        }
+      ],
+      "bytes": 986557,
+      "dimensions": [
+        1440,
+        2265
+      ],
+      "identityBasis": "native-report",
+      "member": "operations-release-operati-84a1a-ul-empty-and-failure-states-firefox-desktop/operations-center-empty-actual.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-report",
+        "project": "firefox-desktop",
+        "title": "operations center shows truthful empty and failure states"
+      },
+      "project": "firefox-desktop",
+      "role": "actual",
+      "sha256": "aa60e346e9821aa587724f9f272180c5fdaad76091598b927e1e15498ae300fb",
+      "storage": "objects/aa60e346e9821aa587724f9f272180c5fdaad76091598b927e1e15498ae300fb.png",
+      "test": "operations center shows truthful empty and failure states",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "viewportBasis": "native-project-config"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "firefox-desktop.zip",
+          "sha256": "f1bb1eb5ad4596239b34687ade199575b805136c6da457e50a58d387151428de"
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "operations-release-operati-84a1a-ul-empty-and-failure-states-firefox-desktop/operations-center-empty-diff.png",
+          "sha256": "f73d4019df95d7128a425464b98984a334d7bf97e62f0e006e088520543fb2f8"
+        }
+      ],
+      "bytes": 232808,
+      "dimensions": [
+        1440,
+        2265
+      ],
+      "identityBasis": "native-report",
+      "member": "operations-release-operati-84a1a-ul-empty-and-failure-states-firefox-desktop/operations-center-empty-diff.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-report",
+        "project": "firefox-desktop",
+        "title": "operations center shows truthful empty and failure states"
+      },
+      "project": "firefox-desktop",
+      "role": "diff",
+      "sha256": "f73d4019df95d7128a425464b98984a334d7bf97e62f0e006e088520543fb2f8",
+      "storage": "objects/f73d4019df95d7128a425464b98984a334d7bf97e62f0e006e088520543fb2f8.png",
+      "test": "operations center shows truthful empty and failure states",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "viewportBasis": "native-project-config"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "firefox-desktop.zip",
+          "sha256": "f1bb1eb5ad4596239b34687ade199575b805136c6da457e50a58d387151428de"
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "operations-release-operati-84a1a-ul-empty-and-failure-states-firefox-desktop/operations-center-empty-expected.png",
+          "sha256": "4c78c9d3387a5712fb94a8b313259afdeef01cc2d47bb7b1c73d1bfb3186c98e"
+        }
+      ],
+      "bytes": 885338,
+      "dimensions": [
+        1440,
+        2255
+      ],
+      "identityBasis": "native-report",
+      "member": "operations-release-operati-84a1a-ul-empty-and-failure-states-firefox-desktop/operations-center-empty-expected.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-report",
+        "project": "firefox-desktop",
+        "title": "operations center shows truthful empty and failure states"
+      },
+      "project": "firefox-desktop",
+      "role": "expected",
+      "sha256": "4c78c9d3387a5712fb94a8b313259afdeef01cc2d47bb7b1c73d1bfb3186c98e",
+      "storage": "objects/4c78c9d3387a5712fb94a8b313259afdeef01cc2d47bb7b1c73d1bfb3186c98e.png",
+      "test": "operations center shows truthful empty and failure states",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "viewportBasis": "native-project-config"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "firefox-desktop.zip",
+          "sha256": "f1bb1eb5ad4596239b34687ade199575b805136c6da457e50a58d387151428de"
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "operations-release-operati-84a1a-ul-empty-and-failure-states-firefox-desktop/test-failed-1.png",
+          "sha256": "9cbf2c3de87af93a053f4fdfca4f0cb9543e2c2caf45aa7d480eba9bb958801f"
+        }
+      ],
+      "bytes": 779865,
+      "dimensions": [
+        1440,
+        1000
+      ],
+      "identityBasis": "native-report",
+      "member": "operations-release-operati-84a1a-ul-empty-and-failure-states-firefox-desktop/test-failed-1.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-report",
+        "project": "firefox-desktop",
+        "title": "operations center shows truthful empty and failure states"
+      },
+      "project": "firefox-desktop",
+      "role": "failure",
+      "sha256": "9cbf2c3de87af93a053f4fdfca4f0cb9543e2c2caf45aa7d480eba9bb958801f",
+      "storage": "objects/9cbf2c3de87af93a053f4fdfca4f0cb9543e2c2caf45aa7d480eba9bb958801f.png",
+      "test": "operations center shows truthful empty and failure states",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "viewportBasis": "native-project-config"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "firefox-desktop.zip",
+          "sha256": "f1bb1eb5ad4596239b34687ade199575b805136c6da457e50a58d387151428de"
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "operations-release-operati-e5f8f-d-read-only-recovery-states-firefox-desktop/operations-center-partial-actual.png",
+          "sha256": "a63a27a5bd4e2fcf72d5b6861e32c425c5dec0a6a46e9cb48426aaea72413f5b"
+        }
+      ],
+      "bytes": 1211001,
+      "dimensions": [
+        1440,
+        3208
+      ],
+      "identityBasis": "native-report",
+      "member": "operations-release-operati-e5f8f-d-read-only-recovery-states-firefox-desktop/operations-center-partial-actual.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-report",
+        "project": "firefox-desktop",
+        "title": "operations center exposes stale, reauthentication, and read-only recovery states"
+      },
+      "project": "firefox-desktop",
+      "role": "actual",
+      "sha256": "a63a27a5bd4e2fcf72d5b6861e32c425c5dec0a6a46e9cb48426aaea72413f5b",
+      "storage": "objects/a63a27a5bd4e2fcf72d5b6861e32c425c5dec0a6a46e9cb48426aaea72413f5b.png",
+      "test": "operations center exposes stale, reauthentication, and read-only recovery states",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "viewportBasis": "native-project-config"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "firefox-desktop.zip",
+          "sha256": "f1bb1eb5ad4596239b34687ade199575b805136c6da457e50a58d387151428de"
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "operations-release-operati-e5f8f-d-read-only-recovery-states-firefox-desktop/operations-center-partial-diff.png",
+          "sha256": "cd5d986540291c4c76f4c886b656229646fa2d74ccbcaa51b74a4ea5c4a6c651"
+        }
+      ],
+      "bytes": 352461,
+      "dimensions": [
+        1440,
+        3208
+      ],
+      "identityBasis": "native-report",
+      "member": "operations-release-operati-e5f8f-d-read-only-recovery-states-firefox-desktop/operations-center-partial-diff.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-report",
+        "project": "firefox-desktop",
+        "title": "operations center exposes stale, reauthentication, and read-only recovery states"
+      },
+      "project": "firefox-desktop",
+      "role": "diff",
+      "sha256": "cd5d986540291c4c76f4c886b656229646fa2d74ccbcaa51b74a4ea5c4a6c651",
+      "storage": "objects/cd5d986540291c4c76f4c886b656229646fa2d74ccbcaa51b74a4ea5c4a6c651.png",
+      "test": "operations center exposes stale, reauthentication, and read-only recovery states",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "viewportBasis": "native-project-config"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "firefox-desktop.zip",
+          "sha256": "f1bb1eb5ad4596239b34687ade199575b805136c6da457e50a58d387151428de"
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "operations-release-operati-e5f8f-d-read-only-recovery-states-firefox-desktop/operations-center-partial-expected.png",
+          "sha256": "74c254bfe1ac1e3ef3c5c9e655965db0aa33ce849ddeb54ce9947c6a1b241ca0"
+        }
+      ],
+      "bytes": 1119181,
+      "dimensions": [
+        1440,
+        3138
+      ],
+      "identityBasis": "native-report",
+      "member": "operations-release-operati-e5f8f-d-read-only-recovery-states-firefox-desktop/operations-center-partial-expected.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-report",
+        "project": "firefox-desktop",
+        "title": "operations center exposes stale, reauthentication, and read-only recovery states"
+      },
+      "project": "firefox-desktop",
+      "role": "expected",
+      "sha256": "74c254bfe1ac1e3ef3c5c9e655965db0aa33ce849ddeb54ce9947c6a1b241ca0",
+      "storage": "objects/74c254bfe1ac1e3ef3c5c9e655965db0aa33ce849ddeb54ce9947c6a1b241ca0.png",
+      "test": "operations center exposes stale, reauthentication, and read-only recovery states",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "viewportBasis": "native-project-config"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "firefox-desktop.zip",
+          "sha256": "f1bb1eb5ad4596239b34687ade199575b805136c6da457e50a58d387151428de"
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "operations-release-operati-e5f8f-d-read-only-recovery-states-firefox-desktop/test-failed-1.png",
+          "sha256": "e63f2a01743c31451f50a56f8e08e459123bbfd4c935a8a3fb830a5f119094f7"
+        }
+      ],
+      "bytes": 838982,
+      "dimensions": [
+        1440,
+        1000
+      ],
+      "identityBasis": "native-report",
+      "member": "operations-release-operati-e5f8f-d-read-only-recovery-states-firefox-desktop/test-failed-1.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-report",
+        "project": "firefox-desktop",
+        "title": "operations center exposes stale, reauthentication, and read-only recovery states"
+      },
+      "project": "firefox-desktop",
+      "role": "failure",
+      "sha256": "e63f2a01743c31451f50a56f8e08e459123bbfd4c935a8a3fb830a5f119094f7",
+      "storage": "objects/e63f2a01743c31451f50a56f8e08e459123bbfd4c935a8a3fb830a5f119094f7.png",
+      "test": "operations center exposes stale, reauthentication, and read-only recovery states",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "viewportBasis": "native-project-config"
+    }
+  ],
+  "fixtureScope": "synthetic-project-tests",
+  "jobId": 124813987490,
+  "laterValidation": "pending",
+  "observations": [],
+  "originalOutcome": "failed",
+  "repository": "woodkill00/base2",
+  "requestedHead": "cb674560dc15de030d39491367646b2a15276be7",
+  "runId": 41295038159,
+  "schemaVersion": 2,
+  "sourceCommit": "cb674560dc15de030d39491367646b2a15276be7",
+  "sourceTree": "14a670e2b5049b6658e453d6307727cbf66670c4",
+  "technicalReview": "pending",
+  "transfer": {
+    "blobs": {
+      "3a365c33d86d95d5e9d638be099e480df9ca21a3850582c5d4e10b8dc8164939": "62d74bc275db52476cd62ba2d5faad7c4c711d3c",
+      "4c78c9d3387a5712fb94a8b313259afdeef01cc2d47bb7b1c73d1bfb3186c98e": "80519ba06033176b3133ec79f59320980855023d",
+      "74c254bfe1ac1e3ef3c5c9e655965db0aa33ce849ddeb54ce9947c6a1b241ca0": "1af8fa83b4ef87c1a6a222b6bb9f167c6c44886d",
+      "9cbf2c3de87af93a053f4fdfca4f0cb9543e2c2caf45aa7d480eba9bb958801f": "2091a9a3e5945b373d2e5dd59052b3fc1f6bc4c3",
+      "9d6bbafe6b117f3f963e9c395034d391c8f74e36e223cefca090efb2894592fd": "280b690c6a3b83f0722ddc1e1a7107fc522a8acc",
+      "a094ae700e522cda919684a716238dc95496a9bb0cd610dcf8d9cf9e2535a043": "a7ecb0d76a02e348cafa9177a30030a541d3c8f5",
+      "a2a4c9a958a4ae5c2ad8ecab0f7f87ddf0c2ae078c9228168f6034a3949845f3": "9805aadcfc9782bd6b1561bb59d717f3c3288860",
+      "a63a27a5bd4e2fcf72d5b6861e32c425c5dec0a6a46e9cb48426aaea72413f5b": "678555bfcb4f206bbaca2dea77f2078a12879563",
+      "aa60e346e9821aa587724f9f272180c5fdaad76091598b927e1e15498ae300fb": "fd534b90db57f40ed399363b6131c392d6727bc6",
+      "cd5d986540291c4c76f4c886b656229646fa2d74ccbcaa51b74a4ea5c4a6c651": "3bbb2a4654c24b6c72a2cec8e2e04dd1fc98d82d",
+      "e63f2a01743c31451f50a56f8e08e459123bbfd4c935a8a3fb830a5f119094f7": "ac0f47595c90961dd97837a46940ab085bbd51a1",
+      "f73d4019df95d7128a425464b98984a334d7bf97e62f0e006e088520543fb2f8": "883a290b02ec90ec9a5e9773980ed28decb96290"
+    },
+    "commit": "f64e46dd898a3c4253577498388d38be3425cc4b",
+    "localVerification": "git-blob-sha256-size-dimensions-full-decode",
+    "originalArchiveVerification": "externally-verified-zip-and-members",
+    "tree": "e8425cadd61d77bbc02d87ac4738a894a2401263"
+  }
+}

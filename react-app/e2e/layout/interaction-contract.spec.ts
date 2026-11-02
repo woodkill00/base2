@@ -1,3 +1,4 @@
+import { scrollPageTo, pageScrollTop } from '../scroll-target';
 import { expect, test } from './fixtures';
 
 test.beforeEach(async ({ page }) => {
@@ -16,13 +17,13 @@ test('opening a drawer after scrolling keeps the page in place and the drawer in
   await page.setViewportSize({ width: 390, height: 700 });
   await page.goto('/');
   await expect(page.locator('main')).toBeVisible();
-  await page.evaluate(() => window.scrollTo({ top: 1200, behavior: 'instant' }));
-  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(500);
-  const before = await page.evaluate(() => window.scrollY);
+  await scrollPageTo(page, 1200);
+  await expect.poll(() => pageScrollTop(page)).toBeGreaterThan(500);
+  const before = await pageScrollTop(page);
   await page.getByRole('button', { name: 'Open navigation', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: 'Navigation panel' });
   await expect(dialog).toBeVisible();
-  expect(Math.abs((await page.evaluate(() => window.scrollY)) - before)).toBeLessThanOrEqual(1);
+  expect(Math.abs((await pageScrollTop(page)) - before)).toBeLessThanOrEqual(1);
   const box = await dialog.boundingBox();
   expect(box!.y).toBeGreaterThanOrEqual(0);
   expect(box!.y + box!.height).toBeLessThanOrEqual(701);

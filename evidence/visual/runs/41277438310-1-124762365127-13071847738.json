@@ -1,0 +1,102 @@
+{
+  "archiveSha256": "81b70debad1f0c058a8bedb3a919caf8f7c021553fe457439fca8db89768821a",
+  "artifactId": 13071847738,
+  "attempt": 1,
+  "captures": [
+    {
+      "bytes": 401390,
+      "dimensions": [
+        1280,
+        2081
+      ],
+      "member": "workspace-records-chromium-high-contrast-actual.png",
+      "originalOutcome": "failed",
+      "project": "chromium-high-contrast",
+      "role": "actual",
+      "sha256": "28fbeee09d5e63280ba83a5a97b5fec76b72577985fd5b5f9a7aec2a4c8a9cb0",
+      "storage": "objects/28fbeee09d5e63280ba83a5a97b5fec76b72577985fd5b5f9a7aec2a4c8a9cb0.png",
+      "test": "workspace release corpus is accessible, responsive, and visually stable",
+      "viewport": [
+        1280,
+        900
+      ]
+    },
+    {
+      "bytes": 211077,
+      "dimensions": [
+        1280,
+        2081
+      ],
+      "member": "workspace-records-chromium-high-contrast-diff.png",
+      "originalOutcome": "failed",
+      "project": "chromium-high-contrast",
+      "role": "diff",
+      "sha256": "0d1ff307009131f48f84c95168f180a95a6ffc53b830d17b17cf3e1376776019",
+      "storage": "objects/0d1ff307009131f48f84c95168f180a95a6ffc53b830d17b17cf3e1376776019.png",
+      "test": "workspace release corpus is accessible, responsive, and visually stable",
+      "viewport": [
+        1280,
+        900
+      ]
+    },
+    {
+      "bytes": 484786,
+      "dimensions": [
+        1280,
+        2081
+      ],
+      "member": "workspace-records-chromium-high-contrast-expected.png",
+      "originalOutcome": "failed",
+      "project": "chromium-high-contrast",
+      "role": "expected",
+      "sha256": "7bdddf6ec5dba35ab6e4fb546e4eca2ab8d78de28728111cec7ae704cd8e5f58",
+      "storage": "git:3cdd3716702693f650cd85941640aa083df49a0e:react-app/e2e/workspace/workspace-release.spec.ts-snapshots/workspace-records-chromium-high-contrast-chromium-high-contrast-linux.png",
+      "test": "workspace release corpus is accessible, responsive, and visually stable",
+      "viewport": [
+        1280,
+        900
+      ]
+    },
+    {
+      "bytes": 401395,
+      "dimensions": [
+        1280,
+        2081
+      ],
+      "member": "workspace-records-post-assert.png",
+      "originalOutcome": "failed",
+      "project": "chromium-high-contrast",
+      "role": "current",
+      "sha256": "3ce95570d268c9cd5d0c53becdbd28e702c8355b953acd34ce197cacca3bc888",
+      "storage": "objects/3ce95570d268c9cd5d0c53becdbd28e702c8355b953acd34ce197cacca3bc888.png",
+      "test": "workspace release corpus is accessible, responsive, and visually stable",
+      "viewport": [
+        1280,
+        900
+      ]
+    }
+  ],
+  "fixtureScope": "synthetic-project-tests",
+  "jobId": 124762365127,
+  "laterValidation": "pending",
+  "originalOutcome": "failed",
+  "repository": "woodkill00/base2",
+  "requestedHead": "cf2a9509ff4c223d704dd49bf0e186330809fce8",
+  "runId": 41277438310,
+  "schemaVersion": 1,
+  "sourceCommit": "937f476735d51351ac1e037f7bacad9f2ae077d7",
+  "sourceTree": "cba7bb9da1a5bb3a5d7d8e54be2e13d0513b753d",
+  "technicalReview": "pending",
+  "transfer": {
+    "blobs": {
+      "0d1ff307009131f48f84c95168f180a95a6ffc53b830d17b17cf3e1376776019": "fe030ea9b205e970194ecf67351a7122d0261a21",
+      "28fbeee09d5e63280ba83a5a97b5fec76b72577985fd5b5f9a7aec2a4c8a9cb0": "57fca933091c420e091baf8ebc8408ed4eec2d6c",
+      "3ce95570d268c9cd5d0c53becdbd28e702c8355b953acd34ce197cacca3bc888": "45286261d2566b84dbb87fd6b742bd8e417d647d",
+      "7bdddf6ec5dba35ab6e4fb546e4eca2ab8d78de28728111cec7ae704cd8e5f58": "90b9f7913bd1032af338985e6a9df94fa3b464dc"
+    },
+    "commit": "c1fd5134f08af2905268b870a9a784db9896d003",
+    "localVerification": "git-blob-sha256-size-dimensions-full-decode",
+    "originalArchiveVerification": "externally-verified-zip-and-members",
+    "tree": "1ced85a887bd9f780ee2d141afeada53414c53d8"
+  }
+}

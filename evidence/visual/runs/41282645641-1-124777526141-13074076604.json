@@ -1,0 +1,45 @@
+{
+  "archiveSha256": "ee38f5323157693f150cb19fd472725f855928680530ea8502a7b745db747641",
+  "artifactId": 13074076604,
+  "attempt": 1,
+  "captures": [
+    {
+      "bytes": 401390,
+      "dimensions": [
+        1280,
+        2081
+      ],
+      "member": "workspace-records-post-assert.png",
+      "originalOutcome": "passed",
+      "project": "chromium-high-contrast",
+      "role": "current",
+      "sha256": "28fbeee09d5e63280ba83a5a97b5fec76b72577985fd5b5f9a7aec2a4c8a9cb0",
+      "storage": "objects/28fbeee09d5e63280ba83a5a97b5fec76b72577985fd5b5f9a7aec2a4c8a9cb0.png",
+      "test": "workspace release corpus is accessible, responsive, and visually stable",
+      "viewport": [
+        1280,
+        900
+      ]
+    }
+  ],
+  "fixtureScope": "synthetic-project-tests",
+  "jobId": 124777526141,
+  "laterValidation": "pending",
+  "originalOutcome": "passed",
+  "repository": "woodkill00/base2",
+  "requestedHead": "cfc0c4be5d952322fe3af742394e8fe2c45a2a27",
+  "runId": 41282645641,
+  "schemaVersion": 1,
+  "sourceCommit": "baa257cfc5de23de6e99b3f32823a0058f795f2d",
+  "sourceTree": "703dc350d1235fb0c775a90e2852d9dea3b22dc0",
+  "technicalReview": "pending",
+  "transfer": {
+    "blobs": {
+      "28fbeee09d5e63280ba83a5a97b5fec76b72577985fd5b5f9a7aec2a4c8a9cb0": "57fca933091c420e091baf8ebc8408ed4eec2d6c"
+    },
+    "commit": "11fdc5ef6845633c84d616370ab29aa5aa158bbf",
+    "localVerification": "git-blob-sha256-size-dimensions-full-decode",
+    "originalArchiveVerification": "externally-verified-zip-and-members",
+    "tree": "655957d9478d122e75ebc24bb3d7dce6eeadec3d"
+  }
+}

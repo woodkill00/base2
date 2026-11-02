@@ -98,11 +98,17 @@ export const contentWorkspaceAPI = {
     unwrap(await apiClient.get(recordBase(typeKey, recordId), { signal })),
   createRecord: async (typeKey, payload, { signal } = {}) =>
     unwrap(await apiClient.post(`${typeBase(typeKey)}/records`, payload, { signal })),
-  updateRecord: async (typeKey, recordId, expectedVersion, values, { signal } = {}) =>
+  updateRecord: async (
+    typeKey,
+    recordId,
+    expectedVersion,
+    values,
+    { signal, publicContent } = {}
+  ) =>
     unwrap(
       await apiClient.patch(
         recordBase(typeKey, recordId),
-        { values },
+        { values, ...(publicContent === undefined ? {} : { publicContent }) },
         {
           headers: { 'If-Match': `"${expectedVersion}"` },
           signal,
@@ -115,6 +121,22 @@ export const contentWorkspaceAPI = {
         `${recordBase(typeKey, recordId)}/transitions/${encoded(action)}`,
         { expectedVersion, ...options },
         { signal }
+      )
+    ),
+  approveReview: async (typeKey, recordId, expectedVersion) =>
+    unwrap(
+      await apiClient.post(
+        `${recordBase(typeKey, recordId)}/review-approval`,
+        { expected_version: expectedVersion },
+        { timeout: 10000 }
+      )
+    ),
+  adoptReviewSubject: async (typeKey, recordId, expectedVersion) =>
+    unwrap(
+      await apiClient.post(
+        `${recordBase(typeKey, recordId)}/review-subject`,
+        { expected_version: expectedVersion, adopt_snapshot: true },
+        { timeout: 10000 }
       )
     ),
   versions: async (typeKey, recordId, { signal } = {}) =>

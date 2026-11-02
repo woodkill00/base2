@@ -1,0 +1,102 @@
+{
+  "sourceCommit": "41978d1807f4b0e601a0a1448b2f2958a73f517c",
+  "sourceTree": "315d2db4a8e4b62ef0ae4b434d6906f2c0f4d30c",
+  "requestedHead": "da4d0a72c1e7893e069b95a60c7f3cfcbfa6004a",
+  "runId": "41316879851",
+  "attempt": "1",
+  "outcomes": {
+    "layout": "success",
+    "volcano": "failure",
+    "settings": "success",
+    "workspace": "failure"
+  },
+  "schemaVersion": 1,
+  "shard": 4,
+  "shards": 16,
+  "suites": {
+    "layout": {
+      "sourcePresent": true,
+      "captures": 121,
+      "excludedPngCount": 84,
+      "nativeOutcome": "success"
+    },
+    "volcano": {
+      "sourcePresent": true,
+      "captures": 206,
+      "excludedPngCount": 1,
+      "nativeOutcome": "failure"
+    },
+    "settings": {
+      "sourcePresent": true,
+      "captures": 15,
+      "excludedPngCount": 15,
+      "nativeOutcome": "success"
+    },
+    "workspace": {
+      "sourcePresent": true,
+      "captures": 79,
+      "excludedPngCount": 0,
+      "nativeOutcome": "failure"
+    }
+  },
+  "captureCount": 421,
+  "scope": "Synthetic diagnostic PNG copies; not approved references or visual acceptance. PNG bytes hashed, not decoded by packager.",
+  "captures": [
+    {
+      "path": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-firefox-desktop/workspace-records-firefox-desktop-expected.png",
+      "bytes": 725424,
+      "sha256": "b6f49fb71469b16c8ce91e821841e78bc92e0f7c54ad9cbe705e1cf7f13a5429",
+      "sourceRoot": "workspace",
+      "role": "comparison-expected"
+    },
+    {
+      "path": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-webkit-mobile/current-scrollport-footer.png",
+      "bytes": 317035,
+      "sha256": "5d2c2f1dac2163f340bbbdf833ab3b6717b9e578b73dae1e75ee2568420326f5",
+      "sourceRoot": "workspace",
+      "role": "current-diagnostic"
+    },
+    {
+      "path": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-webkit-mobile/current-scrollport-middle.png",
+      "bytes": 683993,
+      "sha256": "ab72376ddd5b7bf28b16e41effcd8f42ea7194e07892a49b8cf43397846386ab",
+      "sourceRoot": "workspace",
+      "role": "current-diagnostic"
+    },
+    {
+      "path": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-webkit-mobile/current-scrollport-top.png",
+      "bytes": 1086109,
+      "sha256": "71723a79a725b012240480cc253a006f5e5a159c1452291e69d682cbeec6a357",
+      "sourceRoot": "workspace",
+      "role": "current-diagnostic"
+    },
+    {
+      "path": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-webkit-mobile/test-failed-1.png",
+      "bytes": 1086055,
+      "sha256": "c55aa5446317d68641d897c03e5d11d7d0efefee9fd4cb5443c242aed8f82381",
+      "sourceRoot": "workspace",
+      "role": "failure-diagnostic"
+    },
+    {
+      "path": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-webkit-mobile/workspace-records-webkit-mobile-actual.png",
+      "bytes": 244559,
+      "sha256": "f7f31023a9587653fca3fe9be2a4457af1295f8a5286a07645d72ddb018e2697",
+      "sourceRoot": "workspace",
+      "role": "comparison-actual"
+    },
+    {
+      "path": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-webkit-mobile/workspace-records-webkit-mobile-diff.png",
+      "bytes": 98480,
+      "sha256": "bb493c155c42f1ec0c3154dc2fc13e294af5e5ebc18c28ac0066181d1a2b5d5a",
+      "sourceRoot": "workspace",
+      "role": "comparison-diff"
+    },
+    {
+      "path": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-webkit-mobile/workspace-records-webkit-mobile-expected.png",
+      "bytes": 377776,
+      "sha256": "66bff880077d908f6143f1f798bf5e2d2d6fb172bb4afb0016e46723268bfa5c",
+      "sourceRoot": "workspace",
+      "role": "comparison-expected"
+    }
+  ]
+}

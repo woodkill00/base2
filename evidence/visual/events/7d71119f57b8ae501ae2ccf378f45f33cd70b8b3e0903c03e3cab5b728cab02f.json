@@ -1,0 +1,64 @@
+{
+  "conclusion": "inconclusive",
+  "inspections": [
+    {
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-landscape-touch/current-operations-center-chromium-landscape-touch.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "39a1a5ca1d6a0817da551e256f399b4773681e697840860dee5e22383f5bb45d"
+    },
+    {
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-landscape-touch/current-scrollport-footer.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "3345b9327254ff26759bbfc7ad92afdbbcfba7d3ab454245decf3184132fc261"
+    },
+    {
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-landscape-touch/current-scrollport-middle.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "016cf05f8670b8afc13a9c7445918dc8fdc336b79df8cba183fefe45693844c9"
+    },
+    {
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-landscape-touch/current-scrollport-operations-center-chromium-landscape-touch-footer.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "3618dc18ca974950b9f436c9bd9294e9dce49bb14daede7bd6485364446394af"
+    },
+    {
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-landscape-touch/current-scrollport-operations-center-chromium-landscape-touch-middle.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "991c572b6102bf59450782e1eb309d9f11a3e742877182770a268df30525c902"
+    },
+    {
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-landscape-touch/current-scrollport-operations-center-chromium-landscape-touch-top.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "39a1a5ca1d6a0817da551e256f399b4773681e697840860dee5e22383f5bb45d"
+    },
+    {
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-landscape-touch/current-scrollport-top.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "e935e43eba9871b4174a50735c3e2e1213ae6920c7fb84c92c14e404a5ea4570"
+    },
+    {
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-landscape-touch/operations-center-chromium-landscape-touch-actual.png",
+      "method": "contact-sheet-overview",
+      "role": "actual",
+      "sha256": "39a1a5ca1d6a0817da551e256f399b4773681e697840860dee5e22383f5bb45d"
+    },
+    {
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-landscape-touch/test-failed-1.png",
+      "method": "contact-sheet-overview",
+      "role": "failure",
+      "sha256": "3ad54477f34b81efb9f12d7e50ff9105ff131a446df94798f3d8237df62264b6"
+    }
+  ],
+  "kind": "technical-review",
+  "manifest": "runs/41314740935-1-124872282068-13087330407.json",
+  "manifestSha256": "1e0a212791892e8115c41ad7c29f189b6f048036d0392b58bd3844c753b54061",
+  "notes": "Diagnostic only; no baseline or full visual acceptance. Review methods are conservative: partial image inspection maps to overview. Original run failures remain unchanged. Original PNG bytes unchanged; contact-sheet review is overview only, not detailed acceptance. Standard browser suites never ran; no workspace/compact journey/Firefox focus validation. WebKit operations project was not packaged because of budget; oversized original not fetched. WebKit-desktop project images unavailable in bounded archive; not fetched and not visually reviewed. Most images reviewed as contact-sheet overview, not original-scale every text/control. Long full-page small details cannot be certified from overview. No browser interaction, hit-test or source causal inspection by this reviewer. Native pass/failed counts do not establish visual acceptance. Only three expected references reviewed separately; diffs and other references not inspected by this reviewer. Mobile snapshots remain viewport-sized due inner scrollport; top/middle/footer samples do not prove complete continuous content or all interactive states. No dedicated mobile cancellation dialog PNG in retained set; desktop dialog cannot certify mobile dialog presentation. No reference promotion or uploads. No open utility-popup screenshot or geometry receipt in bounded operations bundle; do not infer popup or standard keyboard-journey validation. Prior large-text midword wrapping is fixed: 8 passed, Operations Collect, Replay safely and Cancel are readable; adaptive two-column summaries and one-column runtime details make actual1280x7070 versus golden1280x5813. Full actual inspected in original-scale slices. Compact/tablet/landscape drawer toggles now share reserved bottom control row without covering captured content. Middle/footer recovery states are readable; no prior blank shifted-footer image seen.",
+  "schemaVersion": 2
+}

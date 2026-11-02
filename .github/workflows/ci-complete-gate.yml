@@ -1,0 +1,231 @@
+name: CI (opt-in complete gate)
+
+# Deliberately label-event-only: publishing or updating a PR does not launch this
+# expensive run. Remove/reapply the label to opt in for a new frozen head.
+on:
+  pull_request:
+    types: [labeled]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: complete-gate-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  complete-gate:
+    if: github.event.label.name == 'run-complete-gate' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
+    defaults:
+      run:
+        shell: bash
+    env:
+      CI: '1'
+      HUSKY: '0'
+      STORYBOOK_DISABLE_TELEMETRY: '1'
+    steps:
+      - name: Checkout exact same-repository candidate
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Bind clean source before setup
+        id: source
+        env:
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"
+
+      - name: Set up Python
+        id: python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.12'
+
+      - name: Set up repository-compatible Node
+        id: node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24.20.0'
+
+      - name: Install separate dependency environments
+        id: dependencies
+        run: |
+          # requirements-dev.txt combines incompatible pytest-cov pins. Keep the
+          # established service pins separate; supplements match existing pins.
+          python -m venv .venv-api
+          python -m venv .venv-django
+          python -m venv .venv
+          .venv-api/bin/python -m pip install -r requirements-dev-api.txt jsonschema==4.25.1
+          .venv-django/bin/python -m pip install -r requirements-dev-django.txt
+          .venv/bin/python -m pip install -r digital_ocean/requirements.txt cryptography==50.0.1 psycopg2-binary==2.9.12
+          .venv-api/bin/python -m pip check
+          .venv-django/bin/python -m pip check
+          .venv/bin/python -m pip check
+          # Bare python3 contracts import API modules; tokenized commands retain
+          # their own explicitly selected venv executables.
+          echo "$GITHUB_WORKSPACE/.venv-api/bin" >> "$GITHUB_PATH"
+          .venv/bin/python -c 'import azure.core.exceptions, cryptography, jsonschema, paramiko, psycopg2, pydo, pytest, coverage, yaml'
+          .venv-api/bin/python -c 'import celery, fastapi, httpx, jwt, passlib, PIL, pypdf, pydantic, pydantic_settings, psycopg2, redis, starlette, jsonschema, yaml'
+          .venv-django/bin/python -c 'import django, pytest, pytest_django, mypy, ruff'
+          test "$(node --version)" = v24.20.0
+          test "$(npm --version)" = 11.19.0
+          # Match the root lock install policy used by both security jobs.
+          npm ci --legacy-peer-deps
+          npm ci --prefix react-app --legacy-peer-deps
+          npm ci --prefix e2e
+
+      - name: Install each lockfile's browser revisions
+        id: browsers
+        run: |
+          npm --prefix react-app exec -- playwright install --with-deps chromium firefox webkit
+          npm --prefix e2e run install:browsers
+
+      - name: Install approved-reference fonts
+        id: fonts
+        run: |
+          sudo apt-get install --no-install-recommends -y fonts-ubuntu=0.869+git20240321-0ubuntu1
+          fc-cache -f
+          test "$(fc-match -f '%{family}' Ubuntu)" = Ubuntu
+          dpkg-query -W fonts-ubuntu
+
+      - name: Build exact-source acceptance images
+        id: images
+        run: |
+          docker info --format '{{.ServerVersion}}'
+          docker compose version
+          command -v curl
+          command -v openssl
+          docker build --build-arg DOCKER_LIBRARY_REGISTRY=mirror.gcr.io/library --build-arg PYTHON_VERSION=3.12-slim-bookworm --tag base2-local-api:latest api
+          docker build --build-arg DOCKER_LIBRARY_REGISTRY=mirror.gcr.io/library --build-arg PYTHON_VERSION=3.12-slim-bookworm --tag base2-local-django:latest django
+          docker image inspect --format '{{.Id}}' base2-local-api:latest base2-local-django:latest
+
+      - name: Recheck immutable candidate after setup
+        id: clean
+        env:
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+          status="$(git status --porcelain=v1 --untracked-files=all)"
+          if [[ -n "$status" ]]; then
+            # Paths only, quoted and bounded; never emit source/file contents.
+            printf '%s' "$status" | python3 -c 'import sys; rows = sys.stdin.read().splitlines(); print("dirty-source-count:", len(rows)); [print("dirty-source:", ascii(row[:240])) for row in rows[:20]]'
+          fi
+          test -z "$status"
+          .venv-api/bin/python -m pytest scripts/tests/test_complete_gate_ci.py -q -o addopts= --no-cov
+
+      - name: Produce real exact-head stability repetitions
+        id: repetitions
+        run: .venv/bin/python digital_ocean/scripts/python/feature_106_repetitions.py
+
+      - name: Execute unchanged complete gate sequentially
+        id: gate
+        run: bash scripts/bash/complete-gate.sh
+
+      - name: Summarize setup and execution without environment disclosure
+        if: always()
+        env:
+          SOURCE: ${{ steps.source.outcome }}
+          PYTHON: ${{ steps.python.outcome }}
+          NODE: ${{ steps.node.outcome }}
+          DEPENDENCIES: ${{ steps.dependencies.outcome }}
+          BROWSERS: ${{ steps.browsers.outcome }}
+          FONTS: ${{ steps.fonts.outcome }}
+          IMAGES: ${{ steps.images.outcome }}
+          CLEAN: ${{ steps.clean.outcome }}
+          REPETITIONS: ${{ steps.repetitions.outcome }}
+          GATE: ${{ steps.gate.outcome }}
+        run: |
+          mkdir -m 700 "$RUNNER_TEMP/complete-gate-evidence"
+          summary="$RUNNER_TEMP/complete-gate-evidence/stages.md"
+          printf '| Stage | Outcome |\n| --- | --- |\n' > "$summary"
+          for stage in SOURCE PYTHON NODE DEPENDENCIES BROWSERS FONTS IMAGES CLEAN REPETITIONS GATE; do
+            printf '| %s | %s |\n' "$stage" "${!stage:-not-run}" >> "$summary"
+          done
+          printf '\nSetup failure or skipped gate is not a complete-gate pass. Whole-database restoration and media-security remain separate release obligations.\n' >> "$summary"
+          cat "$summary" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Validate and archive only private runner evidence
+        id: package
+        if: always() && steps.source.outcome == 'success'
+        env:
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
+          GATE_OUTCOME: ${{ steps.gate.outcome }}
+          REPETITIONS_OUTCOME: ${{ steps.repetitions.outcome }}
+        run: |
+          python3 - <<'PYTHON'
+          import os
+          import stat
+          import tarfile
+          from pathlib import Path
+          from scripts.python.run_complete_gate import validate_gate_evidence
+          from digital_ocean.scripts.python.feature_106_repetitions import _validate_existing
+
+          root = Path.cwd().resolve()
+          patterns = (
+              '.artifacts/complete-gate/*/result.json',
+              '.artifacts/complete-gate/*/*.log',
+              '.artifacts/feature-106-repetitions/*/result.json',
+              '.artifacts/feature-106-repetitions/*/*.log',
+              '.artifacts/feature-106-repetitions/failures/*/*/result.json',
+              '.artifacts/feature-106-repetitions/failures/*/*/failure.log',
+          )
+          files = sorted({path for pattern in patterns for path in root.glob(pattern)})
+          members = set()
+          for path in files:
+              for member in (path, *path.parents):
+                  if member == root:
+                      break
+                  metadata = member.lstat()
+                  expected_mode = 0o600 if member == path else 0o700
+                  if (member.is_symlink() or metadata.st_uid != os.getuid()
+                      or stat.S_IMODE(metadata.st_mode) != expected_mode
+                      or not member.resolve().is_relative_to(root)
+                      or (member == path and (not stat.S_ISREG(metadata.st_mode) or metadata.st_nlink != 1))
+                      or (member != path and not stat.S_ISDIR(metadata.st_mode))):
+                      raise SystemExit('unsafe_evidence_member')
+                  members.add(member)
+          gates = list(root.glob('.artifacts/complete-gate/*/result.json'))
+          if os.environ['GATE_OUTCOME'] == 'success' and not gates:
+              raise SystemExit('successful_gate_missing_receipt')
+          for result in gates:
+              payload = validate_gate_evidence(result, root)
+              if payload['sourceCommit'] != os.environ['EXPECTED_SHA']:
+                  raise SystemExit('gate_source_mismatch')
+              if os.environ['GATE_OUTCOME'] == 'success' and (
+                  payload['overallStatus'] != 'passed' or len(payload['checks']) != 134
+                  or any(check['status'] != 'passed' for check in payload['checks'])):
+                  raise SystemExit('successful_gate_receipt_invalid')
+          repetitions = root / '.artifacts/feature-106-repetitions' / os.environ['EXPECTED_SHA']
+          if os.environ['REPETITIONS_OUTCOME'] == 'success' or repetitions.exists():
+              _validate_existing(repetitions, os.environ['EXPECTED_SHA'])
+          if members:
+              archive = Path(os.environ['RUNNER_TEMP']) / 'complete-gate-evidence/receipts.tar.pending'
+              with archive.open('xb') as output, tarfile.open(fileobj=output, mode='w') as bundle:
+                  for member in sorted(members):
+                      bundle.add(member, arcname=str(member.relative_to(root)), recursive=False)
+              archive.chmod(0o600)
+              with tarfile.open(archive) as bundle:
+                  actual = bundle.getmembers()
+                  if ({item.name for item in actual} != {str(path.relative_to(root)) for path in members}
+                      or any(not (item.isfile() or item.isdir()) for item in actual)):
+                      raise SystemExit('archive_members_invalid')
+              archive.rename(archive.with_name('receipts.tar'))
+          PYTHON
+
+      - name: Retain validated archive and safe stage summary
+        id: evidence
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: complete-gate-${{ github.event.pull_request.head.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/complete-gate-evidence/stages.md
+            ${{ runner.temp }}/complete-gate-evidence/receipts.tar
+          if-no-files-found: error
+          retention-days: 7

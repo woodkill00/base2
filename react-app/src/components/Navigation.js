@@ -60,8 +60,10 @@ const Navigation = ({ compact = false }) => {
   };
 
   const handleLogout = async () => {
-    const result = await logout();
-    navigate(result?.serverConfirmed === false ? '/login' : '/', { replace: true });
+    await logout();
+    // ProtectedRoute clears private content immediately. Keep its destination
+    // after server confirmation instead of racing that redirect back to Home.
+    navigate('/login', { replace: true });
   };
 
   const isActive = (path) => location.pathname === path;

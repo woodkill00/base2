@@ -1,0 +1,192 @@
+{
+  "schemaVersion": 1,
+  "sourceCommit": "696f710633d81cec46e872901f21a024bf735c5f",
+  "sourceTree": "b395ca42a261de3c2710034787f5410ff5599501",
+  "matrix": "media",
+  "runId": "41314752092",
+  "attempt": "1",
+  "originalReporterOutput": null,
+  "snapshotUpdates": "none",
+  "expectedTests": [
+    {
+      "project": "chromium-compact",
+      "title": "media detail preserves safe preview usage and consequence context",
+      "expectedStatus": "passed"
+    },
+    {
+      "project": "chromium-compact",
+      "title": "media picker is visually and keyboard contained in a real workflow",
+      "expectedStatus": "passed"
+    },
+    {
+      "project": "chromium-compact",
+      "title": "media library is accessible responsive and visually reviewed",
+      "expectedStatus": "passed"
+    },
+    {
+      "project": "chromium-phone-dpr3",
+      "title": "media detail preserves safe preview usage and consequence context",
+      "expectedStatus": "skipped"
+    },
+    {
+      "project": "chromium-phone-dpr3",
+      "title": "media picker is visually and keyboard contained in a real workflow",
+      "expectedStatus": "skipped"
+    },
+    {
+      "project": "chromium-phone-dpr3",
+      "title": "media library is accessible responsive and visually reviewed",
+      "expectedStatus": "passed"
+    },
+    {
+      "project": "chromium-landscape-touch",
+      "title": "media detail preserves safe preview usage and consequence context",
+      "expectedStatus": "skipped"
+    },
+    {
+      "project": "chromium-landscape-touch",
+      "title": "media picker is visually and keyboard contained in a real workflow",
+      "expectedStatus": "skipped"
+    },
+    {
+      "project": "chromium-landscape-touch",
+      "title": "media library is accessible responsive and visually reviewed",
+      "expectedStatus": "passed"
+    },
+    {
+      "project": "chromium-tablet",
+      "title": "media detail preserves safe preview usage and consequence context",
+      "expectedStatus": "skipped"
+    },
+    {
+      "project": "chromium-tablet",
+      "title": "media picker is visually and keyboard contained in a real workflow",
+      "expectedStatus": "skipped"
+    },
+    {
+      "project": "chromium-tablet",
+      "title": "media library is accessible responsive and visually reviewed",
+      "expectedStatus": "passed"
+    },
+    {
+      "project": "chromium-desktop",
+      "title": "media detail preserves safe preview usage and consequence context",
+      "expectedStatus": "passed"
+    },
+    {
+      "project": "chromium-desktop",
+      "title": "media picker is visually and keyboard contained in a real workflow",
+      "expectedStatus": "passed"
+    },
+    {
+      "project": "chromium-desktop",
+      "title": "media library is accessible responsive and visually reviewed",
+      "expectedStatus": "passed"
+    },
+    {
+      "project": "chromium-ultrawide",
+      "title": "media detail preserves safe preview usage and consequence context",
+      "expectedStatus": "skipped"
+    },
+    {
+      "project": "chromium-ultrawide",
+      "title": "media picker is visually and keyboard contained in a real workflow",
+      "expectedStatus": "skipped"
+    },
+    {
+      "project": "chromium-ultrawide",
+      "title": "media library is accessible responsive and visually reviewed",
+      "expectedStatus": "passed"
+    },
+    {
+      "project": "chromium-large-text",
+      "title": "media detail preserves safe preview usage and consequence context",
+      "expectedStatus": "skipped"
+    },
+    {
+      "project": "chromium-large-text",
+      "title": "media picker is visually and keyboard contained in a real workflow",
+      "expectedStatus": "skipped"
+    },
+    {
+      "project": "chromium-large-text",
+      "title": "media library is accessible responsive and visually reviewed",
+      "expectedStatus": "passed"
+    },
+    {
+      "project": "chromium-400-zoom",
+      "title": "media detail preserves safe preview usage and consequence context",
+      "expectedStatus": "passed"
+    },
+    {
+      "project": "chromium-400-zoom",
+      "title": "media picker is visually and keyboard contained in a real workflow",
+      "expectedStatus": "passed"
+    },
+    {
+      "project": "chromium-400-zoom",
+      "title": "media library is accessible responsive and visually reviewed",
+      "expectedStatus": "passed"
+    },
+    {
+      "project": "chromium-light",
+      "title": "media detail preserves safe preview usage and consequence context",
+      "expectedStatus": "passed"
+    },
+    {
+      "project": "chromium-light",
+      "title": "media picker is visually and keyboard contained in a real workflow",
+      "expectedStatus": "passed"
+    },
+    {
+      "project": "chromium-light",
+      "title": "media library is accessible responsive and visually reviewed",
+      "expectedStatus": "passed"
+    },
+    {
+      "project": "chromium-high-contrast",
+      "title": "media detail preserves safe preview usage and consequence context",
+      "expectedStatus": "passed"
+    },
+    {
+      "project": "chromium-high-contrast",
+      "title": "media picker is visually and keyboard contained in a real workflow",
+      "expectedStatus": "passed"
+    },
+    {
+      "project": "chromium-high-contrast",
+      "title": "media library is accessible responsive and visually reviewed",
+      "expectedStatus": "passed"
+    },
+    {
+      "project": "chromium-rtl",
+      "title": "media detail preserves safe preview usage and consequence context",
+      "expectedStatus": "passed"
+    },
+    {
+      "project": "chromium-rtl",
+      "title": "media picker is visually and keyboard contained in a real workflow",
+      "expectedStatus": "passed"
+    },
+    {
+      "project": "chromium-rtl",
+      "title": "media library is accessible responsive and visually reviewed",
+      "expectedStatus": "passed"
+    },
+    {
+      "project": "chromium-reduced-motion",
+      "title": "media detail preserves safe preview usage and consequence context",
+      "expectedStatus": "skipped"
+    },
+    {
+      "project": "chromium-reduced-motion",
+      "title": "media picker is visually and keyboard contained in a real workflow",
+      "expectedStatus": "skipped"
+    },
+    {
+      "project": "chromium-reduced-motion",
+      "title": "media library is accessible responsive and visually reviewed",
+      "expectedStatus": "passed"
+    }
+  ]
+}

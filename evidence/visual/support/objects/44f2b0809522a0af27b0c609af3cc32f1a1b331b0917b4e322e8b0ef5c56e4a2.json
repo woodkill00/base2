@@ -1,0 +1,1571 @@
+{
+  "schemaVersion": 2,
+  "sourceCommit": "da4d0a72c1e7893e069b95a60c7f3cfcbfa6004a",
+  "sourceTree": "315d2db4a8e4b62ef0ae4b434d6906f2c0f4d30c",
+  "runId": "41316950722",
+  "attempt": "1",
+  "matrix": "media",
+  "scope": "Diagnostic packaging only; empty/missing captures are incomplete, not acceptance.",
+  "originalReports": [
+    {
+      "path": "source-before.json",
+      "bytes": 6345,
+      "sha256": "ae4042c850293176ecbdf37dad9c16e7a98ec166c4d47287b4775a32c1c4c414"
+    },
+    {
+      "path": "source-after.json",
+      "bytes": 34343,
+      "sha256": "49967de3654b914ad190e3f57ac6fb53ed298559310b702d819922251855b8ed"
+    },
+    {
+      "path": "stages.md",
+      "bytes": 331,
+      "sha256": "f21c0153ddc62660667fe878d9c85670a05f2cd7347bc8266494a1997c95141b"
+    }
+  ],
+  "missingReports": [
+    "operations-visual-runner.json"
+  ],
+  "projects": {
+    "chromium-400-zoom": {
+      "status": "packaged",
+      "captures": [
+        {
+          "path": "media-release-media-detail-fa505-age-and-consequence-context-chromium-400-zoom/current-media-detail-completed.png",
+          "bytes": 37704,
+          "sha256": "8fdde8078ca51fa5b72b5a6aa48d1463763533daf908f2b8c4878997e6844364",
+          "archive": "chromium-400-zoom.zip"
+        },
+        {
+          "path": "media-release-media-detail-fa505-age-and-consequence-context-chromium-400-zoom/current-media-detail-restored.png",
+          "bytes": 38105,
+          "sha256": "55e7e37ff30b74a3dfbfb815bf6b86ac3449e215f68a6763e20c70579b04d5a8",
+          "archive": "chromium-400-zoom.zip"
+        },
+        {
+          "path": "media-release-media-detail-fa505-age-and-consequence-context-chromium-400-zoom/current-media-detail-top.png",
+          "bytes": 57147,
+          "sha256": "8d40764d51647aa2d112503b8eb20f68f65d466a5e56a5fb169da510d8f1fff0",
+          "archive": "chromium-400-zoom.zip"
+        },
+        {
+          "path": "media-release-media-detail-fa505-age-and-consequence-context-chromium-400-zoom/current-media-detail.png",
+          "bytes": 42333,
+          "sha256": "c558abba772eed9c11f4cf5bc6d7282379faaabd62cd8721ec3fb720560b83d7",
+          "archive": "chromium-400-zoom.zip"
+        },
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-400-zoom/current-media-library-viewport-0.png",
+          "bytes": 161526,
+          "sha256": "c7f612b0e4983df053699d72cbe65b5617ef5b42250405c0fbf22c7e8d055d4b",
+          "archive": "chromium-400-zoom.zip"
+        },
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-400-zoom/current-media-library-viewport-2.png",
+          "bytes": 165978,
+          "sha256": "3823166536c8b09d31e223f02842741268bb23d4827c7364bd26e4eebb2aacac",
+          "archive": "chromium-400-zoom.zip"
+        },
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-400-zoom/current-media-library-viewport-4.png",
+          "bytes": 157216,
+          "sha256": "ae21b636b2eb100357f0a868b9ba39931218fed3d61080bc6d99c44e755dd660",
+          "archive": "chromium-400-zoom.zip"
+        },
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-400-zoom/current-media-library.png",
+          "bytes": 173196,
+          "sha256": "42917358e05c87451102b975cafafd2728df889601a103d00c7f8c4966a12dc8",
+          "archive": "chromium-400-zoom.zip"
+        },
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-400-zoom/current-scrollport-footer.png",
+          "bytes": 63645,
+          "sha256": "6d703c128517e80d6d1e0a34ddfb1363b809a9a6ae996265fd9d91776c602599",
+          "archive": "chromium-400-zoom.zip"
+        },
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-400-zoom/current-scrollport-middle.png",
+          "bytes": 167138,
+          "sha256": "96ccf0744913ae8993dfd36b575cc84cd8ce51dcc61b613931ce9bc310a1f5d9",
+          "archive": "chromium-400-zoom.zip"
+        },
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-400-zoom/current-scrollport-top.png",
+          "bytes": 173196,
+          "sha256": "42917358e05c87451102b975cafafd2728df889601a103d00c7f8c4966a12dc8",
+          "archive": "chromium-400-zoom.zip"
+        },
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-400-zoom/media-library-chromium-400-zoom-actual.png",
+          "bytes": 173196,
+          "sha256": "42917358e05c87451102b975cafafd2728df889601a103d00c7f8c4966a12dc8",
+          "archive": "chromium-400-zoom.zip"
+        },
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-400-zoom/media-library-chromium-400-zoom-diff.png",
+          "bytes": 116212,
+          "sha256": "323592885a4655c028df369f273eec712fa2939806564970d92d40e0416fa859",
+          "archive": "chromium-400-zoom.zip"
+        },
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-400-zoom/media-library-chromium-400-zoom-expected.png",
+          "bytes": 374258,
+          "sha256": "7f0b7fe4c999d243f31ce299d27f4ffbc0e2c0604e7d3fd92995824417b0bb68",
+          "archive": "chromium-400-zoom.zip"
+        },
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-400-zoom/test-failed-1.png",
+          "bytes": 157216,
+          "sha256": "ae21b636b2eb100357f0a868b9ba39931218fed3d61080bc6d99c44e755dd660",
+          "archive": "chromium-400-zoom.zip"
+        },
+        {
+          "path": "media-release-media-picker-72bf8-ontained-in-a-real-workflow-chromium-400-zoom/current-media-picker-bottom.png",
+          "bytes": 30620,
+          "sha256": "a78e1fb21154dcb072a5723f972d082efb8442d6007e57bf35e9b6f73b4a80d6",
+          "archive": "chromium-400-zoom.zip"
+        },
+        {
+          "path": "media-release-media-picker-72bf8-ontained-in-a-real-workflow-chromium-400-zoom/current-media-picker.png",
+          "bytes": 30620,
+          "sha256": "a78e1fb21154dcb072a5723f972d082efb8442d6007e57bf35e9b6f73b4a80d6",
+          "archive": "chromium-400-zoom.zip"
+        },
+        {
+          "path": "media-release-media-picker-72bf8-ontained-in-a-real-workflow-chromium-400-zoom/current-scrollport-footer.png",
+          "bytes": 65476,
+          "sha256": "fde769bd3631617e3d8e3712dfff221de64111724b1fe8c48dadcf147abbfbde",
+          "archive": "chromium-400-zoom.zip"
+        },
+        {
+          "path": "media-release-media-picker-72bf8-ontained-in-a-real-workflow-chromium-400-zoom/current-scrollport-middle.png",
+          "bytes": 168457,
+          "sha256": "9ec685a129fada9eafb1832c110cdde7cb6d05d863c2f1d9300365f979a939f0",
+          "archive": "chromium-400-zoom.zip"
+        },
+        {
+          "path": "media-release-media-picker-72bf8-ontained-in-a-real-workflow-chromium-400-zoom/current-scrollport-top.png",
+          "bytes": 181544,
+          "sha256": "295a0fd0085d4114bec24d9650f5bcde9af697abb169a6ace979ce3037138271",
+          "archive": "chromium-400-zoom.zip"
+        }
+      ],
+      "expectedSupportedTests": [
+        {
+          "project": "chromium-400-zoom",
+          "title": "media detail preserves safe preview usage and consequence context",
+          "expectedStatus": "passed"
+        },
+        {
+          "project": "chromium-400-zoom",
+          "title": "media picker is visually and keyboard contained in a real workflow",
+          "expectedStatus": "passed"
+        },
+        {
+          "project": "chromium-400-zoom",
+          "title": "media library is accessible responsive and visually reviewed",
+          "expectedStatus": "passed"
+        }
+      ],
+      "currentCaptureCount": 16,
+      "minimumCaptureShortfall": 0,
+      "captureCoverage": "requires-review",
+      "diagnostics": [
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-400-zoom/media-viewport-observations.json",
+          "bytes": 19196,
+          "sha256": "c482523ed86df530d02e45a46487860c703436df46aa50f49870b6d543d842ee",
+          "archive": "chromium-400-zoom.zip"
+        }
+      ],
+      "parts": [
+        {
+          "path": "chromium-400-zoom.zip",
+          "bytes": 2560215,
+          "sha256": "f6f99e453b7d3331e308830f6f2179ef36c10943c3af96443950900aab64a557",
+          "members": [
+            "media-release-media-detail-fa505-age-and-consequence-context-chromium-400-zoom/current-media-detail-completed.png",
+            "media-release-media-detail-fa505-age-and-consequence-context-chromium-400-zoom/current-media-detail-restored.png",
+            "media-release-media-detail-fa505-age-and-consequence-context-chromium-400-zoom/current-media-detail-top.png",
+            "media-release-media-detail-fa505-age-and-consequence-context-chromium-400-zoom/current-media-detail.png",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-400-zoom/current-media-library-viewport-0.png",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-400-zoom/current-media-library-viewport-2.png",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-400-zoom/current-media-library-viewport-4.png",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-400-zoom/current-media-library.png",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-400-zoom/current-scrollport-footer.png",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-400-zoom/current-scrollport-middle.png",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-400-zoom/current-scrollport-top.png",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-400-zoom/media-library-chromium-400-zoom-actual.png",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-400-zoom/media-library-chromium-400-zoom-diff.png",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-400-zoom/media-library-chromium-400-zoom-expected.png",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-400-zoom/media-viewport-observations.json",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-400-zoom/test-failed-1.png",
+            "media-release-media-picker-72bf8-ontained-in-a-real-workflow-chromium-400-zoom/current-media-picker-bottom.png",
+            "media-release-media-picker-72bf8-ontained-in-a-real-workflow-chromium-400-zoom/current-media-picker.png",
+            "media-release-media-picker-72bf8-ontained-in-a-real-workflow-chromium-400-zoom/current-scrollport-footer.png",
+            "media-release-media-picker-72bf8-ontained-in-a-real-workflow-chromium-400-zoom/current-scrollport-middle.png",
+            "media-release-media-picker-72bf8-ontained-in-a-real-workflow-chromium-400-zoom/current-scrollport-top.png"
+          ]
+        }
+      ],
+      "missingDiagnostics": []
+    },
+    "chromium-compact": {
+      "status": "packaged",
+      "captures": [
+        {
+          "path": "media-release-media-detail-fa505-age-and-consequence-context-chromium-compact/current-media-detail-completed.png",
+          "bytes": 28816,
+          "sha256": "4501d86f53aa277d76d68cb856c006e839c2e6f7e2fcb057403feec68f9dc3ad",
+          "archive": "chromium-compact.zip"
+        },
+        {
+          "path": "media-release-media-detail-fa505-age-and-consequence-context-chromium-compact/current-media-detail-restored.png",
+          "bytes": 29141,
+          "sha256": "a9c6bce320af56773f21a2bf7e9be62ce1702d474e570edcfbc7f021459080f0",
+          "archive": "chromium-compact.zip"
+        },
+        {
+          "path": "media-release-media-detail-fa505-age-and-consequence-context-chromium-compact/current-media-detail-top.png",
+          "bytes": 52874,
+          "sha256": "547f0cf788d5a638f2b900348a041fa30b3a217e9ebe652d6f3acf823c3eac42",
+          "archive": "chromium-compact.zip"
+        },
+        {
+          "path": "media-release-media-detail-fa505-age-and-consequence-context-chromium-compact/current-media-detail.png",
+          "bytes": 35362,
+          "sha256": "010cadcb65e100f7379b02c697111fba1054c0f1a0d471c77179c366cd4342d1",
+          "archive": "chromium-compact.zip"
+        },
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-compact/current-media-library-viewport-0.png",
+          "bytes": 126673,
+          "sha256": "b5a5c5a684a5198c7e4f99e0e2698aaafdcfdaf43d998a596f97a0d4d6b72136",
+          "archive": "chromium-compact.zip"
+        },
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-compact/current-media-library-viewport-2.png",
+          "bytes": 126073,
+          "sha256": "4e86b50e2f4625608da791c13451139f58a2983b502f95a44cd3e5f06e7cd635",
+          "archive": "chromium-compact.zip"
+        },
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-compact/current-media-library-viewport-4.png",
+          "bytes": 124246,
+          "sha256": "854414863195ff22cea67d3ca877d5b2d284ec3b589f1cea4c06f5b646a29168",
+          "archive": "chromium-compact.zip"
+        },
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-compact/current-media-library.png",
+          "bytes": 149705,
+          "sha256": "051cb23247651cf77b937c24c09a4a9800f13e1d2e9d59a37bf81ef732535c44",
+          "archive": "chromium-compact.zip"
+        },
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-compact/current-scrollport-footer.png",
+          "bytes": 50605,
+          "sha256": "1384cf7db4034916fbaf444692b4365bcdc7549a5e663c0fbf412fcd5bb3e743",
+          "archive": "chromium-compact.zip"
+        },
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-compact/current-scrollport-middle.png",
+          "bytes": 126868,
+          "sha256": "38b10cbe22c5ebd192c915aa8f4584d349b2a63f9b1dfa9c6df0e2e27c8e335f",
+          "archive": "chromium-compact.zip"
+        },
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-compact/current-scrollport-top.png",
+          "bytes": 149705,
+          "sha256": "051cb23247651cf77b937c24c09a4a9800f13e1d2e9d59a37bf81ef732535c44",
+          "archive": "chromium-compact.zip"
+        },
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-compact/media-library-chromium-compact-actual.png",
+          "bytes": 149705,
+          "sha256": "051cb23247651cf77b937c24c09a4a9800f13e1d2e9d59a37bf81ef732535c44",
+          "archive": "chromium-compact.zip"
+        },
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-compact/media-library-chromium-compact-diff.png",
+          "bytes": 113272,
+          "sha256": "a35c1f4b746f6324a4c6c1a533b9b277239f6ed454b3f66b2814dea36dd63e10",
+          "archive": "chromium-compact.zip"
+        },
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-compact/media-library-chromium-compact-expected.png",
+          "bytes": 345158,
+          "sha256": "35fa12709b41ad3b88b9dd22d9f22eb2c7bebefbc17ccb46fb71b5eb8a0c46e7",
+          "archive": "chromium-compact.zip"
+        },
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-compact/test-failed-1.png",
+          "bytes": 124246,
+          "sha256": "854414863195ff22cea67d3ca877d5b2d284ec3b589f1cea4c06f5b646a29168",
+          "archive": "chromium-compact.zip"
+        },
+        {
+          "path": "media-release-media-picker-72bf8-ontained-in-a-real-workflow-chromium-compact/current-media-picker-bottom.png",
+          "bytes": 27225,
+          "sha256": "3a7707ea8b31410f701cdb868cd732b2c105c6448231f3dfd2777ba02371477e",
+          "archive": "chromium-compact.zip"
+        },
+        {
+          "path": "media-release-media-picker-72bf8-ontained-in-a-real-workflow-chromium-compact/current-media-picker.png",
+          "bytes": 23929,
+          "sha256": "8b6f62199b0e9c6cc31e5d9d1f096f1cc3400b99f3ac089c26f3bc347d5018fb",
+          "archive": "chromium-compact.zip"
+        },
+        {
+          "path": "media-release-media-picker-72bf8-ontained-in-a-real-workflow-chromium-compact/current-scrollport-footer.png",
+          "bytes": 52483,
+          "sha256": "541a6823a6eded1fe1ffbe6c7cf7537abd51c80583298b8a7b23761a4e524a7b",
+          "archive": "chromium-compact.zip"
+        },
+        {
+          "path": "media-release-media-picker-72bf8-ontained-in-a-real-workflow-chromium-compact/current-scrollport-middle.png",
+          "bytes": 129866,
+          "sha256": "b9da3f174f821fa6f132b949676f0253e13fe27aa1eb80ebf0c68eb0d458c08e",
+          "archive": "chromium-compact.zip"
+        },
+        {
+          "path": "media-release-media-picker-72bf8-ontained-in-a-real-workflow-chromium-compact/current-scrollport-top.png",
+          "bytes": 150770,
+          "sha256": "9ccdc9289e5fe7cf7e3006ca2374ed877e0d85bafeb19059a30eaebcec4c2362",
+          "archive": "chromium-compact.zip"
+        }
+      ],
+      "expectedSupportedTests": [
+        {
+          "project": "chromium-compact",
+          "title": "media detail preserves safe preview usage and consequence context",
+          "expectedStatus": "passed"
+        },
+        {
+          "project": "chromium-compact",
+          "title": "media picker is visually and keyboard contained in a real workflow",
+          "expectedStatus": "passed"
+        },
+        {
+          "project": "chromium-compact",
+          "title": "media library is accessible responsive and visually reviewed",
+          "expectedStatus": "passed"
+        }
+      ],
+      "currentCaptureCount": 16,
+      "minimumCaptureShortfall": 0,
+      "captureCoverage": "requires-review",
+      "diagnostics": [
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-compact/media-viewport-observations.json",
+          "bytes": 17043,
+          "sha256": "19db0b3d5fd7c715d9ec751961ab98db69cb5a7709819e8c2cce028bfa557b70",
+          "archive": "chromium-compact.zip"
+        }
+      ],
+      "parts": [
+        {
+          "path": "chromium-compact.zip",
+          "bytes": 2139953,
+          "sha256": "caa65dca50d5101d025bcab0496c1797071daa275ddccf2ccbd2b7e660cf8051",
+          "members": [
+            "media-release-media-detail-fa505-age-and-consequence-context-chromium-compact/current-media-detail-completed.png",
+            "media-release-media-detail-fa505-age-and-consequence-context-chromium-compact/current-media-detail-restored.png",
+            "media-release-media-detail-fa505-age-and-consequence-context-chromium-compact/current-media-detail-top.png",
+            "media-release-media-detail-fa505-age-and-consequence-context-chromium-compact/current-media-detail.png",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-compact/current-media-library-viewport-0.png",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-compact/current-media-library-viewport-2.png",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-compact/current-media-library-viewport-4.png",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-compact/current-media-library.png",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-compact/current-scrollport-footer.png",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-compact/current-scrollport-middle.png",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-compact/current-scrollport-top.png",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-compact/media-library-chromium-compact-actual.png",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-compact/media-library-chromium-compact-diff.png",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-compact/media-library-chromium-compact-expected.png",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-compact/media-viewport-observations.json",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-compact/test-failed-1.png",
+            "media-release-media-picker-72bf8-ontained-in-a-real-workflow-chromium-compact/current-media-picker-bottom.png",
+            "media-release-media-picker-72bf8-ontained-in-a-real-workflow-chromium-compact/current-media-picker.png",
+            "media-release-media-picker-72bf8-ontained-in-a-real-workflow-chromium-compact/current-scrollport-footer.png",
+            "media-release-media-picker-72bf8-ontained-in-a-real-workflow-chromium-compact/current-scrollport-middle.png",
+            "media-release-media-picker-72bf8-ontained-in-a-real-workflow-chromium-compact/current-scrollport-top.png"
+          ]
+        }
+      ],
+      "missingDiagnostics": []
+    },
+    "chromium-desktop": {
+      "status": "packaged",
+      "captures": [
+        {
+          "path": "media-release-media-detail-fa505-age-and-consequence-context-chromium-desktop/current-media-detail-completed.png",
+          "bytes": 82288,
+          "sha256": "dd6d4da58b2408c65b4dd2961f3cde24e90b33af83def1a28d46ba41ca7232c2",
+          "archive": "chromium-desktop.zip"
+        },
+        {
+          "path": "media-release-media-detail-fa505-age-and-consequence-context-chromium-desktop/current-media-detail-restored.png",
+          "bytes": 81368,
+          "sha256": "55a2e86407c17cba3565b433e25d6ee7f6f7ed49d326180b1f4a46b9ded3606b",
+          "archive": "chromium-desktop.zip"
+        },
+        {
+          "path": "media-release-media-detail-fa505-age-and-consequence-context-chromium-desktop/current-media-detail-top.png",
+          "bytes": 118802,
+          "sha256": "487318eb1bda0a8dcf2aa66884560b5d2cb123a900330a83bd59e1b997d98425",
+          "archive": "chromium-desktop.zip"
+        },
+        {
+          "path": "media-release-media-detail-fa505-age-and-consequence-context-chromium-desktop/current-media-detail.png",
+          "bytes": 82322,
+          "sha256": "9155cf96710b2427a766da936106e8ee17517521c73fe328c378df5647450529",
+          "archive": "chromium-desktop.zip"
+        },
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-desktop/current-media-library-viewport-0.png",
+          "bytes": 692007,
+          "sha256": "853ae189a46946da8d3eb5543e69ebfd9143b61f438ef98817f9b71e612c2195",
+          "archive": "chromium-desktop.zip"
+        },
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-desktop/current-media-library-viewport-2.png",
+          "bytes": 692007,
+          "sha256": "853ae189a46946da8d3eb5543e69ebfd9143b61f438ef98817f9b71e612c2195",
+          "archive": "chromium-desktop.zip"
+        },
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-desktop/current-media-library-viewport-4.png",
+          "bytes": 671640,
+          "sha256": "df07dd94ae5a6be595b898a3624ac40f2defde8991d114b23a1229a0534e2a34",
+          "archive": "chromium-desktop.zip"
+        },
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-desktop/current-media-library.png",
+          "bytes": 842595,
+          "sha256": "d5cabc50b2d6bc31812114e4de353d16a1e1f238608ad914c9bbf8f0a168917e",
+          "archive": "chromium-desktop.zip"
+        },
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-desktop/media-library-chromium-desktop-actual.png",
+          "bytes": 842595,
+          "sha256": "d5cabc50b2d6bc31812114e4de353d16a1e1f238608ad914c9bbf8f0a168917e",
+          "archive": "chromium-desktop.zip"
+        },
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-desktop/media-library-chromium-desktop-diff.png",
+          "bytes": 296611,
+          "sha256": "fdd1cac929be1df52a046d98d2fe992a78870a80562578f7dfbe62c974a6861b",
+          "archive": "chromium-desktop.zip"
+        },
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-desktop/media-library-chromium-desktop-expected.png",
+          "bytes": 811578,
+          "sha256": "e00d8586f28278a6e7cdf679fe2048cd84461beea09e403f8f03df854bba86a3",
+          "archive": "chromium-desktop.zip"
+        },
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-desktop/test-failed-1.png",
+          "bytes": 671640,
+          "sha256": "df07dd94ae5a6be595b898a3624ac40f2defde8991d114b23a1229a0534e2a34",
+          "archive": "chromium-desktop.zip"
+        },
+        {
+          "path": "media-release-media-picker-72bf8-ontained-in-a-real-workflow-chromium-desktop/current-media-picker-bottom.png",
+          "bytes": 48103,
+          "sha256": "00b9afd0b734a6aabf7b54a37b785dd0cb94ae0076ae1feb76552bb82dcfeb9c",
+          "archive": "chromium-desktop.zip"
+        },
+        {
+          "path": "media-release-media-picker-72bf8-ontained-in-a-real-workflow-chromium-desktop/current-media-picker.png",
+          "bytes": 48103,
+          "sha256": "00b9afd0b734a6aabf7b54a37b785dd0cb94ae0076ae1feb76552bb82dcfeb9c",
+          "archive": "chromium-desktop.zip"
+        }
+      ],
+      "expectedSupportedTests": [
+        {
+          "project": "chromium-desktop",
+          "title": "media detail preserves safe preview usage and consequence context",
+          "expectedStatus": "passed"
+        },
+        {
+          "project": "chromium-desktop",
+          "title": "media picker is visually and keyboard contained in a real workflow",
+          "expectedStatus": "passed"
+        },
+        {
+          "project": "chromium-desktop",
+          "title": "media library is accessible responsive and visually reviewed",
+          "expectedStatus": "passed"
+        }
+      ],
+      "currentCaptureCount": 10,
+      "minimumCaptureShortfall": 0,
+      "captureCoverage": "requires-review",
+      "diagnostics": [
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-desktop/media-viewport-observations.json",
+          "bytes": 45411,
+          "sha256": "6a57bcfe1edb0cff9215a52e0a7bdc697f900b06dd675fb2250d0af6bdf406c2",
+          "archive": "chromium-desktop.zip"
+        }
+      ],
+      "parts": [
+        {
+          "path": "chromium-desktop.zip",
+          "bytes": 6031530,
+          "sha256": "d71223ac102c254aa7899d5d841e87baa15642d3665dc714baafa8577fd4a0ba",
+          "members": [
+            "media-release-media-detail-fa505-age-and-consequence-context-chromium-desktop/current-media-detail-completed.png",
+            "media-release-media-detail-fa505-age-and-consequence-context-chromium-desktop/current-media-detail-restored.png",
+            "media-release-media-detail-fa505-age-and-consequence-context-chromium-desktop/current-media-detail-top.png",
+            "media-release-media-detail-fa505-age-and-consequence-context-chromium-desktop/current-media-detail.png",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-desktop/current-media-library-viewport-0.png",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-desktop/current-media-library-viewport-2.png",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-desktop/current-media-library-viewport-4.png",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-desktop/current-media-library.png",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-desktop/media-library-chromium-desktop-actual.png",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-desktop/media-library-chromium-desktop-diff.png",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-desktop/media-library-chromium-desktop-expected.png",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-desktop/media-viewport-observations.json",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-desktop/test-failed-1.png",
+            "media-release-media-picker-72bf8-ontained-in-a-real-workflow-chromium-desktop/current-media-picker-bottom.png",
+            "media-release-media-picker-72bf8-ontained-in-a-real-workflow-chromium-desktop/current-media-picker.png"
+          ]
+        }
+      ],
+      "missingDiagnostics": []
+    },
+    "chromium-high-contrast": {
+      "status": "packaged",
+      "captures": [
+        {
+          "path": "media-release-media-detail-fa505-age-and-consequence-context-chromium-high-contrast/current-media-detail-completed.png",
+          "bytes": 58747,
+          "sha256": "6a8b2c445e9462af6e4059b8d452eb737d7de6b522f12016da5d4191455ac028",
+          "archive": "chromium-high-contrast.zip"
+        },
+        {
+          "path": "media-release-media-detail-fa505-age-and-consequence-context-chromium-high-contrast/current-media-detail-restored.png",
+          "bytes": 57804,
+          "sha256": "2310e9517222413bdc1f9c4b3a099ef78a61bd804c18e4e09f02f95397583ad1",
+          "archive": "chromium-high-contrast.zip"
+        },
+        {
+          "path": "media-release-media-detail-fa505-age-and-consequence-context-chromium-high-contrast/current-media-detail-top.png",
+          "bytes": 109806,
+          "sha256": "6055edbb60f3ac2d7765d3f4d8f32236170f35b6711b89e17219e0ce1571b09b",
+          "archive": "chromium-high-contrast.zip"
+        },
+        {
+          "path": "media-release-media-detail-fa505-age-and-consequence-context-chromium-high-contrast/current-media-detail.png",
+          "bytes": 72241,
+          "sha256": "c4f05d82ef462c3a059971f06959bf3516b061fa82a6332d43934ee36558b49f",
+          "archive": "chromium-high-contrast.zip"
+        },
+        {
+          "path": "media-release-media-detail-fa505-age-and-consequence-context-chromium-high-contrast/media-detail-chromium-high-contrast-actual.png",
+          "bytes": 72241,
+          "sha256": "c4f05d82ef462c3a059971f06959bf3516b061fa82a6332d43934ee36558b49f",
+          "archive": "chromium-high-contrast.zip"
+        },
+        {
+          "path": "media-release-media-detail-fa505-age-and-consequence-context-chromium-high-contrast/media-detail-chromium-high-contrast-diff.png",
+          "bytes": 73364,
+          "sha256": "de0bebf9c800e287dc08213ae7a6b1b6e27c48c58f89d177e25996d2e146d795",
+          "archive": "chromium-high-contrast.zip"
+        },
+        {
+          "path": "media-release-media-detail-fa505-age-and-consequence-context-chromium-high-contrast/media-detail-chromium-high-contrast-expected.png",
+          "bytes": 73391,
+          "sha256": "bb29d8cf1a3f5614a05a131821561017f62c7dba8434270135c0394a1ed80175",
+          "archive": "chromium-high-contrast.zip"
+        },
+        {
+          "path": "media-release-media-detail-fa505-age-and-consequence-context-chromium-high-contrast/test-failed-1.png",
+          "bytes": 175413,
+          "sha256": "8f3e3e7233de03edbba68e00d5c15543c790ec040701f58b129a71d995a869ad",
+          "archive": "chromium-high-contrast.zip"
+        },
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-high-contrast/current-media-library-viewport-0.png",
+          "bytes": 370964,
+          "sha256": "ab7bf4b55eb1380f6f6b13d3286944604ec77fd9ffb0454f79f16de5629fd790",
+          "archive": "chromium-high-contrast.zip"
+        },
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-high-contrast/current-media-library-viewport-2.png",
+          "bytes": 370964,
+          "sha256": "ab7bf4b55eb1380f6f6b13d3286944604ec77fd9ffb0454f79f16de5629fd790",
+          "archive": "chromium-high-contrast.zip"
+        },
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-high-contrast/current-media-library-viewport-4.png",
+          "bytes": 394177,
+          "sha256": "434748161678c2b474a07d23955628a4b95a2fce7d4e5b09cc2ec1dc418e238c",
+          "archive": "chromium-high-contrast.zip"
+        },
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-high-contrast/current-media-library.png",
+          "bytes": 623531,
+          "sha256": "ded11fa2ffbe33de8d00f6748a246cfec4b1a008b7fcd45dc4db717e59ef2e16",
+          "archive": "chromium-high-contrast.zip"
+        },
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-high-contrast/media-library-chromium-high-contrast-actual.png",
+          "bytes": 623531,
+          "sha256": "ded11fa2ffbe33de8d00f6748a246cfec4b1a008b7fcd45dc4db717e59ef2e16",
+          "archive": "chromium-high-contrast.zip"
+        },
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-high-contrast/media-library-chromium-high-contrast-diff.png",
+          "bytes": 295161,
+          "sha256": "cb5090c3524dc80b308b78ea1ec9df967ad5029cb14c99f26a90048798d3e6f6",
+          "archive": "chromium-high-contrast.zip"
+        },
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-high-contrast/media-library-chromium-high-contrast-expected.png",
+          "bytes": 549414,
+          "sha256": "99a0ef7e5c28d1150c36577fec0374c8399dc9aed2674edc380c50faba7ff3d3",
+          "archive": "chromium-high-contrast.zip"
+        },
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-high-contrast/test-failed-1.png",
+          "bytes": 394177,
+          "sha256": "434748161678c2b474a07d23955628a4b95a2fce7d4e5b09cc2ec1dc418e238c",
+          "archive": "chromium-high-contrast.zip"
+        },
+        {
+          "path": "media-release-media-picker-72bf8-ontained-in-a-real-workflow-chromium-high-contrast/current-media-picker-bottom.png",
+          "bytes": 42833,
+          "sha256": "eccb3e18f1e71c5a8dcb4ee94949e3a242b90f90c72c16efc0d666cd07750a59",
+          "archive": "chromium-high-contrast.zip"
+        },
+        {
+          "path": "media-release-media-picker-72bf8-ontained-in-a-real-workflow-chromium-high-contrast/current-media-picker.png",
+          "bytes": 42833,
+          "sha256": "eccb3e18f1e71c5a8dcb4ee94949e3a242b90f90c72c16efc0d666cd07750a59",
+          "archive": "chromium-high-contrast.zip"
+        }
+      ],
+      "expectedSupportedTests": [
+        {
+          "project": "chromium-high-contrast",
+          "title": "media detail preserves safe preview usage and consequence context",
+          "expectedStatus": "passed"
+        },
+        {
+          "project": "chromium-high-contrast",
+          "title": "media picker is visually and keyboard contained in a real workflow",
+          "expectedStatus": "passed"
+        },
+        {
+          "project": "chromium-high-contrast",
+          "title": "media library is accessible responsive and visually reviewed",
+          "expectedStatus": "passed"
+        }
+      ],
+      "currentCaptureCount": 10,
+      "minimumCaptureShortfall": 0,
+      "captureCoverage": "requires-review",
+      "diagnostics": [
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-high-contrast/media-viewport-observations.json",
+          "bytes": 41872,
+          "sha256": "fe8a9010884720c557981c0e7683fa3c025c18e268387b42d82b2e9c1b01b79f",
+          "archive": "chromium-high-contrast.zip"
+        }
+      ],
+      "parts": [
+        {
+          "path": "chromium-high-contrast.zip",
+          "bytes": 4448426,
+          "sha256": "170a1c17830c2cc12948da6211e7674bb93bd69dcbaf27d8e587bba145fbfcfa",
+          "members": [
+            "media-release-media-detail-fa505-age-and-consequence-context-chromium-high-contrast/current-media-detail-completed.png",
+            "media-release-media-detail-fa505-age-and-consequence-context-chromium-high-contrast/current-media-detail-restored.png",
+            "media-release-media-detail-fa505-age-and-consequence-context-chromium-high-contrast/current-media-detail-top.png",
+            "media-release-media-detail-fa505-age-and-consequence-context-chromium-high-contrast/current-media-detail.png",
+            "media-release-media-detail-fa505-age-and-consequence-context-chromium-high-contrast/media-detail-chromium-high-contrast-actual.png",
+            "media-release-media-detail-fa505-age-and-consequence-context-chromium-high-contrast/media-detail-chromium-high-contrast-diff.png",
+            "media-release-media-detail-fa505-age-and-consequence-context-chromium-high-contrast/media-detail-chromium-high-contrast-expected.png",
+            "media-release-media-detail-fa505-age-and-consequence-context-chromium-high-contrast/test-failed-1.png",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-high-contrast/current-media-library-viewport-0.png",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-high-contrast/current-media-library-viewport-2.png",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-high-contrast/current-media-library-viewport-4.png",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-high-contrast/current-media-library.png",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-high-contrast/media-library-chromium-high-contrast-actual.png",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-high-contrast/media-library-chromium-high-contrast-diff.png",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-high-contrast/media-library-chromium-high-contrast-expected.png",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-high-contrast/media-viewport-observations.json",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-high-contrast/test-failed-1.png",
+            "media-release-media-picker-72bf8-ontained-in-a-real-workflow-chromium-high-contrast/current-media-picker-bottom.png",
+            "media-release-media-picker-72bf8-ontained-in-a-real-workflow-chromium-high-contrast/current-media-picker.png"
+          ]
+        }
+      ],
+      "missingDiagnostics": []
+    },
+    "chromium-landscape-touch": {
+      "status": "packaged",
+      "captures": [
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-landscape-touch/current-media-library-viewport-0.png",
+          "bytes": 373270,
+          "sha256": "2ea7e312b72425afbcae6718ed645934834b7cd4834f565e08617da73be14a5a",
+          "archive": "chromium-landscape-touch.zip"
+        },
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-landscape-touch/current-media-library-viewport-2.png",
+          "bytes": 355623,
+          "sha256": "617fee9722714a225ee557eec2c19233346ca0c7cc1866873ff3b73094bf5832",
+          "archive": "chromium-landscape-touch.zip"
+        },
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-landscape-touch/current-media-library-viewport-4.png",
+          "bytes": 391720,
+          "sha256": "53e99df1d227cd35eca3f8fce59b1c703c11e066ac714d3ab17161e8edf3dc4c",
+          "archive": "chromium-landscape-touch.zip"
+        },
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-landscape-touch/current-media-library.png",
+          "bytes": 340088,
+          "sha256": "9f32ba0a4af5c3eecd65667139622a82d6ae4f93fb11a5a8af08dcb5eae78bad",
+          "archive": "chromium-landscape-touch.zip"
+        },
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-landscape-touch/current-scrollport-footer.png",
+          "bytes": 143611,
+          "sha256": "e075904bfcee2b3e1beb596beb15b2d47e306192cd434cbff3c9f8914f11a68e",
+          "archive": "chromium-landscape-touch.zip"
+        },
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-landscape-touch/current-scrollport-middle.png",
+          "bytes": 367886,
+          "sha256": "1bb2a0b0911ae7e0ef58a8e4ca145a9cc8a586bf90af989571e70ede36a7bd0f",
+          "archive": "chromium-landscape-touch.zip"
+        },
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-landscape-touch/current-scrollport-top.png",
+          "bytes": 340088,
+          "sha256": "9f32ba0a4af5c3eecd65667139622a82d6ae4f93fb11a5a8af08dcb5eae78bad",
+          "archive": "chromium-landscape-touch.zip"
+        },
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-landscape-touch/media-library-chromium-landscape-touch-actual.png",
+          "bytes": 118010,
+          "sha256": "dd7c70520502d350ea0022b2c4962e55589332d37157fcfacf20139a2813d6a0",
+          "archive": "chromium-landscape-touch.zip"
+        },
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-landscape-touch/media-library-chromium-landscape-touch-diff.png",
+          "bytes": 179551,
+          "sha256": "fb18b2b581d9904cc5a2950a9c6a608a2928217aeef4233c1961e3871ad4d77e",
+          "archive": "chromium-landscape-touch.zip"
+        },
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-landscape-touch/media-library-chromium-landscape-touch-expected.png",
+          "bytes": 533088,
+          "sha256": "2b772e5e48804b02f55e5ff5aa66e247fb8aac0a93bc4a71bd70b970359b0d53",
+          "archive": "chromium-landscape-touch.zip"
+        },
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-landscape-touch/test-failed-1.png",
+          "bytes": 391720,
+          "sha256": "53e99df1d227cd35eca3f8fce59b1c703c11e066ac714d3ab17161e8edf3dc4c",
+          "archive": "chromium-landscape-touch.zip"
+        }
+      ],
+      "expectedSupportedTests": [
+        {
+          "project": "chromium-landscape-touch",
+          "title": "media library is accessible responsive and visually reviewed",
+          "expectedStatus": "passed"
+        }
+      ],
+      "currentCaptureCount": 7,
+      "minimumCaptureShortfall": 0,
+      "captureCoverage": "requires-review",
+      "diagnostics": [
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-landscape-touch/media-viewport-observations.json",
+          "bytes": 18854,
+          "sha256": "8cfa7391d180c67dcfa16e6ee9099966191563a87f7934b3081148f76750d0e0",
+          "archive": "chromium-landscape-touch.zip"
+        }
+      ],
+      "parts": [
+        {
+          "path": "chromium-landscape-touch.zip",
+          "bytes": 3557333,
+          "sha256": "0be81e28060f13971f854157b1926e5bc65b9738df15c12f8e66c8083c04ef6d",
+          "members": [
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-landscape-touch/current-media-library-viewport-0.png",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-landscape-touch/current-media-library-viewport-2.png",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-landscape-touch/current-media-library-viewport-4.png",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-landscape-touch/current-media-library.png",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-landscape-touch/current-scrollport-footer.png",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-landscape-touch/current-scrollport-middle.png",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-landscape-touch/current-scrollport-top.png",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-landscape-touch/media-library-chromium-landscape-touch-actual.png",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-landscape-touch/media-library-chromium-landscape-touch-diff.png",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-landscape-touch/media-library-chromium-landscape-touch-expected.png",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-landscape-touch/media-viewport-observations.json",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-landscape-touch/test-failed-1.png"
+          ]
+        }
+      ],
+      "missingDiagnostics": []
+    },
+    "chromium-large-text": {
+      "status": "packaged",
+      "captures": [
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-large-text/current-media-library-viewport-0.png",
+          "bytes": 540486,
+          "sha256": "37cc3d4c9547efc9953c4d34f14f41a2dac57191d1b289061f9d965811118e94",
+          "archive": "chromium-large-text.zip"
+        },
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-large-text/current-media-library-viewport-2.png",
+          "bytes": 521391,
+          "sha256": "d4f38fb8474de94e2c0d87a4f0fdeffa3b5d36c7209814b510470a9fab017f0c",
+          "archive": "chromium-large-text.zip"
+        },
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-large-text/current-media-library-viewport-4.png",
+          "bytes": 514338,
+          "sha256": "793b30d98f10ef6df4cc22224b5173e57880ce01c90b12d7f8500bacd7e4e947",
+          "archive": "chromium-large-text.zip"
+        },
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-large-text/current-media-library.png",
+          "bytes": 1939668,
+          "sha256": "6d2993d63e6a93cf68b643b4615401f1f121da0b7a0a8c5a660eef9b5275674c",
+          "archive": "chromium-large-text.zip"
+        },
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-large-text/media-library-chromium-large-text-actual.png",
+          "bytes": 1939599,
+          "sha256": "1805ceb7030f80ea137546eeb6d23832f58f8288727d67e2a35f232448ff2569",
+          "archive": "chromium-large-text.zip"
+        },
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-large-text/media-library-chromium-large-text-diff.png",
+          "bytes": 634772,
+          "sha256": "e2008c2e4715c7d94bf9a580b3a5621160216ef47e34c2c05659f49d08abde32",
+          "archive": "chromium-large-text.zip"
+        },
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-large-text/media-library-chromium-large-text-expected.png",
+          "bytes": 1063028,
+          "sha256": "447cf879ed3fad50b446330f536fa1dfdd10311ea7c0410c9d5b3dd433ca455e",
+          "archive": "chromium-large-text.zip"
+        },
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-large-text/test-failed-1.png",
+          "bytes": 514338,
+          "sha256": "793b30d98f10ef6df4cc22224b5173e57880ce01c90b12d7f8500bacd7e4e947",
+          "archive": "chromium-large-text.zip"
+        }
+      ],
+      "expectedSupportedTests": [
+        {
+          "project": "chromium-large-text",
+          "title": "media library is accessible responsive and visually reviewed",
+          "expectedStatus": "passed"
+        }
+      ],
+      "currentCaptureCount": 4,
+      "minimumCaptureShortfall": 0,
+      "captureCoverage": "requires-review",
+      "diagnostics": [
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-large-text/media-viewport-observations.json",
+          "bytes": 15740,
+          "sha256": "a2eceed6022414b2ef27f529f958567fff810491425db8c7bfae332e9d141163",
+          "archive": "chromium-large-text.zip"
+        }
+      ],
+      "parts": [
+        {
+          "path": "chromium-large-text.zip",
+          "bytes": 7686152,
+          "sha256": "b42fac226ff416dd842d6770845ae3e847559c5ceb394318d849c1598b41d1e7",
+          "members": [
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-large-text/current-media-library-viewport-0.png",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-large-text/current-media-library-viewport-2.png",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-large-text/current-media-library-viewport-4.png",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-large-text/current-media-library.png",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-large-text/media-library-chromium-large-text-actual.png",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-large-text/media-library-chromium-large-text-diff.png",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-large-text/media-library-chromium-large-text-expected.png",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-large-text/media-viewport-observations.json",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-large-text/test-failed-1.png"
+          ]
+        }
+      ],
+      "missingDiagnostics": []
+    },
+    "chromium-light": {
+      "status": "packaged",
+      "captures": [
+        {
+          "path": "media-release-media-detail-fa505-age-and-consequence-context-chromium-light/current-media-detail-completed.png",
+          "bytes": 59510,
+          "sha256": "3fc28dad910cd8af4c52211a5f645bded1753e003c1b4205a12855e0f4fb4661",
+          "archive": "chromium-light.zip"
+        },
+        {
+          "path": "media-release-media-detail-fa505-age-and-consequence-context-chromium-light/current-media-detail-restored.png",
+          "bytes": 58636,
+          "sha256": "7633526918e638fc132bfc59310b1e226053d88e96866e1a2ca758cbc878a053",
+          "archive": "chromium-light.zip"
+        },
+        {
+          "path": "media-release-media-detail-fa505-age-and-consequence-context-chromium-light/current-media-detail-top.png",
+          "bytes": 110106,
+          "sha256": "cef7621f56f556330665bf907e6f05e7df8c0011b7bda12a3901b9fdceb56232",
+          "archive": "chromium-light.zip"
+        },
+        {
+          "path": "media-release-media-detail-fa505-age-and-consequence-context-chromium-light/current-media-detail.png",
+          "bytes": 73281,
+          "sha256": "d42b3a72eaad8b26b9d3307b0a146074d5f37067aec4b195e6bd7b0546dc0e48",
+          "archive": "chromium-light.zip"
+        },
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-light/current-media-library-viewport-0.png",
+          "bytes": 609533,
+          "sha256": "55f59c744940a6fc26f6fb070435422bdb967f27336208c57756d3e678572308",
+          "archive": "chromium-light.zip"
+        },
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-light/current-media-library-viewport-2.png",
+          "bytes": 609533,
+          "sha256": "55f59c744940a6fc26f6fb070435422bdb967f27336208c57756d3e678572308",
+          "archive": "chromium-light.zip"
+        },
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-light/current-media-library-viewport-4.png",
+          "bytes": 564332,
+          "sha256": "6ab4aa81e8d0d2d6ac9d751916ddabfcce683ce1e34ab693d25609c64c4f20e2",
+          "archive": "chromium-light.zip"
+        },
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-light/current-media-library.png",
+          "bytes": 820061,
+          "sha256": "a4a1a624d4b4a8ec424ef6a51ce25ffc0ca7479ba62e48fe4511664dc7045446",
+          "archive": "chromium-light.zip"
+        },
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-light/media-library-chromium-light-actual.png",
+          "bytes": 820061,
+          "sha256": "a4a1a624d4b4a8ec424ef6a51ce25ffc0ca7479ba62e48fe4511664dc7045446",
+          "archive": "chromium-light.zip"
+        },
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-light/media-library-chromium-light-diff.png",
+          "bytes": 294729,
+          "sha256": "fcafd222b507f487a7adc03b8cfcc057172c2801212293d3778b8adf381cf055",
+          "archive": "chromium-light.zip"
+        },
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-light/media-library-chromium-light-expected.png",
+          "bytes": 785487,
+          "sha256": "a9b4a8a1e9166a1a3701463276f2c72009ecff40d27a3c5548a17f8d3294879c",
+          "archive": "chromium-light.zip"
+        },
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-light/test-failed-1.png",
+          "bytes": 564332,
+          "sha256": "6ab4aa81e8d0d2d6ac9d751916ddabfcce683ce1e34ab693d25609c64c4f20e2",
+          "archive": "chromium-light.zip"
+        },
+        {
+          "path": "media-release-media-picker-72bf8-ontained-in-a-real-workflow-chromium-light/current-media-picker-bottom.png",
+          "bytes": 48739,
+          "sha256": "71f4f6cc48c2f61990cece35fae66c8171a9498aff30304ff0212040c743191f",
+          "archive": "chromium-light.zip"
+        },
+        {
+          "path": "media-release-media-picker-72bf8-ontained-in-a-real-workflow-chromium-light/current-media-picker.png",
+          "bytes": 48739,
+          "sha256": "71f4f6cc48c2f61990cece35fae66c8171a9498aff30304ff0212040c743191f",
+          "archive": "chromium-light.zip"
+        }
+      ],
+      "expectedSupportedTests": [
+        {
+          "project": "chromium-light",
+          "title": "media detail preserves safe preview usage and consequence context",
+          "expectedStatus": "passed"
+        },
+        {
+          "project": "chromium-light",
+          "title": "media picker is visually and keyboard contained in a real workflow",
+          "expectedStatus": "passed"
+        },
+        {
+          "project": "chromium-light",
+          "title": "media library is accessible responsive and visually reviewed",
+          "expectedStatus": "passed"
+        }
+      ],
+      "currentCaptureCount": 10,
+      "minimumCaptureShortfall": 0,
+      "captureCoverage": "requires-review",
+      "diagnostics": [
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-light/media-viewport-observations.json",
+          "bytes": 41864,
+          "sha256": "0acc3305ca48ff4947f09fcbe7693c3fce9f7399e7a9b2dad2358dacf49e7310",
+          "archive": "chromium-light.zip"
+        }
+      ],
+      "parts": [
+        {
+          "path": "chromium-light.zip",
+          "bytes": 5513331,
+          "sha256": "fbe9868f86fda75905ac84592e288e1491d949bb74e31876eea2cae8724e5943",
+          "members": [
+            "media-release-media-detail-fa505-age-and-consequence-context-chromium-light/current-media-detail-completed.png",
+            "media-release-media-detail-fa505-age-and-consequence-context-chromium-light/current-media-detail-restored.png",
+            "media-release-media-detail-fa505-age-and-consequence-context-chromium-light/current-media-detail-top.png",
+            "media-release-media-detail-fa505-age-and-consequence-context-chromium-light/current-media-detail.png",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-light/current-media-library-viewport-0.png",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-light/current-media-library-viewport-2.png",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-light/current-media-library-viewport-4.png",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-light/current-media-library.png",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-light/media-library-chromium-light-actual.png",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-light/media-library-chromium-light-diff.png",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-light/media-library-chromium-light-expected.png",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-light/media-viewport-observations.json",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-light/test-failed-1.png",
+            "media-release-media-picker-72bf8-ontained-in-a-real-workflow-chromium-light/current-media-picker-bottom.png",
+            "media-release-media-picker-72bf8-ontained-in-a-real-workflow-chromium-light/current-media-picker.png"
+          ]
+        }
+      ],
+      "missingDiagnostics": []
+    },
+    "chromium-phone-dpr3": {
+      "status": "packaged",
+      "captures": [
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-phone-dpr3/current-media-library-viewport-0.png",
+          "bytes": 1239842,
+          "sha256": "5e260da37e87c6bce263caca5707e7e72dc2c0979c7f7701696d3513d92145f5",
+          "archive": "chromium-phone-dpr3.zip"
+        },
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-phone-dpr3/current-media-library-viewport-2.png",
+          "bytes": 1287233,
+          "sha256": "c30c5c388aabfb2b759671dfffa3dd66b4e151a0d7d25e1df6e9b5be7e31dc5b",
+          "archive": "chromium-phone-dpr3.zip"
+        },
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-phone-dpr3/current-media-library-viewport-4.png",
+          "bytes": 1134631,
+          "sha256": "effcace6265bc7dea7d4ebf2ed4f401d271c0df7b4d695326a05846091adaff0",
+          "archive": "chromium-phone-dpr3.zip"
+        },
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-phone-dpr3/current-media-library.png",
+          "bytes": 1198853,
+          "sha256": "3417d7660fe45cc8e6dcbd208f526761deeb992b5fa6ee59a7672053609b67a6",
+          "archive": "chromium-phone-dpr3.zip"
+        },
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-phone-dpr3/current-scrollport-footer.png",
+          "bytes": 408986,
+          "sha256": "0f54f951ca77ec6983f8f913d7a435408d89706543dca744e19ad82af738047c",
+          "archive": "chromium-phone-dpr3.zip"
+        },
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-phone-dpr3/current-scrollport-middle.png",
+          "bytes": 1288398,
+          "sha256": "d424524fce0a53db2ebb91c70aa1500b10c879ddcb3fb3067cb21829cf5dc075",
+          "archive": "chromium-phone-dpr3.zip"
+        },
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-phone-dpr3/current-scrollport-top.png",
+          "bytes": 1198853,
+          "sha256": "3417d7660fe45cc8e6dcbd208f526761deeb992b5fa6ee59a7672053609b67a6",
+          "archive": "chromium-phone-dpr3.zip"
+        },
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-phone-dpr3/media-library-chromium-phone-dpr3-actual.png",
+          "bytes": 225202,
+          "sha256": "3da568f10edd09422e70383298fb533779bf84e8557b909ae7b0ca66d2a771b7",
+          "archive": "chromium-phone-dpr3.zip"
+        },
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-phone-dpr3/media-library-chromium-phone-dpr3-diff.png",
+          "bytes": 154349,
+          "sha256": "cb5e0a03c54704dd33fd2998ca8a1eb951f210416ba42fcec89a3c7de454be05",
+          "archive": "chromium-phone-dpr3.zip"
+        },
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-phone-dpr3/media-library-chromium-phone-dpr3-expected.png",
+          "bytes": 489833,
+          "sha256": "da683b3200315437b68e4c84b411784d9a450bbe8a641ae8c5bdd338ceaca2f6",
+          "archive": "chromium-phone-dpr3.zip"
+        },
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-phone-dpr3/test-failed-1.png",
+          "bytes": 1134631,
+          "sha256": "effcace6265bc7dea7d4ebf2ed4f401d271c0df7b4d695326a05846091adaff0",
+          "archive": "chromium-phone-dpr3.zip"
+        }
+      ],
+      "expectedSupportedTests": [
+        {
+          "project": "chromium-phone-dpr3",
+          "title": "media library is accessible responsive and visually reviewed",
+          "expectedStatus": "passed"
+        }
+      ],
+      "currentCaptureCount": 7,
+      "minimumCaptureShortfall": 0,
+      "captureCoverage": "requires-review",
+      "diagnostics": [
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-phone-dpr3/media-viewport-observations.json",
+          "bytes": 20314,
+          "sha256": "7e00e85a6937fbd9291e5b196386fa3ed16956aee8d1b02cd5e6cedd20171ce7",
+          "archive": "chromium-phone-dpr3.zip"
+        }
+      ],
+      "parts": [
+        {
+          "path": "chromium-phone-dpr3.zip",
+          "bytes": 9784799,
+          "sha256": "302960949a88b49166d898d530a46942192f4b0012dcd077422cc69626d86644",
+          "members": [
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-phone-dpr3/current-media-library-viewport-0.png",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-phone-dpr3/current-media-library-viewport-2.png",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-phone-dpr3/current-media-library-viewport-4.png",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-phone-dpr3/current-media-library.png",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-phone-dpr3/current-scrollport-footer.png",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-phone-dpr3/current-scrollport-middle.png",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-phone-dpr3/current-scrollport-top.png",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-phone-dpr3/media-library-chromium-phone-dpr3-actual.png",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-phone-dpr3/media-library-chromium-phone-dpr3-diff.png",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-phone-dpr3/media-library-chromium-phone-dpr3-expected.png",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-phone-dpr3/media-viewport-observations.json",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-phone-dpr3/test-failed-1.png"
+          ]
+        }
+      ],
+      "missingDiagnostics": []
+    },
+    "chromium-reduced-motion": {
+      "status": "packaged",
+      "captures": [
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-reduced-motion/current-media-library-viewport-0.png",
+          "bytes": 588173,
+          "sha256": "c7de586e13812290a9634405c164567d1afb816e21e9181a6abb9712ef7680a5",
+          "archive": "chromium-reduced-motion.zip"
+        },
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-reduced-motion/current-media-library-viewport-2.png",
+          "bytes": 588173,
+          "sha256": "c7de586e13812290a9634405c164567d1afb816e21e9181a6abb9712ef7680a5",
+          "archive": "chromium-reduced-motion.zip"
+        },
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-reduced-motion/current-media-library-viewport-4.png",
+          "bytes": 534657,
+          "sha256": "ed52860810fec3114cfe1681208f56421c87134d59cc9eedca88b92ad1c22122",
+          "archive": "chromium-reduced-motion.zip"
+        },
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-reduced-motion/current-media-library.png",
+          "bytes": 781844,
+          "sha256": "aed0f7865083f85e35fc8081de7b7e23566837a16bd363c832b2b6873334be9e",
+          "archive": "chromium-reduced-motion.zip"
+        },
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-reduced-motion/media-library-chromium-reduced-motion-actual.png",
+          "bytes": 781848,
+          "sha256": "2dfc77c7dd5bc6aceddd20760fb7c687d462e26dfae06090035e69112be8e86c",
+          "archive": "chromium-reduced-motion.zip"
+        },
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-reduced-motion/media-library-chromium-reduced-motion-diff.png",
+          "bytes": 289827,
+          "sha256": "c75ed36684d9ad05f4cbdbe7e9499f0cb1d7e8377c284632c31f6843233e8ade",
+          "archive": "chromium-reduced-motion.zip"
+        },
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-reduced-motion/media-library-chromium-reduced-motion-expected.png",
+          "bytes": 761973,
+          "sha256": "01d76ce731601453f186ae56a9f608e2cb52f64d2f572571d7cec0fe02a3daed",
+          "archive": "chromium-reduced-motion.zip"
+        },
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-reduced-motion/test-failed-1.png",
+          "bytes": 534657,
+          "sha256": "ed52860810fec3114cfe1681208f56421c87134d59cc9eedca88b92ad1c22122",
+          "archive": "chromium-reduced-motion.zip"
+        }
+      ],
+      "expectedSupportedTests": [
+        {
+          "project": "chromium-reduced-motion",
+          "title": "media library is accessible responsive and visually reviewed",
+          "expectedStatus": "passed"
+        }
+      ],
+      "currentCaptureCount": 4,
+      "minimumCaptureShortfall": 0,
+      "captureCoverage": "requires-review",
+      "diagnostics": [
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-reduced-motion/media-viewport-observations.json",
+          "bytes": 41873,
+          "sha256": "39f0cd27fb08b7fd45ac8bdc90fe5b924f8e511015ffdf6e67506ee9fce8a81c",
+          "archive": "chromium-reduced-motion.zip"
+        }
+      ],
+      "parts": [
+        {
+          "path": "chromium-reduced-motion.zip",
+          "bytes": 4905913,
+          "sha256": "f665c025a613ddb21312f2ef681974df6953612f02aadc897428f516b97b2fc8",
+          "members": [
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-reduced-motion/current-media-library-viewport-0.png",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-reduced-motion/current-media-library-viewport-2.png",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-reduced-motion/current-media-library-viewport-4.png",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-reduced-motion/current-media-library.png",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-reduced-motion/media-library-chromium-reduced-motion-actual.png",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-reduced-motion/media-library-chromium-reduced-motion-diff.png",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-reduced-motion/media-library-chromium-reduced-motion-expected.png",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-reduced-motion/media-viewport-observations.json",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-reduced-motion/test-failed-1.png"
+          ]
+        }
+      ],
+      "missingDiagnostics": []
+    },
+    "chromium-rtl": {
+      "status": "packaged",
+      "captures": [
+        {
+          "path": "media-release-media-detail-fa505-age-and-consequence-context-chromium-rtl/current-media-detail-completed.png",
+          "bytes": 58977,
+          "sha256": "3cdb91e5be312844fc5ef679bb8fe63aa71c4f71b6ade7cbf47b129852224085",
+          "archive": "chromium-rtl.zip"
+        },
+        {
+          "path": "media-release-media-detail-fa505-age-and-consequence-context-chromium-rtl/current-media-detail-restored.png",
+          "bytes": 58166,
+          "sha256": "e81137d72a8ca269a1d458406ce0147a96fefd7f1acef80222ecb2dc77ccc35c",
+          "archive": "chromium-rtl.zip"
+        },
+        {
+          "path": "media-release-media-detail-fa505-age-and-consequence-context-chromium-rtl/current-media-detail-top.png",
+          "bytes": 109979,
+          "sha256": "49280a292b1008d213fa4b1e0d8d90cd6f78f18f456bbd2ab54c1eaeee0b2e47",
+          "archive": "chromium-rtl.zip"
+        },
+        {
+          "path": "media-release-media-detail-fa505-age-and-consequence-context-chromium-rtl/current-media-detail.png",
+          "bytes": 73150,
+          "sha256": "2492019406835b7bdb3e4ada2bf45f8bb91fb7468c4b040b78abe8e5ef4f32eb",
+          "archive": "chromium-rtl.zip"
+        },
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-rtl/current-media-library-viewport-0.png",
+          "bytes": 581493,
+          "sha256": "66d65a26ddecdc277f22230a647e82423874d081db058e169fe6330e57906afa",
+          "archive": "chromium-rtl.zip"
+        },
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-rtl/current-media-library-viewport-2.png",
+          "bytes": 581493,
+          "sha256": "66d65a26ddecdc277f22230a647e82423874d081db058e169fe6330e57906afa",
+          "archive": "chromium-rtl.zip"
+        },
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-rtl/current-media-library-viewport-4.png",
+          "bytes": 531645,
+          "sha256": "34d3c1eb822b15f13929311b0701df8d430a28d09d286c674cdcf98bcd60c17a",
+          "archive": "chromium-rtl.zip"
+        },
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-rtl/current-media-library.png",
+          "bytes": 774153,
+          "sha256": "a8e0b40d6a70df3d55332422870dc1fc2ecce071b1f17bd951f217dcd57ecc68",
+          "archive": "chromium-rtl.zip"
+        },
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-rtl/media-library-chromium-rtl-actual.png",
+          "bytes": 774153,
+          "sha256": "a8e0b40d6a70df3d55332422870dc1fc2ecce071b1f17bd951f217dcd57ecc68",
+          "archive": "chromium-rtl.zip"
+        },
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-rtl/media-library-chromium-rtl-diff.png",
+          "bytes": 298331,
+          "sha256": "deaf35cda53ce813928e37cf55fb2b41c2b820315e0156bc8906a97dc23ae264",
+          "archive": "chromium-rtl.zip"
+        },
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-rtl/media-library-chromium-rtl-expected.png",
+          "bytes": 764415,
+          "sha256": "e17aaf179e4a31e1e64f3cb9a859ed5f17bb9a0c0c050f1a5bf4e437650ddd5a",
+          "archive": "chromium-rtl.zip"
+        },
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-rtl/test-failed-1.png",
+          "bytes": 531645,
+          "sha256": "34d3c1eb822b15f13929311b0701df8d430a28d09d286c674cdcf98bcd60c17a",
+          "archive": "chromium-rtl.zip"
+        },
+        {
+          "path": "media-release-media-picker-72bf8-ontained-in-a-real-workflow-chromium-rtl/current-media-picker-bottom.png",
+          "bytes": 47846,
+          "sha256": "4411a2dce5389e1077a2c71427b1314df6b99264f31b76655c7fcbee8f40f271",
+          "archive": "chromium-rtl.zip"
+        },
+        {
+          "path": "media-release-media-picker-72bf8-ontained-in-a-real-workflow-chromium-rtl/current-media-picker.png",
+          "bytes": 47846,
+          "sha256": "4411a2dce5389e1077a2c71427b1314df6b99264f31b76655c7fcbee8f40f271",
+          "archive": "chromium-rtl.zip"
+        }
+      ],
+      "expectedSupportedTests": [
+        {
+          "project": "chromium-rtl",
+          "title": "media detail preserves safe preview usage and consequence context",
+          "expectedStatus": "passed"
+        },
+        {
+          "project": "chromium-rtl",
+          "title": "media picker is visually and keyboard contained in a real workflow",
+          "expectedStatus": "passed"
+        },
+        {
+          "project": "chromium-rtl",
+          "title": "media library is accessible responsive and visually reviewed",
+          "expectedStatus": "passed"
+        }
+      ],
+      "currentCaptureCount": 10,
+      "minimumCaptureShortfall": 0,
+      "captureCoverage": "requires-review",
+      "diagnostics": [
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-rtl/media-viewport-observations.json",
+          "bytes": 41887,
+          "sha256": "d13b621b0cc88bb3951a123a3e3483b9037a855a2b2cb17f33e6c72813004304",
+          "archive": "chromium-rtl.zip"
+        }
+      ],
+      "parts": [
+        {
+          "path": "chromium-rtl.zip",
+          "bytes": 5279495,
+          "sha256": "434e2f9c2abfb530a4c476f9e67b15f623e2a187c908817371b6d369524c3657",
+          "members": [
+            "media-release-media-detail-fa505-age-and-consequence-context-chromium-rtl/current-media-detail-completed.png",
+            "media-release-media-detail-fa505-age-and-consequence-context-chromium-rtl/current-media-detail-restored.png",
+            "media-release-media-detail-fa505-age-and-consequence-context-chromium-rtl/current-media-detail-top.png",
+            "media-release-media-detail-fa505-age-and-consequence-context-chromium-rtl/current-media-detail.png",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-rtl/current-media-library-viewport-0.png",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-rtl/current-media-library-viewport-2.png",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-rtl/current-media-library-viewport-4.png",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-rtl/current-media-library.png",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-rtl/media-library-chromium-rtl-actual.png",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-rtl/media-library-chromium-rtl-diff.png",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-rtl/media-library-chromium-rtl-expected.png",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-rtl/media-viewport-observations.json",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-rtl/test-failed-1.png",
+            "media-release-media-picker-72bf8-ontained-in-a-real-workflow-chromium-rtl/current-media-picker-bottom.png",
+            "media-release-media-picker-72bf8-ontained-in-a-real-workflow-chromium-rtl/current-media-picker.png"
+          ]
+        }
+      ],
+      "missingDiagnostics": []
+    },
+    "chromium-tablet": {
+      "status": "packaged",
+      "captures": [
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-tablet/current-media-library-viewport-0.png",
+          "bytes": 362285,
+          "sha256": "2975b0c54c0700449753229286dcf022d62dba83fad913fe5cbd319c7ae113d8",
+          "archive": "chromium-tablet.zip"
+        },
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-tablet/current-media-library-viewport-2.png",
+          "bytes": 362285,
+          "sha256": "2975b0c54c0700449753229286dcf022d62dba83fad913fe5cbd319c7ae113d8",
+          "archive": "chromium-tablet.zip"
+        },
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-tablet/current-media-library-viewport-4.png",
+          "bytes": 336122,
+          "sha256": "d045ddaa89c403a5546854952c3ddde5cfd126f8144c7e34f891dbe6e01f3e3b",
+          "archive": "chromium-tablet.zip"
+        },
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-tablet/current-media-library.png",
+          "bytes": 324595,
+          "sha256": "4ef2977b8d432084551bff74834e60f818907d585d2c82b7da3ccba8eb5abe68",
+          "archive": "chromium-tablet.zip"
+        },
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-tablet/current-scrollport-footer.png",
+          "bytes": 153251,
+          "sha256": "776cbf545c449dba1328c69bd20a723a2b22d89604f1a3f17bc55d9b6a3308dc",
+          "archive": "chromium-tablet.zip"
+        },
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-tablet/current-scrollport-middle.png",
+          "bytes": 380199,
+          "sha256": "e94403047202e30b52e66196a3ffeff455e738ad82b191ebfca3a69777d8f577",
+          "archive": "chromium-tablet.zip"
+        },
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-tablet/current-scrollport-top.png",
+          "bytes": 324617,
+          "sha256": "c455eefd7e3fad2f5bf99a962964344c21d42adbf9054374e548dd955d134bbd",
+          "archive": "chromium-tablet.zip"
+        },
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-tablet/media-library-chromium-tablet-actual.png",
+          "bytes": 324595,
+          "sha256": "4ef2977b8d432084551bff74834e60f818907d585d2c82b7da3ccba8eb5abe68",
+          "archive": "chromium-tablet.zip"
+        },
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-tablet/media-library-chromium-tablet-diff.png",
+          "bytes": 241359,
+          "sha256": "e85e4afad8427a2fd96f4fa846eab50038719c0e95e9cc84b6b0d679d7f6d5db",
+          "archive": "chromium-tablet.zip"
+        },
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-tablet/media-library-chromium-tablet-expected.png",
+          "bytes": 642992,
+          "sha256": "90033ebcc1cb3489c4a17a965b0cdd62fd69ae19fa0b071809e367b076b0e1b9",
+          "archive": "chromium-tablet.zip"
+        },
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-tablet/test-failed-1.png",
+          "bytes": 336122,
+          "sha256": "d045ddaa89c403a5546854952c3ddde5cfd126f8144c7e34f891dbe6e01f3e3b",
+          "archive": "chromium-tablet.zip"
+        }
+      ],
+      "expectedSupportedTests": [
+        {
+          "project": "chromium-tablet",
+          "title": "media library is accessible responsive and visually reviewed",
+          "expectedStatus": "passed"
+        }
+      ],
+      "currentCaptureCount": 7,
+      "minimumCaptureShortfall": 0,
+      "captureCoverage": "requires-review",
+      "diagnostics": [
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-tablet/media-viewport-observations.json",
+          "bytes": 33370,
+          "sha256": "14d27c12497f606bc290193f6881a5b9fae58b4293188c2ac1f595b11fd6162b",
+          "archive": "chromium-tablet.zip"
+        }
+      ],
+      "parts": [
+        {
+          "path": "chromium-tablet.zip",
+          "bytes": 3825346,
+          "sha256": "1691d7fdd08a2d6096b8215ed39c0d9fec639e52d2f47b447bf1b582b986fda2",
+          "members": [
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-tablet/current-media-library-viewport-0.png",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-tablet/current-media-library-viewport-2.png",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-tablet/current-media-library-viewport-4.png",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-tablet/current-media-library.png",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-tablet/current-scrollport-footer.png",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-tablet/current-scrollport-middle.png",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-tablet/current-scrollport-top.png",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-tablet/media-library-chromium-tablet-actual.png",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-tablet/media-library-chromium-tablet-diff.png",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-tablet/media-library-chromium-tablet-expected.png",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-tablet/media-viewport-observations.json",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-tablet/test-failed-1.png"
+          ]
+        }
+      ],
+      "missingDiagnostics": []
+    },
+    "chromium-ultrawide": {
+      "status": "packaged",
+      "captures": [
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-ultrawide/current-media-library-viewport-0.png",
+          "bytes": 1379957,
+          "sha256": "376204b2b746a3d18eea2e4706b97431008c6dac0b0919095fec9b079d493396",
+          "archive": "chromium-ultrawide.zip"
+        },
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-ultrawide/current-media-library-viewport-2.png",
+          "bytes": 1379957,
+          "sha256": "376204b2b746a3d18eea2e4706b97431008c6dac0b0919095fec9b079d493396",
+          "archive": "chromium-ultrawide.zip"
+        },
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-ultrawide/current-media-library-viewport-4.png",
+          "bytes": 1224651,
+          "sha256": "cb8debd5887ed7e24c8a2c09f051ad81c688dfbe4dbab326aa497ad0b6311f81",
+          "archive": "chromium-ultrawide.zip"
+        },
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-ultrawide/current-media-library.png",
+          "bytes": 1537029,
+          "sha256": "17fb1f412225047daf479b7a3425a0dc86b3513d38743af305b4a34fc2c9d304",
+          "archive": "chromium-ultrawide.zip"
+        }
+      ],
+      "expectedSupportedTests": [
+        {
+          "project": "chromium-ultrawide",
+          "title": "media library is accessible responsive and visually reviewed",
+          "expectedStatus": "passed"
+        }
+      ],
+      "currentCaptureCount": 4,
+      "minimumCaptureShortfall": 0,
+      "captureCoverage": "requires-review",
+      "diagnostics": [
+        {
+          "path": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-ultrawide/media-viewport-observations.json",
+          "bytes": 45218,
+          "sha256": "2a2fc95a16c4a25e53af6c427bd3d518825118dbd1c40e697fce4143590d04fe",
+          "archive": "chromium-ultrawide.zip"
+        }
+      ],
+      "parts": [
+        {
+          "path": "chromium-ultrawide.zip",
+          "bytes": 5568344,
+          "sha256": "78c6cf51ce10a3ae95ced79ce8f47b51220633f22a053a54df5e72a691956c70",
+          "members": [
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-ultrawide/current-media-library-viewport-0.png",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-ultrawide/current-media-library-viewport-2.png",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-ultrawide/current-media-library-viewport-4.png",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-ultrawide/current-media-library.png",
+            "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-ultrawide/media-viewport-observations.json"
+          ]
+        }
+      ],
+      "missingDiagnostics": []
+    }
+  },
+  "errors": []
+}

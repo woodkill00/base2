@@ -1,0 +1,40 @@
+{
+  "conclusion": "inconclusive",
+  "inspections": [
+    {
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-desktop/operations-center-chromium-desktop-actual.png",
+      "method": "individual-pixels",
+      "role": "actual",
+      "sha256": "919c07c05b44e04bbb764299ca62b469bdd75d54419b505cdbc176178ebfdfae"
+    },
+    {
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-desktop/operations-center-chromium-desktop-diff.png",
+      "method": "individual-pixels",
+      "role": "diff",
+      "sha256": "5b2413267f985e11767f1f42b05bc453fb562b5c5e4df76f8cd0547292f05607"
+    },
+    {
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-desktop/operations-center-chromium-desktop-expected.png",
+      "method": "individual-pixels",
+      "role": "expected",
+      "sha256": "7171b2cc03efee2906963f072245f4278ad1d8dbd4b1ad68d38621be9e7289d5"
+    },
+    {
+      "member": "operations-release-operati-84a1a-ul-empty-and-failure-states-chromium-desktop/operations-center-empty-actual.png",
+      "method": "individual-pixels",
+      "role": "actual",
+      "sha256": "cf4b4dab19aa09b128530a395b8b3862e7e714fcaf8ce4091d97d080c4e34cf0"
+    },
+    {
+      "member": "operations-release-operati-e5f8f-d-read-only-recovery-states-chromium-desktop/operations-center-partial-actual.png",
+      "method": "individual-pixels",
+      "role": "actual",
+      "sha256": "12199141effe91b6ff6e81ff075930e980cfe332a1b43cdc71e2d66ffea90f42"
+    }
+  ],
+  "kind": "technical-review",
+  "manifest": "runs/41295038159-1-124813987490-13078659510.json",
+  "manifestSha256": "0ab4fa5aff1a662fa9272940604b71d3174c905c2300af71872b78d82ef5030e",
+  "notes": "Diagnostic review only; no baseline approval or whole-matrix acceptance. Original supplied pixel review retained; contact-sheet overview does not verify all fine text. Exact-byte matches refer to previously inspected images. Native1passed21failed20declaredskips. Failed comparisons do not imply all later steps executed. No current cancellation/modal screenshot or later error/reauth/read-only states captured: earlier comparison failures prevent those steps. Modal/backdrop positioning not validated here. Only bounded PNG and metadata evidence supplied; no raw trace or detailed native error report. All22main/empty/partial actual or passing captures and18supplementary scrollport images inspected; remaining references/diffs retained with explicit review status. No all-scroll hit-test receipt available in these operations bundles; visual separation is not proof of all-position safety.",
+  "schemaVersion": 2
+}

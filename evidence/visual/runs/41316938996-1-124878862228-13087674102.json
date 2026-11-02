@@ -1,0 +1,217 @@
+{
+  "archiveSha256": "b3792d5f9933dd0c4840db607c02cd1fd083222500e95e72f3bc2721131acfa7",
+  "artifactId": 13087674102,
+  "attempt": 1,
+  "captures": [
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "chromium-rtl.zip",
+          "sha256": "5a771af9ba00da19629773a25c85a957b23cca7e3e60c2fbb01a8a7413adbfbe"
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-rtl/current-operations-center-chromium-rtl.png",
+          "sha256": "51548f3ecdf307d60a525efbea058489f167ae89f79121b72126c1f3cf41f8ba"
+        }
+      ],
+      "bytes": 700836,
+      "dimensions": [
+        1280,
+        3245
+      ],
+      "identityBasis": "native-report",
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-rtl/current-operations-center-chromium-rtl.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-report",
+        "project": "chromium-rtl",
+        "title": "operations center is accessible responsive and visually stable"
+      },
+      "project": "chromium-rtl",
+      "role": "current",
+      "sha256": "51548f3ecdf307d60a525efbea058489f167ae89f79121b72126c1f3cf41f8ba",
+      "storage": "objects/51548f3ecdf307d60a525efbea058489f167ae89f79121b72126c1f3cf41f8ba.png",
+      "test": "operations center is accessible responsive and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "chromium-rtl.zip",
+          "sha256": "5a771af9ba00da19629773a25c85a957b23cca7e3e60c2fbb01a8a7413adbfbe"
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-rtl/operations-center-chromium-rtl-actual.png",
+          "sha256": "4a7b54f9841fe17924c663839874399c66cac0493cf649505bad22ce6b93cb79"
+        }
+      ],
+      "bytes": 700834,
+      "dimensions": [
+        1280,
+        3245
+      ],
+      "identityBasis": "native-report",
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-rtl/operations-center-chromium-rtl-actual.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-report",
+        "project": "chromium-rtl",
+        "title": "operations center is accessible responsive and visually stable"
+      },
+      "project": "chromium-rtl",
+      "role": "actual",
+      "sha256": "4a7b54f9841fe17924c663839874399c66cac0493cf649505bad22ce6b93cb79",
+      "storage": "objects/4a7b54f9841fe17924c663839874399c66cac0493cf649505bad22ce6b93cb79.png",
+      "test": "operations center is accessible responsive and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "chromium-rtl.zip",
+          "sha256": "5a771af9ba00da19629773a25c85a957b23cca7e3e60c2fbb01a8a7413adbfbe"
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-rtl/operations-center-chromium-rtl-diff.png",
+          "sha256": "c310f23f2b22fd640e4942c13da15a60c651a704b9122b21d2cc95eb7240ea99"
+        }
+      ],
+      "bytes": 366043,
+      "dimensions": [
+        1280,
+        3245
+      ],
+      "identityBasis": "native-report",
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-rtl/operations-center-chromium-rtl-diff.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-report",
+        "project": "chromium-rtl",
+        "title": "operations center is accessible responsive and visually stable"
+      },
+      "project": "chromium-rtl",
+      "role": "diff",
+      "sha256": "c310f23f2b22fd640e4942c13da15a60c651a704b9122b21d2cc95eb7240ea99",
+      "storage": "objects/c310f23f2b22fd640e4942c13da15a60c651a704b9122b21d2cc95eb7240ea99.png",
+      "test": "operations center is accessible responsive and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "chromium-rtl.zip",
+          "sha256": "5a771af9ba00da19629773a25c85a957b23cca7e3e60c2fbb01a8a7413adbfbe"
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-rtl/operations-center-chromium-rtl-expected.png",
+          "sha256": "6d956dbc372443c8117b7af2091181e8fc17110c7bcaad0d8109bdccca1f24d1"
+        }
+      ],
+      "bytes": 600884,
+      "dimensions": [
+        1280,
+        2896
+      ],
+      "identityBasis": "native-report",
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-rtl/operations-center-chromium-rtl-expected.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-report",
+        "project": "chromium-rtl",
+        "title": "operations center is accessible responsive and visually stable"
+      },
+      "project": "chromium-rtl",
+      "role": "expected",
+      "sha256": "6d956dbc372443c8117b7af2091181e8fc17110c7bcaad0d8109bdccca1f24d1",
+      "storage": "objects/6d956dbc372443c8117b7af2091181e8fc17110c7bcaad0d8109bdccca1f24d1.png",
+      "test": "operations center is accessible responsive and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "chromium-rtl.zip",
+          "sha256": "5a771af9ba00da19629773a25c85a957b23cca7e3e60c2fbb01a8a7413adbfbe"
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-rtl/test-failed-1.png",
+          "sha256": "c7690d410cc9258f42e554e22c6b102832d2d8593b92dc6a032e95fa8fc291a5"
+        }
+      ],
+      "bytes": 382756,
+      "dimensions": [
+        1280,
+        900
+      ],
+      "identityBasis": "native-report",
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-rtl/test-failed-1.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-report",
+        "project": "chromium-rtl",
+        "title": "operations center is accessible responsive and visually stable"
+      },
+      "project": "chromium-rtl",
+      "role": "failure",
+      "sha256": "c7690d410cc9258f42e554e22c6b102832d2d8593b92dc6a032e95fa8fc291a5",
+      "storage": "objects/c7690d410cc9258f42e554e22c6b102832d2d8593b92dc6a032e95fa8fc291a5.png",
+      "test": "operations center is accessible responsive and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    }
+  ],
+  "fixtureScope": "synthetic-project-tests",
+  "jobId": 124878862228,
+  "laterValidation": "pending",
+  "observations": [],
+  "originalOutcome": "failed",
+  "repository": "woodkill00/base2",
+  "requestedHead": "da4d0a72c1e7893e069b95a60c7f3cfcbfa6004a",
+  "runId": 41316938996,
+  "schemaVersion": 2,
+  "sourceCommit": "da4d0a72c1e7893e069b95a60c7f3cfcbfa6004a",
+  "sourceTree": "315d2db4a8e4b62ef0ae4b434d6906f2c0f4d30c",
+  "technicalReview": "pending",
+  "transfer": {
+    "blobs": {
+      "4a7b54f9841fe17924c663839874399c66cac0493cf649505bad22ce6b93cb79": "f73567b861565beb7ab04bc1101b8e593833e166",
+      "51548f3ecdf307d60a525efbea058489f167ae89f79121b72126c1f3cf41f8ba": "be8720020b615487e9a6098c91db085787afa5a1",
+      "6d956dbc372443c8117b7af2091181e8fc17110c7bcaad0d8109bdccca1f24d1": "877c78abc906336159720c1d9ee2926d72d4a52e",
+      "c310f23f2b22fd640e4942c13da15a60c651a704b9122b21d2cc95eb7240ea99": "d741e87b37a7a78674f13b2de5794741104ccb2c",
+      "c7690d410cc9258f42e554e22c6b102832d2d8593b92dc6a032e95fa8fc291a5": "f491b81b85f9dba65e9645a9913a1aa1563e7040"
+    },
+    "commit": "9cd69137e688113750cdc225ad4c7fce2eebc157",
+    "localVerification": "git-blob-sha256-size-dimensions-full-decode",
+    "originalArchiveVerification": "externally-verified-zip-and-members",
+    "tree": "6806be178646ad75161a0a142b2c935608c30b46"
+  }
+}

@@ -1,0 +1,227 @@
+import { afterEach, expect, test, vi } from 'vitest';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { captureContinuousScroll } from '../../e2e/continuous-scroll';
+vi.mock('node:child_process', () => {
+  const execFileSync = (_cmd: string, args: string[]) =>
+    (args[1] === 'HEAD' ? 'a' : 'b').repeat(40);
+  return { execFileSync, default: { execFileSync } };
+});
+const original = vi.hoisted(() => new Error('original continuous validation'));
+const infrastructureErrors = vi.hoisted(() => [] as string[]);
+vi.mock('../../e2e/sequence-reference', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../e2e/sequence-reference')>()),
+  sequenceRuntime: () => { throw new Error('synthetic unavailable runtime identity'); },
+}));
+vi.mock('@playwright/test', () => ({
+  expect: Object.assign((actual: unknown) => ({
+    toBe: (wanted: unknown) => {
+      if (actual !== wanted) throw original;
+    },
+    toEqual: (wanted: unknown) => {
+      if (JSON.stringify(actual) !== JSON.stringify(wanted)) throw original;
+    },
+    toBeGreaterThan: (n: number) => {
+      if (Number(actual) <= n) throw original;
+    },
+  }), {soft: (actual: unknown, message: string) => ({toBe: (wanted: unknown) => {
+    if (actual !== wanted) infrastructureErrors.push(message);
+  }})}),
+}));
+const directories: string[] = [];
+afterEach(() => {
+  infrastructureErrors.length = 0;
+  directories.splice(0).forEach((directory) => rmSync(directory, { recursive: true, force: true }));
+  document.querySelectorAll('[data-continuous-unit]').forEach((node) => node.remove());
+});
+function fixture({
+  stalled = false,
+  cleanupFails = false,
+  restoreFails = false,
+  neutralFails = false,
+  extent = 1000,
+} = {}) {
+  const directory = mkdtempSync(join(tmpdir(), 'continuous-unit-'));
+  directories.push(directory);
+  const events: string[] = [];
+  const node = {
+    tagName: 'DIV',
+    getAttribute: (name: string) => name === 'role' ? 'dialog' : null,
+    scrollLeft: 0,
+    scrollTop: 20,
+    scrollHeight: extent,
+    clientHeight: 400,
+    offsetHeight: 400,
+    querySelector: () => null,
+    getBoundingClientRect: () => ({ x: 0, y: 0, top: 0, bottom: 400, width: 320, height: 400 }),
+    scrollTo: ({ top }: { top: number }) => {
+      if (!stalled || top === 0) node.scrollTop = Math.min(top, extent - 400);
+    },
+  };
+  const target = {
+    count: async () => 1,
+    evaluate: async (fn: (_n: unknown, _a: unknown) => unknown, arg: unknown) => {
+      if (arg && typeof arg === 'object') {
+        events.push('cleanup');
+        if (cleanupFails) throw new Error('secondary cleanup');
+      }
+      return fn(node, arg);
+    },
+  };
+  const focusedNode = document.createElement('button');
+  focusedNode.dataset.continuousUnit = 'true';
+  document.body.append(focusedNode);
+  focusedNode.focus();
+  const page = {
+    context: () => ({browser: () => ({version: () => 'synthetic-unit-version'})}),
+    url: () => 'http://127.0.0.1/media',
+    evaluateHandle: async () => ({
+      evaluate: async (fn: (_node: HTMLElement) => unknown) => {
+        const source = fn.toString();
+        if (source.includes('.blur()')) {
+          events.push('blur');
+          if (neutralFails) return;
+        }
+        if (source.includes('preventScroll')) {
+          events.push('focus-restore');
+          if (restoreFails) throw new Error('focus restoration failed');
+        }
+        return fn(focusedNode);
+      },
+      dispose: async () => {},
+    }),
+    getByRole: () => ({ count: async () => 1 }),
+    evaluate: async () => ({ compact: true, layout: 'bottom' }),
+    screenshot: async ({ path }: { path: string }) => {
+      events.push('capture');
+      const bytes = Buffer.from('unit screenshot, not native evidence');
+      writeFileSync(path, bytes);
+      return bytes;
+    },
+  };
+  const info = {
+    title: 'synthetic unit case',
+    project: { name: 'chromium-compact', use: {} },
+    config: {updateSnapshots: 'none'},
+    outputPath: (name: string) => join(directory, name),
+    snapshotPath: (name: string) => join(directory, 'approved-' + name),
+  };
+  return { directory, events, page, info, target, node, focusedNode };
+}
+test('complete unit sweep restores position and writes overlapping interval provenance', async () => {
+  const f = fixture();
+  await captureContinuousScroll(f.page as never, f.info as never, 'unit', f.target as never);
+  const data = JSON.parse(readFileSync(join(f.directory, 'continuous-unit.json'), 'utf8'));
+  expect(data.complete).toBe(true);
+  expect(data.schemaVersion).toBe(2);
+  expect(data.coverageKind).toBe('neutral-focus-geometric');
+  expect(data.unobscuredReview).toBe('required');
+  expect(data.focus).toMatchObject({
+    originalHadFocus: true,
+    restored: true,
+    capture: { file: 'current-continuous-unit-focus.png' },
+  });
+  expect(document.activeElement).toBe(f.focusedNode);
+  expect(data.segments.map((s: { offset: number }) => s.offset)).toEqual([0, 300, 600]);
+  expect(f.node.scrollTop).toBe(20);
+});
+
+test('capture flow retains originals and reaches later ready state after fatal runtime identity error', async () => {
+  const f = fixture();
+  const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+  try {
+    await captureContinuousScroll(f.page as never, f.info as never, 'unit', f.target as never, 0);
+    f.events.push('later-ready-state');
+    expect(f.events.at(-1)).toBe('later-ready-state');
+    expect(infrastructureErrors).toEqual(['Sequence unit: runtime identity unavailable; no candidate']);
+    const receipt = JSON.parse(readFileSync(join(f.directory, 'continuous-unit.json'), 'utf8'));
+    expect(receipt.complete).toBe(true);
+    expect(receipt.segments).toHaveLength(3);
+    expect(log).toHaveBeenCalledWith('sequence-candidate-unavailable', expect.any(String));
+  } finally { log.mockRestore(); }
+});
+test('nonprogress saves attempted frame and cleanup cannot replace original failure', async () => {
+  const f = fixture({ stalled: true, cleanupFails: true });
+  await expect(
+    captureContinuousScroll(f.page as never, f.info as never, 'unit', f.target as never)
+  ).rejects.toBe(original);
+  const data = JSON.parse(readFileSync(join(f.directory, 'continuous-unit.json'), 'utf8'));
+  expect(f.events).toEqual(['capture', 'blur', 'capture', 'capture', 'focus-restore', 'cleanup']);
+  expect(data.complete).toBe(false);
+  expect(data.segments).toHaveLength(2);
+});
+test('64-frame ceiling fails incomplete evidence instead of truncating success', async () => {
+  const f = fixture({ extent: 100_000 });
+  await expect(
+    captureContinuousScroll(f.page as never, f.info as never, 'unit', f.target as never)
+  ).rejects.toBe(original);
+  const data = JSON.parse(readFileSync(join(f.directory, 'continuous-unit.json'), 'utf8'));
+  expect(data.complete).toBe(false);
+  expect(data.reachedEnd).toBe(false);
+  expect(data.segments).toHaveLength(64);
+  expect(data.errors).toContain('incomplete');
+});
+
+test('remaining focus is fatal after retaining both context and attempted neutral frame', async () => {
+  const f = fixture({ neutralFails: true });
+  await expect(
+    captureContinuousScroll(f.page as never, f.info as never, 'unit', f.target as never)
+  ).rejects.toBe(original);
+  const data = JSON.parse(readFileSync(join(f.directory, 'continuous-unit.json'), 'utf8'));
+  expect(data.complete).toBe(false);
+  expect(data.errors).toContain('focus-not-neutral');
+  expect(data.focus.capture.file).toBe('current-continuous-unit-focus.png');
+  expect(data.segments).toHaveLength(1);
+  expect(data.focus.restored).toBe(true);
+});
+
+test('focus restoration failure is recorded before writing completeness', async () => {
+  const f = fixture({ restoreFails: true });
+  await expect(
+    captureContinuousScroll(f.page as never, f.info as never, 'unit', f.target as never)
+  ).rejects.toThrow('focus restoration failed');
+  const data = JSON.parse(readFileSync(join(f.directory, 'continuous-unit.json'), 'utf8'));
+  expect(data.complete).toBe(false);
+  expect(data.focus.restored).toBe(false);
+  expect(data.errors).toContain('focus-restore-failed');
+  expect(f.node.scrollTop).toBe(20);
+});
+
+test('original coverage failure wins over focus restoration failure', async () => {
+  const f = fixture({ stalled: true, restoreFails: true });
+  await expect(
+    captureContinuousScroll(f.page as never, f.info as never, 'unit', f.target as never)
+  ).rejects.toBe(original);
+  const data = JSON.parse(readFileSync(join(f.directory, 'continuous-unit.json'), 'utf8'));
+  expect(data.complete).toBe(false);
+  expect(data.errors).toContain('focus-restore-failed');
+});
+
+test('revocation after an in-flight frame retains its segment and completes owned restoration before hook', async () => {
+  const { CaptureOwner, CaptureRevoked, CaptureCoverageIncomplete } = await import('../../e2e/workspace-capture-ownership');
+  const f = fixture({ cleanupFails: true });
+  const owner = new CaptureOwner('corpus');
+  const screenshot = f.page.screenshot;
+  let release!: () => void, entered!: () => void;
+  const waiting = new Promise<void>((resolve) => { entered = resolve; });
+  const blocked = new Promise<void>((resolve) => { release = resolve; });
+  let calls = 0;
+  f.page.screenshot = async (options) => {
+    if (++calls === 2) { entered(); await blocked; }
+    return screenshot(options);
+  };
+  const body = owner.body(() => captureContinuousScroll(f.page as never, f.info as never, 'workspace-exports', f.target as never));
+  const failed = expect(body).rejects.toBeInstanceOf(CaptureRevoked);
+  await waiting;
+  const hook = owner.afterEach(async () => { f.events.push('hook'); }, 1000, false, false);
+  release(); await failed; await expect(hook).rejects.toBeInstanceOf(CaptureCoverageIncomplete);
+  const data = JSON.parse(readFileSync(join(f.directory, 'continuous-workspace-exports.json'), 'utf8'));
+  expect(data.complete).toBe(false);
+  expect(data.segments).toHaveLength(1);
+  expect(data.segments[0].sha256).toBe(owner.frames[1].sha256);
+  expect(owner.frames).toHaveLength(2);
+  expect(f.events.indexOf('focus-restore')).toBeLessThan(f.events.indexOf('hook'));
+  expect(f.events.indexOf('cleanup')).toBeLessThan(f.events.indexOf('hook'));
+  expect(data.errors).toContain('capture-or-validation-failed');
+});

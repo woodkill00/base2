@@ -1,0 +1,88 @@
+{
+  "conclusion": "inconclusive",
+  "inspections": [
+    {
+      "member": "media-release-media-detail-fa505-age-and-consequence-context-chromium-high-contrast/current-media-detail-top.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "0a9844834b1c8d8e952680c1ae60bcfae21ec060cf150f75bb8ba39c2db5fb0f"
+    },
+    {
+      "member": "media-release-media-detail-fa505-age-and-consequence-context-chromium-high-contrast/media-detail-chromium-high-contrast-actual.png",
+      "method": "individual-pixels",
+      "role": "actual",
+      "sha256": "3e3ec8a9e3a15a284c743f622e3e6f615b7f39ce40ed23d0271c71da6dd3a287"
+    },
+    {
+      "member": "media-release-media-detail-fa505-age-and-consequence-context-chromium-high-contrast/media-detail-chromium-high-contrast-diff.png",
+      "method": "individual-pixels",
+      "role": "diff",
+      "sha256": "734847cd7bd5516556911907e1cd619303d696191202ab1b1e6d0b78846e8ee1"
+    },
+    {
+      "member": "media-release-media-detail-fa505-age-and-consequence-context-chromium-high-contrast/media-detail-chromium-high-contrast-expected.png",
+      "method": "individual-pixels",
+      "role": "expected",
+      "sha256": "bb29d8cf1a3f5614a05a131821561017f62c7dba8434270135c0394a1ed80175"
+    },
+    {
+      "member": "media-release-media-detail-fa505-age-and-consequence-context-chromium-high-contrast/test-failed-1.png",
+      "method": "individual-pixels",
+      "role": "failure",
+      "sha256": "e0533e8b770fdbda1851c59e735a62ecd5272420b88544549d13d93e8411a35e"
+    },
+    {
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-high-contrast/current-media-library-viewport-0.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "561e85a1b72b91f37985b812f2fb629c2f7edb6252217cb801ab29898186ec2d"
+    },
+    {
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-high-contrast/current-media-library-viewport-2.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "561e85a1b72b91f37985b812f2fb629c2f7edb6252217cb801ab29898186ec2d"
+    },
+    {
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-high-contrast/current-media-library-viewport-4.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "8ad07af7b126f1e7df1153eaa227d9577f8ea71b89b01ffa365c749a357651eb"
+    },
+    {
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-high-contrast/current-media-library.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "ded11fa2ffbe33de8d00f6748a246cfec4b1a008b7fcd45dc4db717e59ef2e16"
+    },
+    {
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-high-contrast/media-library-chromium-high-contrast-actual.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "actual",
+      "sha256": "ded11fa2ffbe33de8d00f6748a246cfec4b1a008b7fcd45dc4db717e59ef2e16"
+    },
+    {
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-high-contrast/test-failed-1.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "failure",
+      "sha256": "8ad07af7b126f1e7df1153eaa227d9577f8ea71b89b01ffa365c749a357651eb"
+    },
+    {
+      "member": "media-release-media-picker-72bf8-ontained-in-a-real-workflow-chromium-high-contrast/current-media-picker-bottom.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "eccb3e18f1e71c5a8dcb4ee94949e3a242b90f90c72c16efc0d666cd07750a59"
+    },
+    {
+      "member": "media-release-media-picker-72bf8-ontained-in-a-real-workflow-chromium-high-contrast/current-media-picker.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "eccb3e18f1e71c5a8dcb4ee94949e3a242b90f90c72c16efc0d666cd07750a59"
+    }
+  ],
+  "kind": "technical-review",
+  "manifest": "runs/41314752092-1-124872315617-13087455294.json",
+  "manifestSha256": "ce7d0c65b62ef2b6a2589e63e4632c3e48999cc0690878eea4b49d5e302edb56",
+  "notes": "Diagnostic only; no baseline or full visual acceptance. Review methods are conservative: partial image inspection maps to overview. Original run failures remain unchanged. Original PNG bytes unchanged; contact-sheet review is overview only, not detailed acceptance. High-contrast detail snapshot failure prevents later completed lifecycle steps/captures. Standard browser suites never ran; no workspace/compact journey/Firefox focus validation. No open drawer/utility popup state captured here. Mobile main fullPage PNG is only viewport-sized: reference coverage strategy needs explicit review; supplementary top/middle/footer do not show every intervening scroll position. Overview-scale review cannot certify every small text/control in tall images. Mobile drawer toggles now reserved in bottom dock; previously obscured footer copy visible at sampled scroll states. Compact/400%zoom/desktop/light/RTL detail lifecycle reaches soft-deleted completed/Prepare restore; pending alignment repaired. HC pending alignment reaches snapshot but comparison fails before completed step. HCdetail difference predominantly intended system palette on input/buttons versus authored normal-style expected controls. Residual caption textarea remains authored dark fill/border in both expected andactual; forced palette selector excludes textarea, no detail system-border assertion. Library discrepancies predominantly intentional desktop gutter reflow and mobile inner-scrollport viewport-sized capture. Not automatic reference approval. No blocked target center inside unobscured content area and no shell-control target overlaps in587schema4 observations across12projects. Generic System evidence current footer still appears in unavailable/stale contexts; separately scoped existing concern.",
+  "schemaVersion": 2
+}

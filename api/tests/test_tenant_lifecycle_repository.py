@@ -230,6 +230,10 @@ def test_apply_operation_configures_and_transfers_with_revision_control():
             expected_revision=3,
             operation_id=operation_id,
         )
+    assert cursor.execute.call_args_list[0].args == (
+        'SELECT pg_advisory_xact_lock(hashtext(%s))',
+        ('base2-workspace-policy-v1',),
+    )
     assert result['configuration'] == {'locale': 'ar'}
     assert result['revision'] == 4
     connection.commit.assert_called_once()

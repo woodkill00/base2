@@ -325,16 +325,16 @@ def db_schema_ready() -> bool:
                      EXISTS (
                        SELECT 1 FROM django_migrations
                         WHERE app='sitecontent'
-                          AND name='0034_public_content_runtime_scope'
+                          AND name='0041_workspace_revision_tenant_scope'
                      ),
                      EXISTS (
                        SELECT 1 FROM django_migrations
                         WHERE app='api_schema'
-                          AND name='0005_data_rights_claim_fencing'
+                          AND name='0006_notification_preference_sets'
                      ),
                      EXISTS (
                        SELECT 1 FROM api_schema_migrations
-                        WHERE version='013_add_global_data_rights_operations'
+                        WHERE version='014_create_notification_preference_sets'
                      )"""
             )
             row = cur.fetchone()

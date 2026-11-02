@@ -58,6 +58,7 @@ services:
         PYTHON_VERSION: 3.12-slim-bookworm
     environment:
       ENV: test
+      SITE_PROFILE: ${E2E_SITE_PROFILE:-base2-obsidian}
       BASE2_PROCESS_ROLE: migration
       DB_HOST: postgres
       DB_PORT: 5432
@@ -86,6 +87,7 @@ services:
         DOCKER_LIBRARY_REGISTRY: mirror.gcr.io/library
         PYTHON_VERSION: 3.12-slim-bookworm
     environment:
+      SITE_PROFILE: ${E2E_SITE_PROFILE:-base2-obsidian}
       DJANGO_SETTINGS_MODULE: project.settings.production
       DJANGO_SECRET_KEY: e2e_secret
       DJANGO_DEBUG: 'false'
@@ -112,6 +114,41 @@ services:
     entrypoint: ['bash', '-lc']
     command: ['python manage.py migrate --noinput']
 
+  # Trusted one-shot fixture, never a request-selected tenant or role API.
+  workspace-fixture:
+    build:
+      context: ../api
+      dockerfile: Dockerfile
+      args:
+        DOCKER_LIBRARY_REGISTRY: mirror.gcr.io/library
+        PYTHON_VERSION: 3.12-slim-bookworm
+    environment:
+      ENV: test
+      BASE2_PROCESS_ROLE: migration
+      SITE_PROFILE: ${E2E_SITE_PROFILE:-base2-obsidian}
+      E2E_SITE_PROFILE: ${E2E_SITE_PROFILE:-base2-obsidian}
+      E2E_WORKSPACE_DISPOSABLE: '1'
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: e2e
+      DB_USER: e2e
+      DB_PASSWORD: e2e
+      CONTENT_WORKSPACE_STORAGE_BACKEND: local
+      CONTENT_WORKSPACE_STORAGE_ROOT: /var/lib/base2/content-workspace
+      CONTENT_WORKSPACE_STORAGE_KEY: MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA=
+    volumes:
+      - ../e2e/support:/e2e-support:ro
+      - content_workspace_artifacts:/var/lib/base2/content-workspace
+    depends_on:
+      django-migrate:
+        condition: service_completed_successfully
+    command: ['python', '/e2e-support/workspace_fixture.py', 'seed']
+    restart: 'no'
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    read_only: true
+    tmpfs: [/tmp, /var/tmp]
+
   api:
     build:
       context: ../api
@@ -121,6 +158,12 @@ services:
         PYTHON_VERSION: 3.12-slim-bookworm
     environment:
       ENV: test
+      SITE_PROFILE: ${E2E_SITE_PROFILE:-base2-obsidian}
+      CONTENT_WORKSPACE_STORAGE_BACKEND: local
+      CONTENT_WORKSPACE_STORAGE_ROOT: /var/lib/base2/content-workspace
+      CONTENT_WORKSPACE_STORAGE_KEY: MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA=
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
       PORT: 5001
       DB_HOST: postgres
       DB_PORT: 5432
@@ -130,8 +173,6 @@ services:
       DB_PASSWORD: e2e_api_runtime_database_password
       WORKSPACE_DB_USER: base2_workspace_runtime_e2e
       WORKSPACE_DB_PASSWORD: e2e_workspace_runtime_password
-      WORKSPACE_WORKER_DB_USER: base2_workspace_worker_e2e
-      WORKSPACE_WORKER_DB_PASSWORD: e2e_workspace_worker_password
       JWT_SECRET: e2e_jwt_secret
       TOKEN_PEPPER: e2e_token_pepper
       IDENTITY_ENCRYPTION_KEY: MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA=
@@ -141,7 +182,11 @@ services:
       COOKIE_SAMESITE: Lax
       FRONTEND_URL: ${E2E_WEB_ORIGIN:-http://localhost:8080}
       CORS_ALLOW_ORIGINS: ${E2E_WEB_ORIGIN:-http://localhost:8080}
+    volumes:
+      - content_workspace_artifacts:/var/lib/base2/content-workspace
     depends_on:
+      workspace-fixture:
+        condition: service_completed_successfully
       django-migrate:
         condition: service_completed_successfully
       postgres:
@@ -169,6 +214,7 @@ services:
         PYTHON_VERSION: 3.12-slim-bookworm
     environment:
       ENV: test
+      SITE_PROFILE: ${E2E_SITE_PROFILE:-base2-obsidian}
       E2E_TEST_MODE: 'true'
       E2E_TEST_KEY: local-e2e-key
       DB_HOST: postgres
@@ -216,7 +262,9 @@ services:
         PYTHON_VERSION: 3.12-slim-bookworm
     environment:
       ENV: test
+      SITE_PROFILE: ${E2E_SITE_PROFILE:-base2-obsidian}
       BASE2_PROCESS_ROLE: runtime-worker
+      OPERATIONS_INTERNAL_BASE_URL: http://nginx:8080
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/1
       TOKEN_PEPPER: e2e_token_pepper
@@ -231,6 +279,8 @@ services:
       WORKSPACE_DB_PASSWORD: e2e_runtime_worker_password
       WORKSPACE_WORKER_DB_USER: base2_runtime_worker_e2e
       WORKSPACE_WORKER_DB_PASSWORD: e2e_runtime_worker_password
+    volumes:
+      - ../shared/config/operations-probes-v1.json:/app/shared/config/operations-probes-v1.json:ro
     depends_on:
       redis:
         condition: service_healthy
@@ -247,6 +297,7 @@ services:
         PYTHON_VERSION: 3.12-slim-bookworm
     environment:
       ENV: test
+      SITE_PROFILE: ${E2E_SITE_PROFILE:-base2-obsidian}
       BASE2_PROCESS_ROLE: data-rights-worker
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/1
@@ -267,6 +318,103 @@ services:
         condition: service_completed_successfully
     command: ['bash', '-lc', 'celery -A api.tasks.app worker -Q data-rights --loglevel=info']
 
+  celery-content-worker:
+    build:
+      context: ../api
+      dockerfile: Dockerfile
+      args:
+        DOCKER_LIBRARY_REGISTRY: mirror.gcr.io/library
+        PYTHON_VERSION: 3.12-slim-bookworm
+    environment:
+      ENV: test
+      SITE_PROFILE: ${E2E_SITE_PROFILE:-base2-obsidian}
+      BASE2_PROCESS_ROLE: content-worker
+      E2E_SITE_PROFILE: ${E2E_SITE_PROFILE:-base2-obsidian}
+      E2E_WORKSPACE_DISPOSABLE: '1'
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
+      IDENTITY_ENCRYPTION_KEY: MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA=
+      TOKEN_PEPPER: e2e_token_pepper
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: e2e
+      DB_USER: base2_workspace_worker_e2e
+      DB_PASSWORD: e2e_workspace_worker_password
+      WORKSPACE_DB_USER: base2_workspace_worker_e2e
+      WORKSPACE_DB_PASSWORD: e2e_workspace_worker_password
+      WORKSPACE_WORKER_DB_USER: base2_workspace_worker_e2e
+      WORKSPACE_WORKER_DB_PASSWORD: e2e_workspace_worker_password
+      CONTENT_WORKSPACE_STORAGE_BACKEND: local
+      CONTENT_WORKSPACE_STORAGE_ROOT: /var/lib/base2/content-workspace
+      CONTENT_WORKSPACE_STORAGE_KEY: MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA=
+    volumes:
+      - ../e2e/support:/e2e-support:ro
+      - content_workspace_artifacts:/var/lib/base2/content-workspace
+    depends_on:
+      workspace-fixture:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    command:
+      ['celery', '-A', 'api.tasks', 'worker', '-Q', 'content', '-l', 'INFO', '--concurrency=2']
+    restart: 'no'
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    read_only: true
+    tmpfs: [/tmp, /var/tmp]
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'python -c "from api.services.runtime_heartbeat import _runtime_heartbeat; raise SystemExit(0 if _runtime_heartbeat(''workers:content-worker'', 1)[0] == ''healthy'' else 1)"',
+        ]
+      interval: 10s
+      timeout: 10s
+      retries: 12
+      start_period: 30s
+
+  celery-beat:
+    build:
+      context: ../api
+      dockerfile: Dockerfile
+      args:
+        DOCKER_LIBRARY_REGISTRY: mirror.gcr.io/library
+        PYTHON_VERSION: 3.12-slim-bookworm
+    environment:
+      ENV: test
+      SITE_PROFILE: ${E2E_SITE_PROFILE:-base2-obsidian}
+      BASE2_PROCESS_ROLE: runtime-worker
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: e2e
+      DB_USER: base2_runtime_worker_e2e
+      DB_PASSWORD: e2e_runtime_worker_password
+      WORKSPACE_DB_USER: base2_runtime_worker_e2e
+      WORKSPACE_DB_PASSWORD: e2e_runtime_worker_password
+    depends_on:
+      workspace-fixture:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    command:
+      ['celery', '-A', 'api.tasks', 'beat', '-l', 'INFO', '--schedule=/tmp/celerybeat-schedule']
+    restart: 'no'
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    read_only: true
+    tmpfs: [/tmp, /var/tmp]
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'python -c "import os; from celery import Celery; c=Celery(broker=os.environ[''CELERY_BROKER_URL'']).connection(); c.connect(); c.release()"',
+        ]
+      interval: 10s
+      timeout: 10s
+      retries: 12
+
   react-app:
     build:
       context: ../react-app
@@ -275,6 +423,10 @@ services:
         DOCKER_LIBRARY_REGISTRY: mirror.gcr.io/library
         NODE_VERSION: 24.20.0-alpine
         NGINX_VERSION: 1.27.3-alpine
+        SITE_PROFILE: ${E2E_SITE_PROFILE:-base2-obsidian}
+    networks:
+      default:
+        aliases: [nginx]
     ports:
       - '127.0.0.1:${E2E_WEB_PORT:-8080}:8080'
     depends_on:
@@ -285,3 +437,6 @@ services:
       interval: 10s
       timeout: 5s
       retries: 30
+
+volumes:
+  content_workspace_artifacts:

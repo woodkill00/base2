@@ -1,0 +1,28 @@
+{
+  "conclusion": "inconclusive",
+  "inspections": [
+    {
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-high-contrast/current-operations-center-chromium-high-contrast.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "4da0149ebb5157aad6f8a87d87c32bc7fae93a26bc8d6acd9ee12e6f1d193a88"
+    },
+    {
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-high-contrast/operations-center-chromium-high-contrast-actual.png",
+      "method": "contact-sheet-overview",
+      "role": "actual",
+      "sha256": "0f095c237202296b9beaf6ff2472f37bb38406c5aa1cce8e37e7491405993119"
+    },
+    {
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-high-contrast/test-failed-1.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "failure",
+      "sha256": "1f6eec1848cbced3ab6085b8faadc71e118ee1dd237abb323fd70ba99b0db142"
+    }
+  ],
+  "kind": "technical-review",
+  "manifest": "runs/41316938996-1-124878862228-13087991452.json",
+  "manifestSha256": "5702b43e12ee6e361c008cabea36964ce9fcda4c520cc254c125f4a7b3738f5f",
+  "notes": "Diagnostic only; no baseline or full visual acceptance. Review methods are conservative: partial image inspection maps to overview. Original run failures remain unchanged. Most new images assessed as scaled contact-sheet overviews, not original-size detailed inspection of every label/control. Three new images additionally inspected top1500px at original scale. 135 actual/current/failure instances reviewed directly or by exact-byte equivalence; comparison expected/diff images not reviewed in this pass. No WebKit or mobile cancellation-dialog PNG retained; desktop popup cannot establish cross-browser/viewport popup coverage. Mobile viewport-sized snapshots and top/middle/footer samples do not establish full continuous content coverage or arbitrary-scroll hit tests. No source causal inspection/browser execution or native pass/acceptance claim. Parent verifies provenance and native inventory. No uploads or baseline/source changes. Newly retained WebKit desktop main/empty/error/partial/reauth/read-only states have readable, contained layout. Reauth/stale/unavailable distinctions visible; read-only action removal visible. No independent new severe clipping or overlap identified. Fixed large-text main image remains byte-identical to previously reviewed696f71; readable 8 passed, Replay safely and Cancel retained. Desktop gutters and mobile reserved bottom controls remain intentional layout differences from old references. Compact/tablet/landscape sampled middle/footer states remain readable, with drawer toggles outside content. Desktop cancellation confirmation fully visible with consequence text and both actions. FullPage backdrop stops at viewport boundary, consistent with earlier retained rendering; not newly established runtime defect. Existing misleading System evidence current footer persists in unavailable/stale states.",
+  "schemaVersion": 2
+}

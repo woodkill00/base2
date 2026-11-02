@@ -1,0 +1,46 @@
+{
+  "conclusion": "inconclusive",
+  "inspections": [
+    {
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-webkit-desktop/current-operations-center-webkit-desktop.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "abe63d9c637c95c207f8eb1c35a1092f1b702fe992cc17a93409829f27a8b042"
+    },
+    {
+      "member": "operations-release-operati-84a1a-ul-empty-and-failure-states-webkit-desktop/current-operations-center-empty.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "9820a647d81f536df011408ecabbb539e04fdfdeabc740d84558dd4182de745f"
+    },
+    {
+      "member": "operations-release-operati-84a1a-ul-empty-and-failure-states-webkit-desktop/current-operations-center-error.png",
+      "method": "individual-pixels",
+      "role": "current",
+      "sha256": "68e9beadb648add5350fcf627c4653ba34f59d2a765d780e5a3397aef422f11c"
+    },
+    {
+      "member": "operations-release-operati-e5f8f-d-read-only-recovery-states-webkit-desktop/current-operations-center-partial.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "3fcc84d4b9009eb29ca94bed76fe278dd429b2acfa506d835d8960dfa792a5c3"
+    },
+    {
+      "member": "operations-release-operati-e5f8f-d-read-only-recovery-states-webkit-desktop/current-operations-center-read-only.png",
+      "method": "individual-pixels",
+      "role": "current",
+      "sha256": "641e4b11943a1d8f7915635a393da31f2d79c6014a947d32f7de34915759b328"
+    },
+    {
+      "member": "operations-release-operati-e5f8f-d-read-only-recovery-states-webkit-desktop/current-operations-center-reauth.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "5b2b4d898676926b04d0a2775cc64b5f46cfe4e951a0f1c1b900de8a8189a1d5"
+    }
+  ],
+  "kind": "technical-review",
+  "manifest": "runs/41290418358-1-124800320642-13076534818.json",
+  "manifestSha256": "5b4ff73a013b0b601f3177efa8f6d12eb3f5330144838079d8d7dafe4baf4885",
+  "notes": "Diagnostic review only; no baseline approval or whole-matrix acceptance. Original supplied pixel review retained; contact-sheet overview does not verify all fine text. Exact-byte matches refer to previously inspected images. Expected reference PNGs/diffs/traces/raw Playwright report absent from bounded archive; receipt identities and summary verified, no independent raw step replay. 20 declared skips are not executions; recovery states covered only in compact and Chromium/Firefox/WebKit desktop projects. Cancellation dialog full-page image has viewport-limited dimming; complete dialog visible, unseen viewport positions not proven. Generic footer System evidence current persists in unavailable/stale states; misleading-copy concern requires scope decision.",
+  "schemaVersion": 2
+}

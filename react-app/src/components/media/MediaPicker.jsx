@@ -1,3 +1,4 @@
+import { useScrollTargetLock } from '../../lib/scrollTarget';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { mediaLibraryAPI } from '../../services/mediaLibrary';
@@ -12,6 +13,7 @@ const focusable = [
 ].join(',');
 
 export default function MediaPicker({ open, onClose, onConfirm, limit = 1, returnFocusRef }) {
+  useScrollTargetLock(open, true);
   const panel = useRef(null);
   const [query, setQuery] = useState('');
   const [state, setState] = useState('ready');
@@ -38,10 +40,11 @@ export default function MediaPicker({ open, onClose, onConfirm, limit = 1, retur
   useEffect(() => {
     if (!open) return undefined;
     const background = document.querySelector('.app-shell-root');
-    if (background) background.inert = true;
+    const wasInert = background?.hasAttribute('inert');
+    background?.setAttribute('inert', '');
     panel.current?.querySelector(focusable)?.focus();
     return () => {
-      if (background) background.inert = false;
+      if (!wasInert) background?.removeAttribute('inert');
     };
   }, [open]);
 

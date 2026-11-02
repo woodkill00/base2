@@ -362,9 +362,17 @@ class CiPolicyTests(unittest.TestCase):
         self.assertNotIn("public.ecr.aws/docker/library", compose)
         self.assertNotIn("image: postgres:", compose)
         self.assertNotIn("image: redis:", compose)
-        self.assertEqual(10, compose.count("mirror.gcr.io/library"))
+        self.assertEqual(13, compose.count("mirror.gcr.io/library"))
         self.assertEqual(2, compose.count("mirror.gcr.io/library/postgres@sha256:"))
         self.assertEqual(1, compose.count("mirror.gcr.io/library/redis@sha256:"))
+        services = __import__("yaml").safe_load(compose)["services"]
+        for service in services.values():
+            if "image" in service:
+                self.assertRegex(service["image"], r"^mirror\.gcr\.io/library/(postgres|redis)@sha256:[0-9a-f]{64}$")
+            else:
+                self.assertEqual(service["build"]["args"]["DOCKER_LIBRARY_REGISTRY"], "mirror.gcr.io/library")
+        for name in ("workspace-fixture", "celery-content-worker", "celery-beat"):
+            self.assertEqual(services[name]["build"], services["api"]["build"])
 
     def test_isolated_e2e_port_names_are_exactly_documented(self):
         repo_root = MODULE_PATH.parents[2]
@@ -399,7 +407,11 @@ class CiPolicyTests(unittest.TestCase):
         self.assertNotIn("e2e-isolated.lock-ready", runner + concurrency_proof)
         self.assertNotIn("compose=(docker compose", runner)
         self.assertLess(body.index("--verify-fd"), body.index("compose=(docker compose"))
-        self.assertIn('trap cleanup EXIT INT TERM', body)
+        self.assertIn('trap cleanup EXIT', body)
+        self.assertIn("trap 'exit 130' INT", body)
+        self.assertIn("trap 'exit 143' TERM", body)
+        self.assertIn('local rc=$?', body)
+        self.assertIn('exit "$rc"', body)
         self.assertGreaterEqual(body.count('down -v --remove-orphans'), 1)
         self.assertIn(
             'http://127.0.0.1:$E2E_TEST_SUPPORT_PORT/synthetic-health', body
@@ -418,7 +430,11 @@ class CiPolicyTests(unittest.TestCase):
         repo_root = MODULE_PATH.parents[2]
         workflow = (repo_root / ".github/workflows/ci-e2e.yml").read_text(encoding="utf-8")
         compose = (repo_root / "e2e/docker-compose.e2e.yml").read_text(encoding="utf-8")
-        self.assertIn("http://localhost:5002/synthetic-health", workflow)
+        self.assertIn("run: bash scripts/bash/e2e-isolated.sh", workflow)
+        body = (repo_root / "scripts/bash/e2e-isolated-body.sh").read_text(encoding="utf-8")
+        self.assertIn('http://127.0.0.1:$E2E_TEST_SUPPORT_PORT/synthetic-health', body)
+        self.assertIn('if [[ "$ready" != true ]]', body)
+        self.assertIn('isolated E2E stack did not become ready', body)
         self.assertIn("conn.request(''GET'', ''/synthetic-health'')", compose)
         self.assertIn("test-support:\n", compose)
 

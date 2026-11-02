@@ -1,0 +1,6 @@
+tree a04738b7d35e16a130a1fadb1d0440bdd411fefc
+parent cfc0c4be5d952322fe3af742394e8fe2c45a2a27
+author woodkill woodkill <thejunkmailvoid@gmail.com> 1793518365 +0000
+committer woodkill woodkill <thejunkmailvoid@gmail.com> 1793518365 +0000
+
+fix(operations): honor reduced motion and bound native evidence

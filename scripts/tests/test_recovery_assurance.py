@@ -300,3 +300,25 @@ class RecoveryAssuranceTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def test_security_manifest_is_inside_authenticated_bundle(tmp_path):
+    import tarfile
+    dump = tmp_path / 'database.dump'
+    dump.write_bytes(b'postgres-custom-dump')
+    objects = tmp_path / 'objects'
+    objects.mkdir()
+    encrypted = tmp_path / 'backup.enc'
+    security = {'schemaVersion': 1, 'hmac': 'authenticated-by-inner-manifest'}
+    create_database_object_bundle(database_dump=dump, object_root=objects, output=encrypted,
+        target_id='security-test', data_schema=31, key=b'k' * 32,
+        key_ref='vaultwarden://base2/backup-key', security_manifest=security)
+    restored = tmp_path / 'isolated'
+    provision_restore_root(root=restored, target_class='isolated')
+    archive = restored / 'recovery.tar'
+    restore_stream_backup(backup=encrypted, key=b'k' * 32, expected_target='security-test',
+        expected_schema=31, output=archive, target_class='isolated')
+    with tarfile.open(archive) as bundle:
+        assert bundle.getnames().count('security.json') == 1
+        assert json.load(bundle.extractfile('security.json')) == security
+    assert b'authenticated-by-inner-manifest' not in encrypted.read_bytes()

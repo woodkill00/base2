@@ -1,0 +1,52 @@
+{
+  "conclusion": "inconclusive",
+  "inspections": [
+    {
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-desktop/current-operations-center-cancel-confirmation.png",
+      "method": "individual-pixels",
+      "role": "current",
+      "sha256": "acdfea4430f04d24002effda2afa5af1f6ca3cb9eb75994605f72f3fbbd04329"
+    },
+    {
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-desktop/current-operations-center-chromium-desktop.png",
+      "method": "individual-pixels",
+      "role": "current",
+      "sha256": "7171b2cc03efee2906963f072245f4278ad1d8dbd4b1ad68d38621be9e7289d5"
+    },
+    {
+      "member": "operations-release-operati-84a1a-ul-empty-and-failure-states-chromium-desktop/current-operations-center-empty.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "f317be4c5f1268f70857c8dffce78999d4f64930ba29c870c6713baa98f8749d"
+    },
+    {
+      "member": "operations-release-operati-84a1a-ul-empty-and-failure-states-chromium-desktop/current-operations-center-error.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "e9137e2a2a18c4fdb6fa5f4ca824a8ec1376906c27e8f938a2043604cb3c04f5"
+    },
+    {
+      "member": "operations-release-operati-e5f8f-d-read-only-recovery-states-chromium-desktop/current-operations-center-partial.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "e59fd87e2c255c6408605b66bcdc7f7bc2d0c42c887960445ec91bc9ea7ad856"
+    },
+    {
+      "member": "operations-release-operati-e5f8f-d-read-only-recovery-states-chromium-desktop/current-operations-center-read-only.png",
+      "method": "individual-pixels",
+      "role": "current",
+      "sha256": "0098fe47ce7572897f0d9b65f8e3a11a629b4c54f4bbc74a7be2bd88ff41c48a"
+    },
+    {
+      "member": "operations-release-operati-e5f8f-d-read-only-recovery-states-chromium-desktop/current-operations-center-reauth.png",
+      "method": "individual-pixels",
+      "role": "current",
+      "sha256": "6d0ad80d17f3c88459138f4c5a58dbf668997983ff1c4277b5505aaa6c7a394f"
+    }
+  ],
+  "kind": "technical-review",
+  "manifest": "runs/41290418358-1-124800320642-13076709040.json",
+  "manifestSha256": "b6a0306d7d32dd3580c97de6a86661db3fce927d7459b49dbf24c42011b003a9",
+  "notes": "Diagnostic review only; no baseline approval or whole-matrix acceptance. Original supplied pixel review retained; contact-sheet overview does not verify all fine text. Exact-byte matches refer to previously inspected images. Expected reference PNGs/diffs/traces/raw Playwright report absent from bounded archive; receipt identities and summary verified, no independent raw step replay. 20 declared skips are not executions; recovery states covered only in compact and Chromium/Firefox/WebKit desktop projects. Cancellation dialog full-page image has viewport-limited dimming; complete dialog visible, unseen viewport positions not proven. Generic footer System evidence current persists in unavailable/stale states; misleading-copy concern requires scope decision.",
+  "schemaVersion": 2
+}

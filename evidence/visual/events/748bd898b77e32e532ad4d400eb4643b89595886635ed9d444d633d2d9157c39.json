@@ -1,0 +1,34 @@
+{
+  "conclusion": "inconclusive",
+  "inspections": [
+    {
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-large-text/current-operations-center-chromium-large-text.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "0a926c7892f15bab11b7a59d9dec094fd1e062d96db4cccdbaa9adab10403c16"
+    },
+    {
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-large-text/operations-center-chromium-large-text-actual.png",
+      "method": "individual-pixels",
+      "role": "actual",
+      "sha256": "efaab2b3cbbd7f53774fc5382b762d874c5ea07f6ac49fb441f2ac3fcce69cbe"
+    },
+    {
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-large-text/operations-center-chromium-large-text-expected.png",
+      "method": "contact-sheet-overview",
+      "role": "expected",
+      "sha256": "eeded87bd5855d0714b39ceee2deb7aa5a417b03c0dc7f06f3a0246424335212"
+    },
+    {
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-large-text/test-failed-1.png",
+      "method": "contact-sheet-overview",
+      "role": "failure",
+      "sha256": "cadb37ebb1f9c9fce4300e909c7e97e94cb6ee1ed1f414eb901ee89adc323f6b"
+    }
+  ],
+  "kind": "technical-review",
+  "manifest": "runs/41314740935-1-124872282068-13087470174.json",
+  "manifestSha256": "6679f0de527c8b99e77af1cbb0686a3dc95483c832e5d309d0adcc95d9703b7e",
+  "notes": "Desktop cancellation confirmation is completely visible with consequence text and both actions; white heading focus outline visible. Backdrop stops at viewport boundary in fullPage PNG, also present in expected reference; not a newly proven runtime defect. Recovery empty/error/partial/reauth/read-only states now captured. Read-only removes replay/cancel and acknowledge controls; reauth/stale banners visible. No independent new severe clipping/overlap found in retained states. Existing footer System evidence current remains misleading in unavailable/stale recovery states.",
+  "schemaVersion": 2
+}

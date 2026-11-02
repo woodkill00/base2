@@ -1,0 +1,34 @@
+{
+  "conclusion": "inconclusive",
+  "inspections": [
+    {
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-400-zoom/current-scrollport-footer.png",
+      "method": "individual-pixels",
+      "role": "current",
+      "sha256": "495c2c6d26e8b439eceb939c1d4827a83121fd53d77c2e027ebebf06a6d5a765"
+    },
+    {
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-400-zoom/current-scrollport-middle.png",
+      "method": "individual-pixels",
+      "role": "current",
+      "sha256": "f9140aea8c35e7b907d3476b4f581ff63e8c75791ccc6bec5989c0540c9edc4f"
+    },
+    {
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-400-zoom/current-scrollport-top.png",
+      "method": "individual-pixels",
+      "role": "current",
+      "sha256": "0bcb934164c7227eef538dc814d1c7033763acd14de7f7e5bdb22640d34f03b5"
+    },
+    {
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-400-zoom/operations-center-chromium-400-zoom-actual.png",
+      "method": "individual-pixels",
+      "role": "actual",
+      "sha256": "0bcb934164c7227eef538dc814d1c7033763acd14de7f7e5bdb22640d34f03b5"
+    }
+  ],
+  "kind": "technical-review",
+  "manifest": "runs/41295038159-1-124813987490-13078559737.json",
+  "manifestSha256": "63abc44200ca750ec90fe8c5e3db3482022079dc126fb470563935f088609031",
+  "notes": "Diagnostic review only; no baseline approval or whole-matrix acceptance. Original supplied pixel review retained; contact-sheet overview does not verify all fine text. Exact-byte matches refer to previously inspected images. Native1passed21failed20declaredskips. Failed comparisons do not imply all later steps executed. No current cancellation/modal screenshot or later error/reauth/read-only states captured: earlier comparison failures prevent those steps. Modal/backdrop positioning not validated here. Only bounded PNG and metadata evidence supplied; no raw trace or detailed native error report. All22main/empty/partial actual or passing captures and18supplementary scrollport images inspected; remaining references/diffs retained with explicit review status. No all-scroll hit-test receipt available in these operations bundles; visual separation is not proof of all-position safety.",
+  "schemaVersion": 2
+}

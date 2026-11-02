@@ -1,0 +1,213 @@
+{
+  "archiveSha256": "8448554d7625ce63c0000742f2b4a1ad283e448ab2157bebff116bfc822c82b1",
+  "artifactId": 13074929425,
+  "attempt": 1,
+  "captures": [
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "unavailable-in-retained-inventory",
+          "member": "chromium-phone-dpr3.zip",
+          "sha256": null
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-phone-dpr3/current-media-library-viewport-0.png",
+          "sha256": "c677168206c9dec4a16706bf6c43fd5b0dbaf5fe73e1dc5b8f145c049a4f3989"
+        }
+      ],
+      "bytes": 1385355,
+      "dimensions": [
+        1170,
+        2532
+      ],
+      "identityBasis": "native-report",
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-phone-dpr3/current-media-library-viewport-0.png",
+      "originalOutcome": "passed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "passed"
+        ],
+        "basis": "retained-native-report",
+        "project": "chromium-phone-dpr3",
+        "title": "media library is accessible responsive and visually reviewed"
+      },
+      "project": "chromium-phone-dpr3",
+      "role": "current",
+      "sha256": "c677168206c9dec4a16706bf6c43fd5b0dbaf5fe73e1dc5b8f145c049a4f3989",
+      "storage": "objects/c677168206c9dec4a16706bf6c43fd5b0dbaf5fe73e1dc5b8f145c049a4f3989.png",
+      "test": "media library is accessible responsive and visually reviewed",
+      "viewport": [
+        390,
+        844
+      ],
+      "viewportBasis": "native-project-config"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "unavailable-in-retained-inventory",
+          "member": "chromium-phone-dpr3.zip",
+          "sha256": null
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-phone-dpr3/current-media-library-viewport-2.png",
+          "sha256": "236cbc8720e614a2601055a0320b731ca225607b33780d4c0005039797bc2e83"
+        }
+      ],
+      "bytes": 1460376,
+      "dimensions": [
+        1170,
+        2532
+      ],
+      "identityBasis": "native-report",
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-phone-dpr3/current-media-library-viewport-2.png",
+      "originalOutcome": "passed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "passed"
+        ],
+        "basis": "retained-native-report",
+        "project": "chromium-phone-dpr3",
+        "title": "media library is accessible responsive and visually reviewed"
+      },
+      "project": "chromium-phone-dpr3",
+      "role": "current",
+      "sha256": "236cbc8720e614a2601055a0320b731ca225607b33780d4c0005039797bc2e83",
+      "storage": "objects/236cbc8720e614a2601055a0320b731ca225607b33780d4c0005039797bc2e83.png",
+      "test": "media library is accessible responsive and visually reviewed",
+      "viewport": [
+        390,
+        844
+      ],
+      "viewportBasis": "native-project-config"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "unavailable-in-retained-inventory",
+          "member": "chromium-phone-dpr3.zip",
+          "sha256": null
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-phone-dpr3/current-media-library-viewport-4.png",
+          "sha256": "45798a6d98cb604e5902b42ff52f296858460c0fbe295fcd6abea7a025e164f2"
+        }
+      ],
+      "bytes": 1206360,
+      "dimensions": [
+        1170,
+        2532
+      ],
+      "identityBasis": "native-report",
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-phone-dpr3/current-media-library-viewport-4.png",
+      "originalOutcome": "passed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "passed"
+        ],
+        "basis": "retained-native-report",
+        "project": "chromium-phone-dpr3",
+        "title": "media library is accessible responsive and visually reviewed"
+      },
+      "project": "chromium-phone-dpr3",
+      "role": "current",
+      "sha256": "45798a6d98cb604e5902b42ff52f296858460c0fbe295fcd6abea7a025e164f2",
+      "storage": "objects/45798a6d98cb604e5902b42ff52f296858460c0fbe295fcd6abea7a025e164f2.png",
+      "test": "media library is accessible responsive and visually reviewed",
+      "viewport": [
+        390,
+        844
+      ],
+      "viewportBasis": "native-project-config"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "unavailable-in-retained-inventory",
+          "member": "chromium-phone-dpr3.zip",
+          "sha256": null
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-phone-dpr3/current-media-library.png",
+          "sha256": "7a22c21d6291aa253a29193c80de683221be96ef059e1b2e9115dce58a17726e"
+        }
+      ],
+      "bytes": 2844224,
+      "dimensions": [
+        1170,
+        10218
+      ],
+      "identityBasis": "native-report",
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-phone-dpr3/current-media-library.png",
+      "originalOutcome": "passed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "passed"
+        ],
+        "basis": "retained-native-report",
+        "project": "chromium-phone-dpr3",
+        "title": "media library is accessible responsive and visually reviewed"
+      },
+      "project": "chromium-phone-dpr3",
+      "role": "current",
+      "sha256": "7a22c21d6291aa253a29193c80de683221be96ef059e1b2e9115dce58a17726e",
+      "storage": "objects/7a22c21d6291aa253a29193c80de683221be96ef059e1b2e9115dce58a17726e.png",
+      "test": "media library is accessible responsive and visually reviewed",
+      "viewport": [
+        390,
+        844
+      ],
+      "viewportBasis": "native-project-config"
+    }
+  ],
+  "fixtureScope": "synthetic-project-tests",
+  "jobId": 124792843889,
+  "laterValidation": "pending",
+  "observations": [
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "unavailable-in-retained-inventory",
+          "member": "chromium-phone-dpr3.zip",
+          "sha256": null
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-phone-dpr3/media-viewport-observations.json",
+          "sha256": "e233bcb88a4335808c6158273e7e52848c127ce59dcfd4ba949a5e09a7bb9e48"
+        }
+      ],
+      "bytes": 9317,
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-phone-dpr3/media-viewport-observations.json",
+      "project": "chromium-phone-dpr3",
+      "schemaVersion": 1,
+      "sha256": "e233bcb88a4335808c6158273e7e52848c127ce59dcfd4ba949a5e09a7bb9e48",
+      "storage": "observations/e233bcb88a4335808c6158273e7e52848c127ce59dcfd4ba949a5e09a7bb9e48.json"
+    }
+  ],
+  "originalOutcome": "failed",
+  "repository": "woodkill00/base2",
+  "requestedHead": "173c17eaf44e93850901f474be29b2fa7b83e2fb",
+  "runId": 41287894771,
+  "schemaVersion": 2,
+  "sourceCommit": "173c17eaf44e93850901f474be29b2fa7b83e2fb",
+  "sourceTree": "023cea326bf1cb1298dd60a0e1e9743af6746cae",
+  "technicalReview": "pending",
+  "transfer": {
+    "blobs": {
+      "236cbc8720e614a2601055a0320b731ca225607b33780d4c0005039797bc2e83": "f499dc258c8f5fda010b14038db30038ffaa253e",
+      "45798a6d98cb604e5902b42ff52f296858460c0fbe295fcd6abea7a025e164f2": "87dd55e15bf11f62bdf0e95ec9c86dd81e55be82",
+      "7a22c21d6291aa253a29193c80de683221be96ef059e1b2e9115dce58a17726e": "18240bdeab2f49b8db65b3f1b6191e4ed7a41556",
+      "c677168206c9dec4a16706bf6c43fd5b0dbaf5fe73e1dc5b8f145c049a4f3989": "20a1f6eadf44b2a068eb56998492585acd216c06",
+      "e233bcb88a4335808c6158273e7e52848c127ce59dcfd4ba949a5e09a7bb9e48": "f27395b288c9e558d1c727e2f45108dc6aa2ff8e"
+    },
+    "commit": "b062a60c1319fd21480c92022cf91d5da9bca62a",
+    "localVerification": "git-blob-sha256-size-dimensions-full-decode",
+    "originalArchiveVerification": "externally-verified-zip-and-members",
+    "tree": "b3f3d390dd5497330b862e6452e4c901c345a05f"
+  }
+}

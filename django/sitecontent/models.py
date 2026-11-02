@@ -20,11 +20,37 @@ from django.db import models, transaction
 from django.utils import timezone
 
 from common.models import (
+    CONTENT_TYPE_KEY_PATTERN,
+    WORKSPACE_SNAPSHOT_CONTEXT,
     content_identifier_validator,
+    content_type_key_validator,
     operations_identifier_validator,
+    read_workspace_snapshot,
     validate_closed_mapping,
     validate_operations_dimensions,
+    validate_public_content,
+    workspace_record_snapshot,
 )
+from common.models import (
+    ReviewApproval as CanonicalReviewApproval,
+)
+from common.models import (
+    ReviewDigestBatch as CanonicalReviewDigestBatch,
+)
+from common.models import (
+    ReviewNotificationDelivery as CanonicalReviewNotificationDelivery,
+)
+from common.models import (
+    ReviewNotificationIntent as CanonicalReviewNotificationIntent,
+)
+from common.models import (
+    ReviewSubject as CanonicalReviewSubject,
+)
+from common.models import (
+    WorkspacePolicy as CanonicalWorkspacePolicy,
+)
+
+from .policy_locks import begin_workspace_policy_effect
 
 SITE_ID_PATTERN = r"^[a-z][a-z0-9-]{2,62}$"
 SHA256_PATTERN = r"^[a-f0-9]{64}$"
@@ -111,7 +137,7 @@ class ContentTypeDefinition(SiteOwnedModel):
         FAILED = "failed", "Failed"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    type_key = models.CharField(max_length=63, validators=[content_identifier_validator])
+    type_key = models.CharField(max_length=63, validators=[content_type_key_validator])
     version = models.PositiveIntegerField(default=1, validators=[MinValueValidator(1)])
     name = models.CharField(max_length=120)
     description = models.TextField(blank=True, default="")
@@ -216,6 +242,7 @@ class ContentTypeDefinition(SiteOwnedModel):
 
     def publish(self, *, expected_lock_version: int, confirm_lossy: bool = False) -> dict:
         with transaction.atomic():
+            begin_workspace_policy_effect()
             current = type(self).objects.select_for_update().get(pk=self.pk)
             if current.lock_version != expected_lock_version:
                 raise ValidationError("definition_version_conflict")
@@ -379,7 +406,7 @@ class ContentFieldDefinition(models.Model):
             maximum_depth = self.validation.get("maximumDepth", 2)
             if (
                 not isinstance(target_type, str)
-                or not re.fullmatch(r"[a-z][a-z0-9_]{1,62}", target_type)
+                or not re.fullmatch(CONTENT_TYPE_KEY_PATTERN, target_type)
                 or deletion_policy not in {"restrict", "detach", "cascade_soft"}
                 or not isinstance(maximum_depth, int)
                 or isinstance(maximum_depth, bool)
@@ -586,8 +613,26 @@ class ContentRecord(SiteOwnedModel):
         State.ARCHIVED: {State.DRAFT},
     }
 
+    def clean_fields(self, exclude=None):
+        # TextField.to_python would otherwise silently coerce native integers.
+        if self.definition_id:
+            validate_public_content({"excerpt": self.excerpt, "body": self.body})
+        super().clean_fields(exclude=exclude)
+
+    def workspace_snapshot(self):
+        return workspace_record_snapshot({
+            column: getattr(self, column)
+            for column in {*WORKSPACE_SNAPSHOT_CONTEXT.values(), "values", "excerpt", "body"}
+        })
+
+    def version_snapshot(self):
+        # Static/unmanaged callers retain their pre-workspace values-only history.
+        return self.workspace_snapshot() if self.definition_id else self.values
+
     def clean(self) -> None:  # noqa: C901 - canonical record invariant aggregation
         super().clean()
+        if self.definition_id:
+            validate_public_content({"excerpt": self.excerpt, "body": self.body})
         if self.definition_id:
             if (
                 self.definition.site_id != self.site_id
@@ -630,17 +675,12 @@ class ContentRecord(SiteOwnedModel):
         revision = (
             self.revisions.order_by("-revision").values_list("revision", flat=True).first() or 0
         ) + 1
-        snapshot = {
-            "title": self.title,
-            "excerpt": self.excerpt,
-            "body": self.body,
-            "metadata": self.metadata,
-            "values": self.values,
-            "state": self.state,
+        snapshot = self.workspace_snapshot() if self.definition_id else {
+            "title": self.title, "excerpt": self.excerpt, "body": self.body,
+            "metadata": self.metadata, "values": self.values, "state": self.state,
             "publishAt": self.publish_at.isoformat() if self.publish_at else None,
             "scheduleTimezone": self.schedule_timezone or None,
-            "sitemapInclude": self.sitemap_include,
-            "searchVisible": self.search_visible,
+            "sitemapInclude": self.sitemap_include, "searchVisible": self.search_visible,
             "version": self.version,
         }
         return ContentRevision.objects.create(
@@ -656,35 +696,43 @@ class ContentRecord(SiteOwnedModel):
     def transition_to(
         self, state: str, *, actor_ref: str = "", publish_at=None, timezone_name: str = ""
     ) -> ContentRevision | None:
-        if state == self.state:
-            return None
-        if state not in self.ALLOWED_TRANSITIONS.get(self.state, set()):
-            raise ValidationError(
-                {"state": f"Transition from {self.state} to {state} is not allowed."}
+        with transaction.atomic():
+            begin_workspace_policy_effect()
+            if state == self.state:
+                return None
+            if state not in self.ALLOWED_TRANSITIONS.get(self.state, set()):
+                raise ValidationError(
+                    {"state": f"Transition from {self.state} to {state} is not allowed."}
+                )
+            revision = self.create_revision(actor_ref=actor_ref)
+            self.state = state
+            self.publish_at = publish_at if state == self.State.SCHEDULED else None
+            self.schedule_timezone = timezone_name if state == self.State.SCHEDULED else ""
+            self.published_at = (
+                timezone.now() if state == self.State.PUBLISHED else self.published_at
             )
-        revision = self.create_revision(actor_ref=actor_ref)
-        self.state = state
-        self.publish_at = publish_at if state == self.State.SCHEDULED else None
-        self.schedule_timezone = timezone_name if state == self.State.SCHEDULED else ""
-        self.published_at = timezone.now() if state == self.State.PUBLISHED else self.published_at
-        self.version += 1
-        self.full_clean()
-        self.save(
-            update_fields=[
-                "state",
-                "publish_at",
-                "schedule_timezone",
-                "published_at",
-                "version",
-                "updated_at",
-            ]
-        )
-        return revision
+            self.version += 1
+            self.full_clean()
+            self.save(
+                update_fields=[
+                    "state",
+                    "publish_at",
+                    "schedule_timezone",
+                    "published_at",
+                    "version",
+                    "updated_at",
+                ]
+            )
+            return revision
 
-    def update_values(self, values: dict, *, expected_version: int, actor_ref: str = "") -> None:
+    def update_values(self, values: dict, *, expected_version: int, actor_ref: str = "",
+                      public_content: dict | None = None) -> None:
         if not isinstance(values, dict) or len(values) > 128:
             raise ValidationError({"values": "record_values_invalid"})
+        if public_content is not None:
+            validate_public_content(public_content)
         with transaction.atomic():
+            begin_workspace_policy_effect()
             current = type(self).objects.select_for_update().get(pk=self.pk)
             if current.version != expected_version:
                 raise ValidationError("content_version_conflict")
@@ -692,16 +740,23 @@ class ContentRecord(SiteOwnedModel):
                 record=current,
                 version=current.version,
                 schema_version=current.schema_version,
-                snapshot=current.values,
-                snapshot_sha256=_snapshot_digest(current.values),
+                snapshot=current.version_snapshot(),
+                snapshot_sha256=_snapshot_digest(current.version_snapshot()),
                 actor_ref=actor_ref,
                 action="update",
             )
             current.values = values
+            if public_content is not None:
+                current.excerpt = public_content["excerpt"]
+                current.body = public_content["body"]
             current.version += 1
             current.full_clean()
-            current.save(update_fields=["values", "version", "updated_at"])
+            current.save(update_fields=["values", "excerpt", "body", "version", "updated_at"])
+            current.refresh_from_db()  # Include PostgreSQL policy-trigger state changes.
+            self.state, self.publish_at = current.state, current.publish_at
+            self.schedule_timezone = current.schedule_timezone
             self.values = current.values
+            self.excerpt, self.body = current.excerpt, current.body
             self.version = current.version
 
     def transition_action(
@@ -714,6 +769,7 @@ class ContentRecord(SiteOwnedModel):
         timezone_name: str = "",
     ) -> None:
         with transaction.atomic():
+            begin_workspace_policy_effect()
             # PostgreSQL rejects FOR UPDATE when an outer join reaches the
             # nullable definition relation. Lock only the record row, then
             # resolve the immutable definition inside the same transaction.
@@ -742,8 +798,8 @@ class ContentRecord(SiteOwnedModel):
                 record=current,
                 version=current.version,
                 schema_version=current.schema_version,
-                snapshot=current.values,
-                snapshot_sha256=_snapshot_digest(current.values),
+                snapshot=current.version_snapshot(),
+                snapshot_sha256=_snapshot_digest(current.version_snapshot()),
                 actor_ref=actor_ref,
                 action=action,
             )
@@ -778,6 +834,7 @@ class ContentRecord(SiteOwnedModel):
         visited: set[uuid.UUID] | None = None,
         depth: int = 0,
     ) -> None:
+        begin_workspace_policy_effect()
         visited = set(visited or ())
         if self.pk in visited or depth > 2:
             raise ValidationError("relationship_delete_depth_invalid")
@@ -808,8 +865,8 @@ class ContentRecord(SiteOwnedModel):
                 record=source,
                 version=source.version,
                 schema_version=source.schema_version,
-                snapshot=source.values,
-                snapshot_sha256=_snapshot_digest(source.values),
+                snapshot=source.version_snapshot(),
+                snapshot_sha256=_snapshot_digest(source.version_snapshot()),
                 actor_ref=actor_ref,
                 action="cascade_delete",
             )
@@ -834,6 +891,7 @@ class ContentRecord(SiteOwnedModel):
         self, version: int, *, expected_version: int, actor_ref: str = ""
     ) -> ContentRecord:
         with transaction.atomic():
+            begin_workspace_policy_effect()
             current = type(self).objects.select_for_update().get(pk=self.pk)
             if current.version != expected_version:
                 raise ValidationError("content_version_conflict")
@@ -842,18 +900,29 @@ class ContentRecord(SiteOwnedModel):
                 record=current,
                 version=current.version,
                 schema_version=current.schema_version,
-                snapshot=current.values,
-                snapshot_sha256=_snapshot_digest(current.values),
+                snapshot=current.version_snapshot(),
+                snapshot_sha256=_snapshot_digest(current.version_snapshot()),
                 actor_ref=actor_ref,
                 action="restore",
                 restored_from_version=version,
             )
-            snapshot = restored.snapshot
-            current.values = snapshot.get("values", snapshot)
+            if current.definition_id:
+                current.values, public_content, _mode = read_workspace_snapshot(restored.snapshot)
+            else:
+                # Unmanaged native history has never restored publication text.
+                current.values = restored.snapshot.get("values", restored.snapshot)
+                public_content = None
+            if public_content is not None:
+                current.excerpt = public_content["excerpt"]
+                current.body = public_content["body"]
             current.version += 1
             current.full_clean()
-            current.save(update_fields=["values", "version", "updated_at"])
+            current.save(update_fields=["values", "excerpt", "body", "version", "updated_at"])
+            current.refresh_from_db()  # Include PostgreSQL policy-trigger state changes.
+            self.state, self.publish_at = current.state, current.publish_at
+            self.schedule_timezone = current.schedule_timezone
             self.values = current.values
+            self.excerpt, self.body = current.excerpt, current.body
             self.version = current.version
             return self
 
@@ -907,7 +976,11 @@ class ContentRevision(models.Model):
         return super().save(*args, **kwargs)
 
     def diff_values(self, other: dict) -> dict[str, list[str]]:
-        current = self.snapshot.get("values", self.snapshot)
+        current = (
+            read_workspace_snapshot(self.snapshot)[0]
+            if self.content.definition_id
+            else self.snapshot.get("values", self.snapshot)
+        )
         if (
             not isinstance(current, dict)
             or not isinstance(other, dict)
@@ -984,7 +1057,7 @@ class ContentRelationship(SiteOwnedModel):
         max_length=16, choices=[(item, item) for item in DELETION_POLICIES], default="restrict"
     )
     target_type = models.CharField(
-        max_length=63, blank=True, default="", validators=[content_identifier_validator]
+        max_length=63, blank=True, default="", validators=[content_type_key_validator]
     )
     maximum_items = models.PositiveSmallIntegerField(
         default=50, validators=[MinValueValidator(1), MaxValueValidator(50)]
@@ -1457,6 +1530,7 @@ class MediaAsset(SiteOwnedModel):
                 {"variants": "Between one and ten validated variants are required."}
             )
         with transaction.atomic():
+            begin_workspace_policy_effect()
             created = []
             for item in variants:
                 variant = MediaVariant(asset=self, **item)
@@ -2985,3 +3059,136 @@ class TenantNotification(SiteOwnedModel):
                 name="tenant_notification_replay_uq",
             )
         ]
+
+
+class WorkspacePolicyQuerySet(models.QuerySet):
+    def for_tenant(self, tenant_id: str):
+        if not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,62}", str(tenant_id or "")):
+            raise ValidationError("tenant_invalid")
+        return self.filter(site_id=tenant_id)
+
+
+class WorkspacePolicy(CanonicalWorkspacePolicy):
+    objects = WorkspacePolicyQuerySet.as_manager()
+
+    class Meta(CanonicalWorkspacePolicy.Meta):
+        abstract = False
+
+
+class ReviewRecordScope:
+    def clean(self):
+        super().clean()
+        if self.record_id and self.record.site_id != self.site_id:
+            raise ValidationError("review_record_scope_invalid")
+
+
+class ReviewSubject(ReviewRecordScope, CanonicalReviewSubject):
+    record = models.OneToOneField(
+        ContentRecord, on_delete=models.CASCADE, related_name="review_subject"
+    )
+    objects = WorkspacePolicyQuerySet.as_manager()
+
+    class Meta(CanonicalReviewSubject.Meta):
+        abstract = False
+
+
+class ReviewApprovalQuerySet(WorkspacePolicyQuerySet):
+    def update(self, **kwargs):
+        raise ValidationError("review_approval_append_only")
+
+    def delete(self):
+        raise ValidationError("review_approval_append_only")
+
+
+class ReviewApproval(ReviewRecordScope, CanonicalReviewApproval):
+    record = models.ForeignKey(
+        ContentRecord, on_delete=models.CASCADE, related_name="review_approvals"
+    )
+    objects = ReviewApprovalQuerySet.as_manager()
+
+    class Meta(CanonicalReviewApproval.Meta):
+        abstract = False
+        constraints = [
+            *CanonicalReviewApproval.Meta.constraints,
+            models.UniqueConstraint(
+                fields=("site_id", "record", "subject_revision", "policy_version", "reviewer_id"),
+                name="sitecontent_review_approval_uq",
+            ),
+        ]
+
+    def save(self, *args, **kwargs):
+        if not self._state.adding or kwargs.get("force_update") or kwargs.get("update_fields"):
+            raise ValidationError("review_approval_append_only")
+        # A reconstructed instance with an existing UUID must not fall through
+        # Django's UPDATE-before-INSERT behavior and rewrite immutable evidence.
+        kwargs["force_insert"] = True
+        return super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise ValidationError("review_approval_append_only")
+
+
+class ReviewDigestBatch(CanonicalReviewDigestBatch):
+    objects = WorkspacePolicyQuerySet.as_manager()
+
+    class Meta(CanonicalReviewDigestBatch.Meta):
+        abstract = False
+
+
+class ReviewNotificationIntent(ReviewRecordScope, CanonicalReviewNotificationIntent):
+    record = models.ForeignKey(
+        ContentRecord, on_delete=models.CASCADE, related_name="review_notification_intents"
+    )
+    digest_batch = models.ForeignKey(
+        ReviewDigestBatch, on_delete=models.PROTECT, null=True, blank=True, related_name="intents"
+    )
+    objects = WorkspacePolicyQuerySet.as_manager()
+
+    class Meta(CanonicalReviewNotificationIntent.Meta):
+        abstract = False
+        indexes = [
+            models.Index(fields=("site_id", "status", "available_at"), name="review_intent_due_idx")
+        ]
+
+    def clean(self):
+        super().clean()
+        if self.digest_batch_id and (
+            self.digest_batch.site_id != self.site_id
+            or self.digest_batch.recipient_id != self.recipient_id
+        ):
+            raise ValidationError("review_digest_scope_invalid")
+
+
+class ReviewNotificationDelivery(CanonicalReviewNotificationDelivery):
+    intent = models.OneToOneField(
+        ReviewNotificationIntent,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="delivery",
+    )
+    digest_batch = models.OneToOneField(
+        ReviewDigestBatch, on_delete=models.PROTECT, null=True, blank=True, related_name="delivery"
+    )
+    objects = WorkspacePolicyQuerySet.as_manager()
+
+    class Meta(CanonicalReviewNotificationDelivery.Meta):
+        abstract = False
+        constraints = [
+            *CanonicalReviewNotificationDelivery.Meta.constraints,
+            models.CheckConstraint(
+                condition=(
+                    models.Q(intent__isnull=False, digest_batch__isnull=True)
+                    | models.Q(intent__isnull=True, digest_batch__isnull=False)
+                ),
+                name="sitecontent_delivery_source_ck",
+            ),
+        ]
+
+    def clean(self):
+        super().clean()
+        if bool(self.intent_id) == bool(self.digest_batch_id):
+            raise ValidationError("review_delivery_source_invalid")
+        source = self.intent if self.intent_id else self.digest_batch
+        if source.site_id != self.site_id or source.recipient_id != self.recipient_id:
+            raise ValidationError("review_delivery_scope_invalid")

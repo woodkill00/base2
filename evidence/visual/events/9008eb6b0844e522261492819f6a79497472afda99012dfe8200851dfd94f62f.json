@@ -1,0 +1,16 @@
+{
+  "conclusion": "inconclusive",
+  "inspections": [
+    {
+      "member": "operations-release-operati-e5f8f-d-read-only-recovery-states-webkit-desktop/test-failed-1.png",
+      "method": "contact-sheet-overview",
+      "role": "failure",
+      "sha256": "3b4f23b0370f4edb273886124eb08df09ee937f304dd893ab66b0e545efd192f"
+    }
+  ],
+  "kind": "technical-review",
+  "manifest": "runs/41316938996-1-124878862228-13087991482.json",
+  "manifestSha256": "1a264a7fb254d22c3deef0b2699d40b4373dd208a873b506b2c0271a3816c556",
+  "notes": "Expected/diff inspections withheld: aggregate review states these were not inspected despite per-image flags.",
+  "schemaVersion": 2
+}

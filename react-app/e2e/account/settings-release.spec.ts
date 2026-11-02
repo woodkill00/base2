@@ -1,3 +1,5 @@
+import { captureScrollportExtent } from '../scroll-target';
+import { scrollPageTo, pageScrollPosition } from '../scroll-target';
 import { setSessionFixture, fulfillSessionFixture } from '../session-fixture';
 import { expect, test, type Page, type TestInfo } from '@playwright/test';
 import type { AxeResults } from 'axe-core';
@@ -166,7 +168,10 @@ async function layoutDiagnostics(page: Page) {
     }
     return {
       viewport: { width: innerWidth, height: innerHeight },
-      scroll: { x: scrollX, y: scrollY },
+      scroll: {
+        x: document.querySelector<HTMLElement>('.volcano-layout[data-movement-layout="bottom"] .volcano-content-scrollport')?.scrollLeft ?? scrollX,
+        y: document.querySelector<HTMLElement>('.volcano-layout[data-movement-layout="bottom"] .volcano-content-scrollport')?.scrollTop ?? scrollY,
+      },
       elements,
       text,
     };
@@ -174,9 +179,9 @@ async function layoutDiagnostics(page: Page) {
 }
 
 async function capture(page: Page, testInfo: TestInfo, name: string) {
-  await page.evaluate(() => window.scrollTo({ top: 0, left: 0, behavior: 'instant' }));
+  await scrollPageTo(page, 0);
   await expect
-    .poll(() => page.evaluate(() => ({ x: scrollX, y: scrollY })))
+    .poll(() => pageScrollPosition(page))
     .toEqual({ x: 0, y: 0 });
   const path = testInfo.outputPath(`${name}.png`);
   const bytes = await page.screenshot({
@@ -218,7 +223,8 @@ test.beforeEach(async ({ page }, testInfo) => {
         timezone: 'UTC',
         week_start: 'system',
       });
-    if (url.pathname === '/api/settings/notifications') return send({ preferences: [] });
+    if (url.pathname === '/api/settings/notifications')
+      return send({ schema_version: 1, version: 0, preferences: [] });
     if (url.pathname === '/api/settings/security-events') return send({ events: [] });
     if (url.pathname === '/api/privacy/operations') return send({ operations: [] });
     return send({});
@@ -318,10 +324,7 @@ test('release profile remains readable, reachable, accessible, and visually stab
       await page
         .locator('#forced-color-negative-controls')
         .evaluateAll((nodes) => nodes.forEach((node) => node.remove()));
-      await page.evaluate(
-        ({ x, y }) => window.scrollTo({ left: x, top: y, behavior: 'instant' }),
-        beforeLayout.scroll
-      );
+      await scrollPageTo(page, beforeLayout.scroll.y, beforeLayout.scroll.x);
     }
 
     const afterColors = await colorDiagnostics(page);
@@ -404,4 +407,8 @@ test('release profile remains readable, reachable, accessible, and visually stab
     caret: 'hide',
     maxDiffPixelRatio: 0.01,
   });
+});
+
+test.afterEach(async ({ page }, testInfo) => {
+  if (testInfo.status !== 'skipped') await captureScrollportExtent(page, testInfo);
 });

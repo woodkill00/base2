@@ -1,0 +1,100 @@
+{
+  "conclusion": "inconclusive",
+  "inspections": [
+    {
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-firefox-desktop/current-operations-center-firefox-desktop.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "70bf093dbf4eba6447d23b37ce1366f6713932727079fb7ba01f63d89ea63464"
+    },
+    {
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-firefox-desktop/operations-center-firefox-desktop-actual.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "actual",
+      "sha256": "70bf093dbf4eba6447d23b37ce1366f6713932727079fb7ba01f63d89ea63464"
+    },
+    {
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-firefox-desktop/test-failed-1.png",
+      "method": "contact-sheet-overview",
+      "role": "failure",
+      "sha256": "069afe65a5beaab5f9ce2ab7adb3a11c37f64e1a81c427f7e6fc326258994458"
+    },
+    {
+      "member": "operations-release-operati-84a1a-ul-empty-and-failure-states-firefox-desktop/current-operations-center-empty.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "efa744fd6e39f91efb7fcc8743010df1e496f455f10fe09d41dc2917b2e98795"
+    },
+    {
+      "member": "operations-release-operati-84a1a-ul-empty-and-failure-states-firefox-desktop/current-operations-center-error.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "85edb2f5d5f357f174d428f1bf9322137189a73017c8febcf5cc5b8515fb2eda"
+    },
+    {
+      "member": "operations-release-operati-84a1a-ul-empty-and-failure-states-firefox-desktop/operations-center-empty-actual.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "actual",
+      "sha256": "efa744fd6e39f91efb7fcc8743010df1e496f455f10fe09d41dc2917b2e98795"
+    },
+    {
+      "member": "operations-release-operati-84a1a-ul-empty-and-failure-states-firefox-desktop/operations-center-error-actual.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "actual",
+      "sha256": "85edb2f5d5f357f174d428f1bf9322137189a73017c8febcf5cc5b8515fb2eda"
+    },
+    {
+      "member": "operations-release-operati-84a1a-ul-empty-and-failure-states-firefox-desktop/test-failed-1.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "failure",
+      "sha256": "b06f6221c9dfb63146213aa0a5e6e62059a0b35dc1d38eb77405e6e78f9c006d"
+    },
+    {
+      "member": "operations-release-operati-e5f8f-d-read-only-recovery-states-firefox-desktop/current-operations-center-partial.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "1613150040e84ac6a146514e181627d66d64b8636d521e42aa7f7b2eaff02bf3"
+    },
+    {
+      "member": "operations-release-operati-e5f8f-d-read-only-recovery-states-firefox-desktop/current-operations-center-read-only.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "cec645ca41ff29f227e1f67cfb81c1deb95e03de45323e8611563270b7f95c3d"
+    },
+    {
+      "member": "operations-release-operati-e5f8f-d-read-only-recovery-states-firefox-desktop/current-operations-center-reauth.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "30886763be852c5b8cef9f5c1dc036e806684b150af33fcf28998a8e40ee3d38"
+    },
+    {
+      "member": "operations-release-operati-e5f8f-d-read-only-recovery-states-firefox-desktop/operations-center-partial-actual.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "actual",
+      "sha256": "1613150040e84ac6a146514e181627d66d64b8636d521e42aa7f7b2eaff02bf3"
+    },
+    {
+      "member": "operations-release-operati-e5f8f-d-read-only-recovery-states-firefox-desktop/operations-center-read-only-actual.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "actual",
+      "sha256": "cec645ca41ff29f227e1f67cfb81c1deb95e03de45323e8611563270b7f95c3d"
+    },
+    {
+      "member": "operations-release-operati-e5f8f-d-read-only-recovery-states-firefox-desktop/operations-center-reauth-actual.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "actual",
+      "sha256": "30886763be852c5b8cef9f5c1dc036e806684b150af33fcf28998a8e40ee3d38"
+    },
+    {
+      "member": "operations-release-operati-e5f8f-d-read-only-recovery-states-firefox-desktop/test-failed-1.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "failure",
+      "sha256": "a3ca2bdc3dc4fd7731b0bab373dc49f5797579f3ea9fdafb792c954bec02e7af"
+    }
+  ],
+  "kind": "technical-review",
+  "manifest": "runs/41316938996-1-124878862228-13087619281.json",
+  "manifestSha256": "813acc2d3a845c0b5b992a7d26eaaea0bec248a7b6fa966d3b58d9249bd38bcf",
+  "notes": "Expected/diff inspections withheld: aggregate review states these were not inspected despite per-image flags.",
+  "schemaVersion": 2
+}

@@ -1,11 +1,21 @@
+import { requireReadOnlySnapshots } from './e2e/reference-readonly.mjs';
+requireReadOnlySnapshots();
 import { defineConfig } from '@playwright/test';
 import layout from './playwright.layout.config.mjs';
 
 // Original-reference review is a separate, explicitly invoked acceptance stage.
 export default defineConfig({
+  updateSnapshots: 'none',
+  globalSetup: './e2e/reference-readonly.mjs',
   ...layout,
   testIgnore: [],
-  testMatch: ['volcano-preservation.spec.ts', 'appearance-preferences.spec.ts'],
+  testMatch: [
+    'volcano-preservation.spec.ts',
+    'appearance-preferences.spec.ts',
+    'settings-interruption.spec.ts',
+    'workspace-policy-settings.spec.ts',
+    'workspace-review.spec.ts',
+  ],
   projects: [{ name: 'chromium', use: { browserName: 'chromium' } }],
   webServer: {
     ...layout.webServer,

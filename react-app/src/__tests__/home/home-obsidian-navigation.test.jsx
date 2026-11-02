@@ -320,3 +320,130 @@ describe('Base2 restored Obsidian navigation', () => {
     vi.useRealTimers();
   });
 });
+
+test('cancels pending section movement when navigation unmounts', () => {
+  vi.useFakeTimers();
+  document.documentElement.scrollTop = 0;
+  document.body.scrollTop = 0;
+  Object.defineProperty(document.documentElement, 'scrollHeight', {
+    configurable: true,
+    value: 2400,
+  });
+  Object.defineProperty(window, 'innerHeight', { configurable: true, value: 600 });
+  Object.defineProperty(window, 'scrollY', { configurable: true, value: 0 });
+  const scroll = vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+  const { unmount } = renderNavigation();
+  fireEvent.click(screen.getByTestId('base2-scroll-descend'));
+  expect(vi.getTimerCount()).toBeGreaterThan(0);
+  unmount();
+  scroll.mockClear();
+  act(() => vi.advanceTimersByTime(8000));
+  expect(scroll).not.toHaveBeenCalled();
+  expect(vi.getTimerCount()).toBe(0);
+  scroll.mockRestore();
+  vi.useRealTimers();
+});
+
+test('edge control survives slow pointer double-click and keyboard focus without delaying movement', () => {
+  vi.useFakeTimers();
+  let top = 100;
+  let notify = () => {};
+  const target = {
+    metrics: () => ({ top, canAscend: top > 0, canDescend: true, progress: 10 }),
+    subscribe: (listener) => {
+      notify = listener;
+      return () => {};
+    },
+    move: vi.fn(() => {
+      top = 0;
+      notify();
+    }),
+    edge: vi.fn(() => {
+      top = 0;
+      notify();
+    }),
+  };
+  const view = render(
+    <HomeObsidianNavigation
+      routes={[{ to: '/signup', label: 'Sign up' }]}
+      currentPath="/signup"
+      scrollTarget={target}
+      onNavigate={vi.fn()}
+    />
+  );
+  const ascend = screen.getByTestId('base2-scroll-ascend');
+  fireEvent.pointerEnter(ascend);
+  fireEvent.focus(ascend);
+  fireEvent.click(ascend, { detail: 1 });
+  expect(target.move).toHaveBeenCalledWith(-1);
+  act(() => vi.advanceTimersByTime(1500));
+  expect(ascend.isConnected).toBe(true);
+  expect(ascend).toHaveAttribute('aria-disabled', 'true');
+  fireEvent.doubleClick(ascend);
+  expect(target.edge).toHaveBeenCalledWith(true);
+  fireEvent.pointerLeave(ascend);
+  expect(ascend.isConnected).toBe(true);
+  fireEvent.blur(ascend);
+  expect(ascend.isConnected).toBe(false);
+  fireEvent.click(screen.getByTestId('base2-scroll-descend'), { detail: 0 });
+  expect(target.move).toHaveBeenCalledWith(1);
+  view.unmount();
+  vi.useRealTimers();
+});
+
+test('closed navigation never steals initial focus but actual drawer close restores its toggle', () => {
+  const frames = new Map();
+  let id = 0;
+  vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {
+    frames.set(++id, callback);
+    return id;
+  });
+  vi.spyOn(window, 'cancelAnimationFrame').mockImplementation((key) => frames.delete(key));
+  const flush = () => {
+    const pending = [...frames.values()];
+    frames.clear();
+    act(() => pending.forEach((callback) => callback(0)));
+  };
+  const view = renderNavigation();
+  flush();
+  expect(document.activeElement).toBe(document.body);
+  fireEvent.click(screen.getByTestId('base2-left-menu-toggle'));
+  screen.getByTestId('base2-left-command-menu').querySelector('button').focus();
+  fireEvent.keyDown(window, { key: 'Escape' });
+  flush();
+  expect(screen.getByTestId('base2-left-menu-toggle')).toHaveFocus();
+  view.unmount();
+  vi.restoreAllMocks();
+});
+
+test('pending close focus is cancelled on unmount and does not steal external form focus', () => {
+  const frames = new Map();
+  let sequence = 0;
+  vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {
+    frames.set(++sequence, callback);
+    return sequence;
+  });
+  vi.spyOn(window, 'cancelAnimationFrame').mockImplementation((id) => frames.delete(id));
+  const input = document.createElement('input');
+  document.body.append(input);
+  input.focus();
+  const view = renderNavigation();
+  act(() => {
+    const pending = [...frames.values()];
+    frames.clear();
+    pending.forEach((fn) => fn(0));
+  });
+  expect(input).toHaveFocus();
+  fireEvent.click(screen.getByTestId('base2-left-menu-toggle'));
+  fireEvent.keyDown(window, { key: 'Escape' });
+  view.unmount();
+  input.focus();
+  act(() => {
+    const pending = [...frames.values()];
+    frames.clear();
+    pending.forEach((fn) => fn(0));
+  });
+  expect(input).toHaveFocus();
+  input.remove();
+  vi.restoreAllMocks();
+});

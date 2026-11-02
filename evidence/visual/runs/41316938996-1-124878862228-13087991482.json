@@ -1,0 +1,65 @@
+{
+  "archiveSha256": "e22978b6e7286c6868a3dbb8c882901fb9a1c46b2564a150406df10dadd6193f",
+  "artifactId": 13087991482,
+  "attempt": 1,
+  "captures": [
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "webkit-desktop-part-002.zip",
+          "sha256": "53cc5559622df534b13e460c5e1b13c46e5067490991d5485daf8106cdd58f22"
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "operations-release-operati-e5f8f-d-read-only-recovery-states-webkit-desktop/test-failed-1.png",
+          "sha256": "3b4f23b0370f4edb273886124eb08df09ee937f304dd893ab66b0e545efd192f"
+        }
+      ],
+      "bytes": 1583704,
+      "dimensions": [
+        2880,
+        2000
+      ],
+      "identityBasis": "native-report",
+      "member": "operations-release-operati-e5f8f-d-read-only-recovery-states-webkit-desktop/test-failed-1.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-report",
+        "project": "webkit-desktop",
+        "title": "operations center exposes stale, reauthentication, and read-only recovery states"
+      },
+      "project": "webkit-desktop",
+      "role": "failure",
+      "sha256": "3b4f23b0370f4edb273886124eb08df09ee937f304dd893ab66b0e545efd192f",
+      "storage": "objects/3b4f23b0370f4edb273886124eb08df09ee937f304dd893ab66b0e545efd192f.png",
+      "test": "operations center exposes stale, reauthentication, and read-only recovery states",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    }
+  ],
+  "fixtureScope": "synthetic-project-tests",
+  "jobId": 124878862228,
+  "laterValidation": "pending",
+  "observations": [],
+  "originalOutcome": "failed",
+  "repository": "woodkill00/base2",
+  "requestedHead": "da4d0a72c1e7893e069b95a60c7f3cfcbfa6004a",
+  "runId": 41316938996,
+  "schemaVersion": 2,
+  "sourceCommit": "da4d0a72c1e7893e069b95a60c7f3cfcbfa6004a",
+  "sourceTree": "315d2db4a8e4b62ef0ae4b434d6906f2c0f4d30c",
+  "technicalReview": "pending",
+  "transfer": {
+    "blobs": {
+      "3b4f23b0370f4edb273886124eb08df09ee937f304dd893ab66b0e545efd192f": "9fd3ef8325b9a02374630c4af1b1affd15a76906"
+    },
+    "commit": "9cd69137e688113750cdc225ad4c7fce2eebc157",
+    "localVerification": "git-blob-sha256-size-dimensions-full-decode",
+    "originalArchiveVerification": "externally-verified-zip-and-members",
+    "tree": "6806be178646ad75161a0a142b2c935608c30b46"
+  }
+}

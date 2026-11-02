@@ -1,3 +1,12 @@
+import { retainMovementTransition } from './movement-transition';
+import { namedRouteSequenceState } from '../sequence-reference';
+import {
+  captureScrollportExtent,
+  readFocusPaint,
+  focusPaintChanged,
+  movementToggleName,
+} from '../scroll-target';
+import { pageScrollTop, scrollPageTo } from '../scroll-target';
 import { setSessionFixture, fulfillSessionFixture } from '../session-fixture';
 import { expect, test } from './fixtures';
 import { assertApprovedReference } from '../live/approved-reference';
@@ -212,6 +221,8 @@ for (const width of [390, 1440]) {
         fullPage: true,
         animations: 'disabled',
       });
+      // Retain this named route before the subsequent Search navigation.
+      await captureScrollportExtent(page, info, namedRouteSequenceState(path, info.title), 0);
       await page.keyboard.press('Control+k');
       await expect(page.getByRole('menuitem', { name: 'Administration', exact: true })).toHaveCount(
         0
@@ -224,7 +235,525 @@ for (const width of [390, 1440]) {
 }
 
 for (const width of [390, 1440]) {
-  test(`original Volcano reference at ${width}px`, async ({ page }) => {
-    await assertApprovedReference(page, 'http://127.0.0.1:4192', width);
+  test(`original Volcano reference at ${width}px`, async ({ page }, info) => {
+    await assertApprovedReference(page, 'http://127.0.0.1:4192', width, info);
   });
 }
+
+for (const scenario of [
+  { name: 'compact', width: 320, height: 568 },
+  { name: 'landscape', width: 844, height: 390 },
+  { name: 'desktop', width: 1440, height: 900 },
+  { name: 'rtl', width: 390, height: 844 },
+  { name: 'rtl-large-text', width: 390, height: 844 },
+  { name: 'forced', width: 390, height: 844 },
+  { name: 'zoom', width: 1280, height: 900 },
+]) {
+  test(`reserved movement space ${scenario.name}`, async ({ page }, info) => {
+    await page.setViewportSize({ width: scenario.width, height: scenario.height });
+    if (scenario.name === 'forced') await page.emulateMedia({ forcedColors: 'active' });
+    await page.route('**/api/**', async (route) => {
+      if (await fulfillSessionFixture(route, { appearanceDefaults: true })) return;
+      return route.fulfill({ status: 503, json: { detail: 'Synthetic fixture unavailable' } });
+    });
+    if (scenario.name === 'rtl-large-text')
+      await page
+        .context()
+        .addCookies([{ name: 'theme', value: 'light', domain: '127.0.0.1', path: '/' }]);
+    await page.goto(
+      scenario.name === 'compact'
+        ? '/signup#main-content'
+        : scenario.name.startsWith('rtl')
+          ? '/ar/about'
+          : '/signup'
+    );
+    if (scenario.name === 'rtl-large-text')
+      await page.locator('html').evaluate((node) => {
+        node.style.fontSize = '200%';
+      });
+    if (scenario.name.startsWith('rtl'))
+      await page.locator('html').evaluate((node) => node.setAttribute('dir', 'rtl'));
+    if (scenario.name === 'zoom')
+      await page.locator('html').evaluate((node) => {
+        node.style.zoom = '2';
+      });
+    console.log('movement-checkpoint', {
+      schemaVersion: 1,
+      scenario: scenario.name,
+      action: 'page-loaded',
+    });
+    const shell = page.locator('.volcano-layout');
+    const expectedMode = scenario.name === 'desktop' ? 'sides' : 'bottom';
+    await expect(shell).toHaveAttribute('data-movement-layout', expectedMode);
+    const port = page.getByTestId('volcano-scrollport');
+    await expect(page.locator('.volcano-header-frame')).toHaveCSS('position', 'sticky');
+    console.log('movement-checkpoint', {
+      schemaVersion: 1,
+      scenario: scenario.name,
+      action: 'skip-link-start',
+    });
+    await page.locator('.unified-skip-link').focus();
+    await page.keyboard.press('Enter');
+    await expect(page.locator('#main-content')).toBeFocused();
+    const anchorPosition = await page.evaluate(() => ({
+      main: document.querySelector('#main-content')!.getBoundingClientRect().top,
+      header: document.querySelector('.volcano-header-frame')!.getBoundingClientRect().bottom,
+    }));
+    expect(anchorPosition.main).toBeGreaterThanOrEqual(anchorPosition.header - 1);
+    for (const fraction of [0, 0.5, 1]) {
+      console.log('movement-checkpoint', {
+        schemaVersion: 1,
+        scenario: scenario.name,
+        action: 'viewport-start',
+        fraction,
+      });
+      await page.evaluate((value) => {
+        const nested = document.querySelector<HTMLElement>(
+          '.volcano-layout[data-movement-layout="bottom"] .volcano-content-scrollport'
+        );
+        const max = nested
+          ? nested.scrollHeight - nested.clientHeight
+          : document.documentElement.scrollHeight - innerHeight;
+        (nested || window).scrollTo({ top: max * value, behavior: 'instant' });
+      }, fraction);
+      await page.evaluate(
+        () =>
+          new Promise<void>((resolve) =>
+            requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
+          )
+      );
+      const geometry = await page.evaluate(() => {
+        const nested = document.querySelector<HTMLElement>(
+          '.volcano-layout[data-movement-layout="bottom"] .volcano-content-scrollport'
+        );
+        const view = nested?.getBoundingClientRect() || {
+          left: 0,
+          top: 0,
+          right: innerWidth,
+          bottom: innerHeight,
+        };
+        const controls = [...document.querySelectorAll('.volcano-movement-dock button')].map(
+          (node) => node.getBoundingClientRect()
+        );
+        const targets = [
+          ...document.querySelectorAll(
+            '.volcano-content-scrollport a,.volcano-content-scrollport button,.volcano-content-scrollport input,.volcano-content-scrollport label,.volcano-content-scrollport p,.volcano-content-scrollport h1,.volcano-content-scrollport h2'
+          ),
+        ];
+        const overlaps = targets.flatMap((node, index) => {
+          const box = node.getBoundingClientRect();
+          const visible = {
+            left: Math.max(box.left, view.left),
+            right: Math.min(box.right, view.right),
+            top: Math.max(box.top, view.top),
+            bottom: Math.min(box.bottom, view.bottom),
+          };
+          if (visible.right <= visible.left || visible.bottom <= visible.top) return [];
+          return controls.some(
+            (control) =>
+              control.left < visible.right &&
+              control.right > visible.left &&
+              control.top < visible.bottom &&
+              control.bottom > visible.top
+          )
+            ? [index]
+            : [];
+        });
+        return {
+          overlaps,
+          controlSizes: controls.map((box) => [box.width, box.height]),
+          documentOverflow: document.documentElement.scrollWidth - innerWidth,
+          portOverflow: nested ? nested.scrollWidth - nested.clientWidth : 0,
+          contentBottom: view.bottom,
+          dockTop: document.querySelector('.volcano-movement-dock')!.getBoundingClientRect().top,
+        };
+      });
+      await page.screenshot({
+        path: info.outputPath(`movement-${scenario.name}-${fraction}.png`),
+        fullPage: false,
+      });
+      await info.attach(`movement-geometry-${fraction}`, {
+        body: Buffer.from(JSON.stringify(geometry)),
+        contentType: 'application/json',
+      });
+      expect(geometry.overlaps).toEqual([]);
+      expect(geometry.documentOverflow).toBeLessThanOrEqual(1);
+      expect(geometry.portOverflow).toBeLessThanOrEqual(1);
+      for (const size of geometry.controlSizes)
+        expect(Math.min(...size)).toBeGreaterThanOrEqual(44);
+      if (expectedMode === 'bottom')
+        expect(geometry.contentBottom).toBeLessThanOrEqual(geometry.dockTop + 1);
+    }
+    // Inspect actual focus outlines as well as all four persistent hit targets.
+    // Focus is not used to dismiss, move or hide any control.
+    const controlIds = [
+      'base2-left-menu-toggle',
+      'base2-right-utility-toggle',
+      'base2-scroll-ascend',
+      'base2-scroll-descend',
+    ];
+    const beforeFocusProof = await pageScrollTop(page);
+    await page.keyboard.press('Tab');
+    await scrollPageTo(page, 180);
+    await expect.poll(() => pageScrollTop(page)).toBe(180);
+    let focusProofFailure: unknown;
+    try {
+      for (const id of controlIds) {
+        const control = page.getByTestId(id);
+        await expect(control).toHaveCount(1);
+        await expect(control).toBeVisible();
+        // Explicitly leave this control before recording its decorative resting paint.
+        await control.evaluate((node) => (node as HTMLElement).blur());
+        await expect(control).not.toBeFocused();
+        await control.evaluate(async (node) => {
+          // Force style resolution after blur, then await only finite paint transitions.
+          getComputedStyle(node).boxShadow;
+          await Promise.all(
+            node
+              .getAnimations()
+              .filter(
+                (animation) =>
+                  animation instanceof window.CSSTransition &&
+                  /^(outline|border|box-shadow)/.test(animation.transitionProperty) &&
+                  Number.isFinite(animation.effect?.getComputedTiming().endTime)
+              )
+              .map((animation) => animation.finished.catch(() => undefined))
+          );
+        });
+        await expect(control).not.toBeFocused();
+        const unfocused = await control.evaluate(readFocusPaint);
+        let indicatorFailure: unknown;
+        await control.focus();
+        try {
+          await expect
+            .poll(
+              async () => focusPaintChanged(unfocused, await control.evaluate(readFocusPaint)),
+              { message: 'Focused control must expose an actual indicator change' }
+            )
+            .toBe(true);
+        } catch (error) {
+          indicatorFailure = error;
+        }
+        // Preserve the attempted focus state before propagating a failed poll.
+        try {
+          const spacing = await control.evaluate((node, ids) => {
+            const box = node.getBoundingClientRect(),
+              style = getComputedStyle(node);
+            const ring = Math.max(
+              0,
+              (parseFloat(style.outlineWidth) || 0) + (parseFloat(style.outlineOffset) || 0)
+            );
+            const overlaps = ids.filter((otherId) => {
+              const other = document.querySelector(`[data-testid="${otherId}"]`);
+              if (!other || other === node) return false;
+              const b = other.getBoundingClientRect();
+              return (
+                b.width > 0 &&
+                b.height > 0 &&
+                box.left - ring < b.right &&
+                box.right + ring > b.left &&
+                box.top - ring < b.bottom &&
+                box.bottom + ring > b.top
+              );
+            });
+            const hit = document.elementFromPoint(
+              box.left + box.width / 2,
+              box.top + box.height / 2
+            );
+            return {
+              overlaps,
+              centerHit: hit === node || node.contains(hit),
+              ring,
+              focused: document.activeElement === node,
+              focusVisible: node.matches(':focus-visible'),
+              outlineVisible: style.outlineStyle !== 'none' && parseFloat(style.outlineWidth) > 0,
+              shadowIndicator: style.boxShadow !== 'none',
+            };
+          }, controlIds);
+          await page.screenshot({
+            path: info.outputPath(`dock-focus-${scenario.name}-${id}.png`),
+            fullPage: false,
+          });
+          console.log('dock-focus-geometry', {
+            schemaVersion: 1,
+            scenario: scenario.name,
+            control: id,
+            ...spacing,
+          });
+          if (indicatorFailure) throw indicatorFailure;
+          expect(
+            spacing.overlaps,
+            'Focus outline must remain separate from other dock controls'
+          ).toEqual([]);
+          expect(spacing.centerHit).toBe(true);
+          expect(spacing.focused && spacing.focusVisible).toBe(true);
+          // The existing circles use a shadow/border indicator; do not invent an outline
+          // or mistake its diffuse decorative glow for a solid hit-target rectangle.
+          expect(spacing.outlineVisible || spacing.shadowIndicator).toBe(true);
+        } catch (error) {
+          throw indicatorFailure || error;
+        }
+      }
+    } catch (error) {
+      focusProofFailure = error;
+    }
+    try {
+      await scrollPageTo(page, beforeFocusProof);
+    } catch (error) {
+      if (!focusProofFailure) focusProofFailure = error;
+    }
+    if (focusProofFailure) throw focusProofFailure;
+    console.log('movement-checkpoint', {
+      schemaVersion: 1,
+      scenario: scenario.name,
+      action: 'footer-assertion',
+    });
+    await expect(page.locator('.volcano-footer-frame')).toBeInViewport();
+    // The retained skip-link hash must not replay on target/toggle changes.
+    await expect.poll(() => pageScrollTop(page)).toBeGreaterThan(0);
+    const trackedAnchor = await page.evaluate(() => {
+      const port = document.querySelector<HTMLElement>(
+        '.volcano-layout[data-movement-layout="bottom"] .volcano-content-scrollport'
+      );
+      const box = port?.getBoundingClientRect();
+      const top = Math.max(
+        0,
+        box?.top || 0,
+        document.querySelector('.volcano-header-frame')!.getBoundingClientRect().bottom
+      );
+      const bottom = Math.min(innerHeight, box?.bottom ?? innerHeight);
+      const nodes = Array.from(
+        document.querySelectorAll(
+          'main h1, main h2, main p, main label, .media-asset-card, .volcano-footer-frame p, .volcano-footer-frame a'
+        )
+      );
+      const index = nodes.findIndex((node) => {
+        const r = node.getBoundingClientRect();
+        return (
+          r.width > 0 &&
+          r.height > 0 &&
+          r.bottom > top &&
+          r.top < bottom &&
+          r.right > Math.max(0, box?.left || 0) &&
+          r.left < Math.min(innerWidth, box?.right ?? innerWidth)
+        );
+      });
+      if (index < 0) throw new Error('No visible movement landmark');
+      return {
+        index,
+        gap: nodes[index].getBoundingClientRect().top - top,
+        offset: port ? port.scrollTop : scrollY,
+      };
+    });
+    await page.getByTestId('base2-left-menu-toggle').click();
+    await expect(page.getByTestId('volcano-movement-dock')).toHaveAttribute('inert');
+    if (expectedMode === 'bottom') await expect(port).toHaveCSS('overflow', 'hidden');
+    const transitionCheckpoint = async (action: string) => {
+      const geometry = await retainMovementTransition({
+        settle: async () => {
+          if (action !== 'before-disable')
+            await expect(shell).toHaveAttribute(
+              'data-movement-migration',
+              /^(preserved|clamped|fallback|failed|invalid|unsettled)$/
+            );
+        },
+        measure: () =>
+          page.evaluate((trackedIndex) => {
+            const root = document.querySelector<HTMLElement>('.volcano-layout')!;
+            const port = root.querySelector<HTMLElement>('.volcano-content-scrollport')!;
+            const header = root.querySelector<HTMLElement>('.volcano-header-frame')!;
+            const headerBottom = header.getBoundingClientRect().bottom;
+            const candidates = [
+              ...root.querySelectorAll<HTMLElement>(
+                'main h1, main h2, main p, main label, .media-asset-card, .volcano-footer-frame p, .volcano-footer-frame a'
+              ),
+            ];
+            const index = candidates.findIndex(
+              (node) => node.getBoundingClientRect().bottom > headerBottom
+            );
+            const rect = index < 0 ? null : candidates[index].getBoundingClientRect();
+            const tracked = candidates[trackedIndex]?.getBoundingClientRect();
+            const nested = root.getAttribute('data-movement-layout') === 'bottom';
+            const portBox = port.getBoundingClientRect();
+            const visibleTop = Math.max(0, nested ? portBox.top : 0, headerBottom);
+            const scale = nested ? portBox.height / port.offsetHeight : 1;
+            const offset = nested ? port.scrollTop : scrollY;
+            const max = nested
+              ? Math.max(0, port.scrollHeight - port.clientHeight)
+              : Math.max(0, document.documentElement.scrollHeight - innerHeight);
+            const active = document.activeElement;
+            const id = active?.getAttribute('data-testid');
+            return {
+              tracked: tracked
+                ? {
+                    index: trackedIndex,
+                    gap: tracked.top - visibleTop,
+                    offset,
+                    max,
+                    scale,
+                    rect: [tracked.x, tracked.y, tracked.width, tracked.height],
+                  }
+                : null,
+              migration: root.getAttribute('data-movement-migration'),
+              mode: root.getAttribute('data-movement-layout'),
+              document: [scrollY, innerHeight, document.documentElement.scrollHeight],
+              port: [port.scrollTop, port.clientHeight, port.scrollHeight],
+              scale: port.getBoundingClientRect().height / port.offsetHeight,
+              headerBottom,
+              anchorIndex: index,
+              anchorRect: rect ? [rect.x, rect.y, rect.width, rect.height] : null,
+              activeTag: active?.tagName || null,
+              activeControl: [
+                'base2-left-menu-toggle',
+                'base2-right-utility-toggle',
+                'base2-scroll-ascend',
+                'base2-scroll-descend',
+              ].includes(id || '')
+                ? id
+                : null,
+            };
+          }, trackedAnchor.index),
+        capture: () =>
+          page.screenshot({
+            path: info.outputPath(`movement-transition-${scenario.name}-${action}.png`),
+            fullPage: false,
+          }),
+        record: (sample, errors, captured) =>
+          console.log('movement-transition', {
+            schemaVersion: 3,
+            scenario: scenario.name,
+            action,
+            sample,
+            errors,
+            captured,
+          }),
+      });
+      expect(geometry.tracked).not.toBeNull();
+      const tracked = geometry.tracked!;
+      expect(Number.isFinite(tracked.scale) && tracked.scale > 0).toBe(true);
+      if (action !== 'before-disable')
+        expect(['preserved', 'clamped']).toContain(geometry.migration);
+      const desired = tracked.offset + (tracked.gap - trackedAnchor.gap) / tracked.scale;
+      const bounded = Math.max(0, Math.min(tracked.max, desired));
+      expect(Math.abs(tracked.offset - bounded)).toBeLessThanOrEqual(1);
+      if (action === 'after-enable-before-close' || action === 'after-close') {
+        expect(Math.abs(tracked.gap - trackedAnchor.gap)).toBeLessThanOrEqual(1);
+        expect(Math.abs(tracked.offset - trackedAnchor.offset)).toBeLessThanOrEqual(1);
+      }
+    };
+    await transitionCheckpoint('before-disable');
+    console.log(
+      'movement-before-toggle',
+      scenario.name,
+      await page.evaluate(
+        (toggleName) => {
+          const panel = document.querySelector('.home-left-command-menu')!;
+          const toggle = [
+            ...panel.querySelectorAll<HTMLInputElement>('input[type="checkbox"][aria-label]'),
+          ].find((node) => node.getAttribute('aria-label') === toggleName);
+          if (!toggle) throw new Error('Movement toggle missing');
+          return {
+            panel: panel.getBoundingClientRect().toJSON(),
+            toggle: toggle.getBoundingClientRect().toJSON(),
+            viewport: [innerWidth, innerHeight],
+            panelHeight: panel.clientHeight,
+            panelScrollHeight: panel.scrollHeight,
+          };
+        },
+        movementToggleName(scenario.name.startsWith('rtl'))
+      )
+    );
+    await page
+      .getByRole('checkbox', {
+        name: movementToggleName(scenario.name.startsWith('rtl')),
+        exact: true,
+      })
+      .uncheck();
+    await expect(shell).toHaveAttribute('data-movement-layout', 'off');
+    await transitionCheckpoint('after-disable');
+    await expect(
+      page.getByRole('checkbox', {
+        name: movementToggleName(scenario.name.startsWith('rtl')),
+        exact: true,
+      })
+    ).toBeFocused();
+    await page
+      .getByRole('checkbox', {
+        name: movementToggleName(scenario.name.startsWith('rtl')),
+        exact: true,
+      })
+      .check();
+    await expect(shell).toHaveAttribute('data-movement-layout', expectedMode);
+    await transitionCheckpoint('after-enable-before-close');
+    await page.keyboard.press('Escape');
+    await expect(page.getByTestId('volcano-movement-dock')).not.toHaveAttribute('inert');
+    await expect(page.getByTestId('base2-left-menu-toggle')).toBeFocused();
+    await transitionCheckpoint('after-close');
+    await expect(page.locator('.volcano-footer-frame')).toBeInViewport();
+    await expect.poll(() => pageScrollTop(page)).toBeGreaterThan(0);
+    // Re-enter a real movable position after focus-preserving toggle migration.
+    // A residual 1..12px offset intentionally has no Ascend control.
+    await scrollPageTo(page, 180);
+    await expect.poll(() => pageScrollTop(page)).toBe(180);
+    await expect(page.getByTestId('base2-scroll-ascend')).toBeVisible();
+    await expect(page.getByTestId('base2-scroll-ascend')).not.toHaveAttribute(
+      'aria-disabled',
+      'true'
+    );
+    console.log('movement-before-edge', scenario.name, await pageScrollTop(page));
+    console.log('movement-action', {
+      schemaVersion: 1,
+      action: 'ascend-double-click-start',
+      scenario: scenario.name,
+    });
+    await page.getByTestId('base2-scroll-ascend').dblclick();
+    console.log('movement-action', {
+      schemaVersion: 1,
+      action: 'ascend-double-click-returned',
+      scenario: scenario.name,
+    });
+    await expect.poll(() => pageScrollTop(page)).toBe(0);
+    console.log('movement-edge-complete', scenario.name);
+    if (scenario.name === 'compact') {
+      // Exercise exact offsets on uniquely keyed router entries. The cold/native
+      // fragment entry above deliberately uses browser fallback, not a shared key.
+      await page
+        .locator('a[href="/login"]')
+        .first()
+        .evaluate((node: HTMLAnchorElement) => node.click());
+      await expect(page).toHaveURL(/\/login$/);
+      await page
+        .locator('a[href="/signup"]')
+        .first()
+        .evaluate((node: HTMLAnchorElement) => node.click());
+      await expect(page).toHaveURL(/\/signup$/);
+      await page.setViewportSize({ width: 1440, height: 900 });
+      await expect(shell).toHaveAttribute('data-movement-layout', 'sides');
+      await scrollPageTo(page, 100);
+      await expect.poll(() => pageScrollTop(page)).toBe(100);
+      // DOM activation avoids Playwright scrolling the link before navigation.
+      await page
+        .locator('a[href="/login"]')
+        .first()
+        .evaluate((node: HTMLAnchorElement) => node.click());
+      await expect(page).toHaveURL(/\/login$/);
+      await page.setViewportSize({ width: 320, height: 568 });
+      await expect(shell).toHaveAttribute('data-movement-layout', 'bottom');
+      await scrollPageTo(page, 180);
+      await expect.poll(() => pageScrollTop(page)).toBe(180);
+      console.log('movement-before-back', await pageScrollTop(page));
+      await page.goBack();
+      await expect(page).toHaveURL(/\/signup(?:#.*)?$/);
+      await expect.poll(() => pageScrollTop(page)).toBe(100);
+      console.log('movement-before-forward', await pageScrollTop(page));
+      await page.goForward();
+      await expect(page).toHaveURL(/\/login$/);
+      await expect.poll(() => pageScrollTop(page)).toBe(180);
+    }
+  });
+}
+
+test.afterEach(async ({ page }, testInfo) => {
+  if (testInfo.status !== 'skipped' && !testInfo.title.startsWith('Volcano guest route '))
+    await captureScrollportExtent(page, testInfo);
+});

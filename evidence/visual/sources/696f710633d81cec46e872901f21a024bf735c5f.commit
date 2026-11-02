@@ -1,0 +1,6 @@
+tree b395ca42a261de3c2710034787f5410ff5599501
+parent 0cd0dd953a8ecb2525c6fac69213494f63affaea
+author woodkill woodkill <thejunkmailvoid@gmail.com> 1793542066 +0000
+committer woodkill woodkill <thejunkmailvoid@gmail.com> 1793542066 +0000
+
+test(visual): retain original diagnostic captures and scoped provenance

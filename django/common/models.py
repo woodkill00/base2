@@ -6,17 +6,125 @@ from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator, RegexValidator
 from django.db import models
+from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from django_countries.fields import CountryField
 from phonenumber_field.modelfields import PhoneNumberField
 
 User = get_user_model()
 
-CONTENT_IDENTIFIER_PATTERN = r"^[a-z][a-z0-9_]{1,62}$"
+CONTENT_IDENTIFIER_PATTERN = r"\A[a-z][a-z0-9_]{1,62}\Z"
 content_identifier_validator = RegexValidator(
     CONTENT_IDENTIFIER_PATTERN,
     _("Use a lowercase identifier beginning with a letter."),
 )
+
+# Type keys are data values, not field/preset or SQL identifiers. Preserve legacy
+# underscores while admitting public-pack hyphens; strict anchors reject newlines.
+CONTENT_TYPE_KEY_PATTERN = r"\A(?=.{2,63}\Z)[a-z][a-z0-9_]*(?:-[a-z0-9][a-z0-9_]*)*\Z"
+content_type_key_validator = RegexValidator(
+    CONTENT_TYPE_KEY_PATTERN,
+    _(
+        "Use 2–63 lowercase ASCII letters, digits or underscores, "
+        "with single hyphens followed by a letter or digit."
+    ),
+)
+
+# Explicit plain text is separate from private dynamic values and never HTML.
+PUBLIC_EXCERPT_MAX_LENGTH = 2_000
+PUBLIC_BODY_MAX_LENGTH = 20_000
+WORKSPACE_SNAPSHOT_FORMAT = "workspace-record-v1"
+WORKSPACE_SNAPSHOT_CONTEXT = {
+    "title": "title",
+    "slug": "slug",
+    "contentType": "content_type",
+    "schemaVersion": "schema_version",
+    "version": "version",
+    "metadata": "metadata",
+    "state": "state",
+    "publishAt": "publish_at",
+    "scheduleTimezone": "schedule_timezone",
+    "publishedAt": "published_at",
+    "sitemapInclude": "sitemap_include",
+    "searchVisible": "search_visible",
+}
+
+
+def validate_public_content(value) -> None:
+    """Validate Unicode scalar text without coercion, normalization or projection."""
+    if not isinstance(value, dict) or set(value) != {"excerpt", "body"}:
+        raise ValidationError("content_public_content_invalid")
+    for key, limit in (("excerpt", PUBLIC_EXCERPT_MAX_LENGTH), ("body", PUBLIC_BODY_MAX_LENGTH)):
+        text = value[key]
+        if (
+            not isinstance(text, str)
+            or len(text) > limit
+            or "\x00" in text
+            or any(0xD800 <= ord(char) <= 0xDFFF for char in text)
+        ):
+            raise ValidationError("content_public_content_invalid")
+
+
+def workspace_record_snapshot(source: dict) -> dict:
+    """Capture persisted pre-mutation context, including private forensic metadata."""
+    context = {}
+    for key, column in WORKSPACE_SNAPSHOT_CONTEXT.items():
+        value = source[column]
+        context[key] = value.isoformat() if hasattr(value, "isoformat") else value
+    return {
+        "snapshotFormat": WORKSPACE_SNAPSHOT_FORMAT,
+        "values": source["values"],
+        "publicContent": {"excerpt": source["excerpt"], "body": source["body"]},
+        "context": context,
+    }
+
+
+def read_workspace_snapshot(snapshot: dict) -> tuple[dict, dict | None, str]:
+    """Legacy flat versions restore private values only and preserve current public copy.
+
+    Context/state is never a restoration instruction. Camel-case structural keys
+    cannot collide with valid lowercase private field identifiers.
+    """
+    if not isinstance(snapshot, dict):
+        raise ValidationError("content_version_snapshot_invalid")
+    public_content = None
+    if "snapshotFormat" in snapshot:
+        if (
+            snapshot["snapshotFormat"] != WORKSPACE_SNAPSHOT_FORMAT
+            or set(snapshot) != {"snapshotFormat", "values", "publicContent", "context"}
+            or not isinstance(snapshot["context"], dict)
+            or set(snapshot["context"]) != set(WORKSPACE_SNAPSHOT_CONTEXT)
+        ):
+            raise ValidationError("content_version_snapshot_invalid")
+        values = snapshot["values"]
+        public_content = snapshot["publicContent"]
+        validate_public_content(public_content)
+    elif {"publishAt", "scheduleTimezone", "sitemapInclude", "searchVisible"} <= set(snapshot):
+        if not {"values", "excerpt", "body"} <= set(snapshot):
+            raise ValidationError("content_version_snapshot_invalid")
+        values = snapshot["values"]
+        public_content = {"excerpt": snapshot["excerpt"], "body": snapshot["body"]}
+        validate_public_content(public_content)
+    else:
+        # Fail closed on malformed structural envelopes instead of unwrapping
+        # a legitimate private field named values or guessing from body/excerpt.
+        if any(
+            not isinstance(key, str) or not re.fullmatch(CONTENT_IDENTIFIER_PATTERN, key)
+            for key in snapshot
+        ):
+            raise ValidationError("content_version_snapshot_invalid")
+        values = snapshot
+    if not isinstance(values, dict) or len(values) > 128:
+        raise ValidationError("content_version_snapshot_invalid")
+    return values, public_content, "snapshot" if public_content is not None else "preserve_current"
+
+
+def workspace_snapshot_restore_mode(snapshot: dict) -> str:
+    try:
+        return read_workspace_snapshot(snapshot)[2]
+    except (ValidationError, TypeError):
+        return "unsupported"
+
 
 OPERATIONS_IDENTIFIER_PATTERN = r"^[a-z][a-z0-9_.-]{2,95}$"
 operations_identifier_validator = RegexValidator(
@@ -170,6 +278,31 @@ class UUIDMixin(models.Model):
         verbose_name = _("UUID Mixin")
         verbose_name_plural = _("UUID Mixins")
         abstract = True
+
+
+class NotificationPreferenceSet(UUIDMixin, TimestampedModel):
+    """Canonical revision header for a normalized notification preference set.
+
+    Concrete adapters supply identity and scope relationships. An absent header is
+    logically version zero; persisted headers start at one. Writers must compare
+    and advance the version atomically with their choice-row replacement.
+    """
+
+    schema_version = models.PositiveSmallIntegerField(default=1)
+    version = models.PositiveBigIntegerField(default=1)
+
+    class Meta:
+        abstract = True
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(schema_version=1),
+                name="%(app_label)s_notifset_schema_v1",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(version__gte=1),
+                name="%(app_label)s_notifset_ver_gte1",
+            ),
+        ]
 
 
 # class Name(models.Model):
@@ -527,3 +660,230 @@ class Url(models.Model):
 
     def __str__(self):
         return self.address
+
+
+class WorkspaceScopedState(models.Model):
+    """Canonical site-scoped storage, independent of operator/public identities."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    site_id = models.CharField(
+        max_length=63,
+        validators=[
+            RegexValidator(r"^[a-z0-9][a-z0-9-]{0,62}$", "Enter a canonical site identifier.")
+        ],
+        db_index=True,
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        abstract = True
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(site_id__regex=r"^[a-z0-9][a-z0-9-]{0,62}$"),
+                name="%(app_label)s_%(class)s_scope_ck",
+            )
+        ]
+
+
+class WorkspacePolicy(WorkspaceScopedState):
+    class PublicAccess(models.TextChoices):
+        PUBLIC_ALLOWED = "public_allowed", "Public eligible"
+        MEMBERS_ONLY = "members_only", "Members only"
+
+    class Provenance(models.TextChoices):
+        DEFAULT = "default", "Default"
+        MIGRATED = "migrated", "Migrated"
+        EXPLICIT = "explicit", "Explicit"
+
+    # This reference belongs to the public identity realm, not users.Organization.
+    organization_id = models.UUIDField(null=True, blank=True)
+    schema_version = models.PositiveSmallIntegerField(default=1)
+    version = models.PositiveBigIntegerField(default=1)
+    require_review = models.BooleanField(default=True)
+    public_access = models.CharField(
+        max_length=16, choices=PublicAccess.choices, default=PublicAccess.MEMBERS_ONLY
+    )
+    provenance = models.CharField(
+        max_length=16, choices=Provenance.choices, default=Provenance.DEFAULT
+    )
+
+    class Meta:
+        abstract = True
+        constraints = [
+            *WorkspaceScopedState.Meta.constraints,
+            models.UniqueConstraint(fields=("site_id",), name="%(app_label)s_policy_site_uq"),
+            models.CheckConstraint(
+                condition=models.Q(schema_version=1), name="%(app_label)s_policy_schema_v1"
+            ),
+            models.CheckConstraint(
+                condition=models.Q(version__gte=1), name="%(app_label)s_policy_ver_gte1"
+            ),
+            models.CheckConstraint(
+                condition=models.Q(public_access__in=("public_allowed", "members_only")),
+                name="%(app_label)s_policy_access_ck",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(provenance__in=("default", "migrated", "explicit")),
+                name="%(app_label)s_policy_source_ck",
+            ),
+        ]
+
+
+class ReviewSubject(WorkspaceScopedState):
+    schema_version = models.PositiveSmallIntegerField(default=1)
+    original_creator_id = models.UUIDField(null=True, blank=True)
+    semantic_author_id = models.UUIDField(null=True, blank=True)
+    submitter_id = models.UUIDField(null=True, blank=True)
+    adopted_snapshot = models.BooleanField(default=False)
+    semantic_revision = models.UUIDField(default=uuid.uuid4)
+    semantic_generation = models.PositiveBigIntegerField(default=1)
+    fingerprint = models.CharField(max_length=64, validators=[RegexValidator(r"^[a-f0-9]{64}$")])
+    submission_id = models.UUIDField(null=True, blank=True)
+    submitted_at = models.DateTimeField(null=True, blank=True)
+    scheduled_by_id = models.UUIDField(null=True, blank=True)
+    schedule_policy_version = models.PositiveBigIntegerField(null=True, blank=True)
+
+    class Meta:
+        abstract = True
+        constraints = [
+            *WorkspaceScopedState.Meta.constraints,
+            models.CheckConstraint(
+                condition=models.Q(fingerprint__regex=r"^[a-f0-9]{64}$"),
+                name="%(app_label)s_subject_hash_ck",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(semantic_generation__gte=1), name="%(app_label)s_subject_gen_ck"
+            ),
+            models.CheckConstraint(
+                condition=models.Q(schema_version=1), name="%(app_label)s_subject_schema_v1"
+            ),
+            models.CheckConstraint(
+                condition=models.Q(schedule_policy_version__isnull=True)
+                | models.Q(schedule_policy_version__gte=1),
+                name="%(app_label)s_subject_sched_ver",
+            ),
+        ]
+
+    def validate_reviewer(self, reviewer_id):
+        if (
+            not self.semantic_author_id
+            or not self.submitter_id
+            or (not self.original_creator_id and not self.adopted_snapshot)
+        ):
+            raise ValidationError("review_provenance_unresolved")
+        if not reviewer_id or reviewer_id in {
+            self.original_creator_id,
+            self.semantic_author_id,
+            self.submitter_id,
+        }:
+            raise ValidationError("independent_reviewer_required")
+
+
+class ReviewApproval(WorkspaceScopedState):
+    subject_revision = models.UUIDField()
+    semantic_generation = models.PositiveBigIntegerField(default=1)
+    fingerprint = models.CharField(max_length=64, validators=[RegexValidator(r"^[a-f0-9]{64}$")])
+    policy_version = models.PositiveBigIntegerField()
+    reviewer_id = models.UUIDField()
+    approved_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        abstract = True
+        constraints = [
+            *WorkspaceScopedState.Meta.constraints,
+            models.CheckConstraint(
+                condition=models.Q(fingerprint__regex=r"^[a-f0-9]{64}$"),
+                name="%(app_label)s_approval_hash_ck",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(semantic_generation__gte=1), name="%(app_label)s_approval_gen_ck"
+            ),
+            models.CheckConstraint(
+                condition=models.Q(policy_version__gte=1), name="%(app_label)s_approval_policy_v"
+            ),
+        ]
+
+
+class ReviewDigestBatch(WorkspaceScopedState):
+    recipient_id = models.UUIDField()
+    digest_date = models.DateField()
+    status = models.CharField(
+        max_length=16,
+        default="open",
+        choices=[(v, v) for v in ("open", "closed", "delivered", "failed")],
+    )
+    closed_at = models.DateTimeField(null=True, blank=True)
+    delivered_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        abstract = True
+        constraints = [
+            *WorkspaceScopedState.Meta.constraints,
+            models.UniqueConstraint(
+                fields=("site_id", "recipient_id", "digest_date"),
+                name="%(app_label)s_digest_day_uq",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(status__in=("open", "closed", "delivered", "failed")),
+                name="%(app_label)s_digest_state_ck",
+            ),
+        ]
+
+
+class ReviewNotificationIntent(WorkspaceScopedState):
+    submission_id = models.UUIDField()
+    subject_revision = models.UUIDField()
+    recipient_id = models.UUIDField()
+    channel = models.CharField(max_length=16, default="email", choices=[("email", "Email")])
+    event = models.CharField(
+        max_length=24,
+        default="review_requested",
+        choices=[("review_requested", "Review requested")],
+    )
+    status = models.CharField(
+        max_length=16,
+        default="pending",
+        choices=[(v, v) for v in ("pending", "digest", "delivered", "suppressed", "failed")],
+    )
+    attempts = models.PositiveSmallIntegerField(default=0, validators=[MaxValueValidator(8)])
+    available_at = models.DateTimeField(default=timezone.now)
+    delivered_at = models.DateTimeField(null=True, blank=True)
+    last_error_code = models.CharField(max_length=96, default="", blank=True)
+
+    class Meta:
+        abstract = True
+        constraints = [
+            *WorkspaceScopedState.Meta.constraints,
+            models.UniqueConstraint(
+                fields=("site_id", "submission_id", "recipient_id", "channel"),
+                name="%(app_label)s_review_intent_uq",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(channel="email"), name="%(app_label)s_review_email_ck"
+            ),
+            models.CheckConstraint(
+                condition=models.Q(event="review_requested"), name="%(app_label)s_review_event_ck"
+            ),
+            models.CheckConstraint(
+                condition=models.Q(
+                    status__in=("pending", "digest", "delivered", "suppressed", "failed")
+                ),
+                name="%(app_label)s_intent_state_ck",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(attempts__lte=8), name="%(app_label)s_intent_attempt_ck"
+            ),
+        ]
+
+
+class ReviewNotificationDelivery(WorkspaceScopedState):
+    """Durable local-only effect receipt; contains no copied private content."""
+
+    recipient_id = models.UUIDField()
+    effect_key = models.CharField(max_length=160, unique=True)
+    delivered_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        abstract = True
+        constraints = WorkspaceScopedState.Meta.constraints

@@ -1,0 +1,68 @@
+{
+  "archiveSha256": "2458dcd97609ea96a6eaae4aced3ddbb5bb150da95d0e19ad83ec7d34674c119",
+  "artifactId": 13075340968,
+  "attempt": 1,
+  "captures": [
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "chromium-400-zoom.zip",
+          "sha256": "7c69c98cab09f3d84eea5adc0473de45e018f655ccc72e731fb77f1df3823bf5"
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-400-zoom/current-operations-center-chromium-400-zoom.png",
+          "sha256": "6e1b815ffe2b93971339240c6a6a2cf774841fbe83bdd46a80184898fc3e6942"
+        }
+      ],
+      "bytes": 378163,
+      "dimensions": [
+        320,
+        4005
+      ],
+      "identityBasis": "native-report",
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-400-zoom/current-operations-center-chromium-400-zoom.png",
+      "originalOutcome": "passed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "passed"
+        ],
+        "basis": "retained-native-report",
+        "project": "chromium-400-zoom",
+        "title": "operations center is accessible responsive and visually stable"
+      },
+      "project": "chromium-400-zoom",
+      "role": "current",
+      "sha256": "6e1b815ffe2b93971339240c6a6a2cf774841fbe83bdd46a80184898fc3e6942",
+      "storage": "objects/6e1b815ffe2b93971339240c6a6a2cf774841fbe83bdd46a80184898fc3e6942.png",
+      "test": "operations center is accessible responsive and visually stable",
+      "viewport": [
+        320,
+        720
+      ],
+      "viewportBasis": "native-project-config"
+    }
+  ],
+  "fixtureScope": "synthetic-project-tests",
+  "jobId": 124785115768,
+  "laterValidation": "pending",
+  "observations": [],
+  "originalOutcome": "passed",
+  "repository": "woodkill00/base2",
+  "requestedHead": "4e591455b1eb7491b81b53b01c8648a8ef2d2489",
+  "runId": 41285245816,
+  "schemaVersion": 2,
+  "sourceCommit": "4e591455b1eb7491b81b53b01c8648a8ef2d2489",
+  "sourceTree": "a04738b7d35e16a130a1fadb1d0440bdd411fefc",
+  "technicalReview": "pending",
+  "transfer": {
+    "blobs": {
+      "6e1b815ffe2b93971339240c6a6a2cf774841fbe83bdd46a80184898fc3e6942": "3f54673a2da97283c96ecc7700fcf34a774c535b"
+    },
+    "commit": "cfd7012fc6e77f4567135cade3a349d26aae6dc4",
+    "localVerification": "git-blob-sha256-size-dimensions-full-decode",
+    "originalArchiveVerification": "externally-verified-zip-and-members",
+    "tree": "d3ab244c2c8dd0c696bbea2451297a21de7bb82c"
+  }
+}

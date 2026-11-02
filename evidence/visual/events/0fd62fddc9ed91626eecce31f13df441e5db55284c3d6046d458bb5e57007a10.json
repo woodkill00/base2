@@ -1,0 +1,112 @@
+{
+  "conclusion": "inconclusive",
+  "inspections": [
+    {
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-desktop/current-operations-center-cancel-confirmation.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "dad94e588af2cc1fcb0e45c2a707b9374814f06026173b15bafedccc04cf7877"
+    },
+    {
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-desktop/current-operations-center-chromium-desktop.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "dc71ce7936937cadb07fbcbb1a4770e75974766705fda021ca812f86857bcd54"
+    },
+    {
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-desktop/operations-center-cancel-confirmation-actual.png",
+      "method": "contact-sheet-overview",
+      "role": "actual",
+      "sha256": "b082b5b99da53cf4d5210423d151799715cd0da05d8fc84182041dc0657a2749"
+    },
+    {
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-desktop/operations-center-chromium-desktop-actual.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "actual",
+      "sha256": "77531b9444f00cba2a0dba0c905e89c97010494da9f787afd5f1eea21e0337e0"
+    },
+    {
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-desktop/test-failed-1.png",
+      "method": "contact-sheet-overview",
+      "role": "failure",
+      "sha256": "e454b4eea710a42af6cfc7bd8bae8b374b4fdea0cba87085d2f7f08542dc0dea"
+    },
+    {
+      "member": "operations-release-operati-84a1a-ul-empty-and-failure-states-chromium-desktop/current-operations-center-empty.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "4ad34d64705391f03620307949031afa8b5977d93206bc17a3f51191abd54fba"
+    },
+    {
+      "member": "operations-release-operati-84a1a-ul-empty-and-failure-states-chromium-desktop/current-operations-center-error.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "bc0c2c270fbdb857865635e0eca94d87c93b7b585787d4b23699816d6a5352a2"
+    },
+    {
+      "member": "operations-release-operati-84a1a-ul-empty-and-failure-states-chromium-desktop/operations-center-empty-actual.png",
+      "method": "contact-sheet-overview",
+      "role": "actual",
+      "sha256": "4ad34d64705391f03620307949031afa8b5977d93206bc17a3f51191abd54fba"
+    },
+    {
+      "member": "operations-release-operati-84a1a-ul-empty-and-failure-states-chromium-desktop/operations-center-error-actual.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "actual",
+      "sha256": "bc0c2c270fbdb857865635e0eca94d87c93b7b585787d4b23699816d6a5352a2"
+    },
+    {
+      "member": "operations-release-operati-84a1a-ul-empty-and-failure-states-chromium-desktop/test-failed-1.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "failure",
+      "sha256": "241c825f7ed0d8e75d3b1e60d5934c8c0ee79f61d744f08c0016d5d3e16a91bc"
+    },
+    {
+      "member": "operations-release-operati-e5f8f-d-read-only-recovery-states-chromium-desktop/current-operations-center-partial.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "05a9e5ed16aea999f99a805bf0a8ed0bffefbe22b72fc837c98a9db63d3985dc"
+    },
+    {
+      "member": "operations-release-operati-e5f8f-d-read-only-recovery-states-chromium-desktop/current-operations-center-read-only.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "e26867e586ad589dd59a8a2e177ff634a304338f6b1067c798ef484bc97fe868"
+    },
+    {
+      "member": "operations-release-operati-e5f8f-d-read-only-recovery-states-chromium-desktop/current-operations-center-reauth.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "8b10f16cfdade9983160fa21cb49dcce0f7efc66746f2b892b25f1b18622ae51"
+    },
+    {
+      "member": "operations-release-operati-e5f8f-d-read-only-recovery-states-chromium-desktop/operations-center-partial-actual.png",
+      "method": "contact-sheet-overview",
+      "role": "actual",
+      "sha256": "0f305462438300b4b5921949077681abc22600a4e10136a2df8d8496b18e9d83"
+    },
+    {
+      "member": "operations-release-operati-e5f8f-d-read-only-recovery-states-chromium-desktop/operations-center-read-only-actual.png",
+      "method": "contact-sheet-overview",
+      "role": "actual",
+      "sha256": "11812afc807dc8a8eb364d175528a1aa98f8fc22e18dbc5449b29e380b92f442"
+    },
+    {
+      "member": "operations-release-operati-e5f8f-d-read-only-recovery-states-chromium-desktop/operations-center-reauth-actual.png",
+      "method": "contact-sheet-overview",
+      "role": "actual",
+      "sha256": "380601cb276752a5bca25897f7c6c35196d36289e52bb181789f22f2e473d041"
+    },
+    {
+      "member": "operations-release-operati-e5f8f-d-read-only-recovery-states-chromium-desktop/test-failed-1.png",
+      "method": "contact-sheet-overview",
+      "role": "failure",
+      "sha256": "8e8b62eee98b6a56b46858c68c55cb4e631dec3ed67f53a85abfbf1c34b1dd8e"
+    }
+  ],
+  "kind": "technical-review",
+  "manifest": "runs/41316938996-1-124878862228-13087434850.json",
+  "manifestSha256": "176f91ed3c3b49d0240d6f0ec0e8145aca21b8bbe76329267498d8a573e457c7",
+  "notes": "Diagnostic only; no baseline or full visual acceptance. Review methods are conservative: partial image inspection maps to overview. Original run failures remain unchanged. Most new images assessed as scaled contact-sheet overviews, not original-size detailed inspection of every label/control. Three new images additionally inspected top1500px at original scale. 135 actual/current/failure instances reviewed directly or by exact-byte equivalence; comparison expected/diff images not reviewed in this pass. No WebKit or mobile cancellation-dialog PNG retained; desktop popup cannot establish cross-browser/viewport popup coverage. Mobile viewport-sized snapshots and top/middle/footer samples do not establish full continuous content coverage or arbitrary-scroll hit tests. No source causal inspection/browser execution or native pass/acceptance claim. Parent verifies provenance and native inventory. No uploads or baseline/source changes. Newly retained WebKit desktop main/empty/error/partial/reauth/read-only states have readable, contained layout. Reauth/stale/unavailable distinctions visible; read-only action removal visible. No independent new severe clipping or overlap identified. Fixed large-text main image remains byte-identical to previously reviewed696f71; readable 8 passed, Replay safely and Cancel retained. Desktop gutters and mobile reserved bottom controls remain intentional layout differences from old references. Compact/tablet/landscape sampled middle/footer states remain readable, with drawer toggles outside content. Desktop cancellation confirmation fully visible with consequence text and both actions. FullPage backdrop stops at viewport boundary, consistent with earlier retained rendering; not newly established runtime defect. Existing misleading System evidence current footer persists in unavailable/stale states.",
+  "schemaVersion": 2
+}

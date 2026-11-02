@@ -49,7 +49,8 @@ CONTROLS = (
              'Save your preferred first day of the week.', 'calendar monday sunday saturday'),
     *(_control(f'notifications.{family}.email', f'{label} email', 'notifications',
                f'notification-{family}-email',
-               'Stored delivery preference. Delivery-engine integration is not yet available.',
+               ('Review-request email uses the local test adapter only; no live email is sent.'
+                if family == 'product' else 'Stored delivery preference. Delivery-engine integration is not yet available.'),
                f'{family} alerts email digest messages')
       for family, label in (('security', 'Security'), ('transactional', 'Transactional'),
                             ('product', 'Product'), ('marketing', 'Marketing'))),
@@ -124,5 +125,19 @@ def discovery(*, manifest: dict, role: str | None, accounts_enabled: bool) -> di
             'state': 'available' if action else 'limited' if key in enabled else 'disabled',
             'action': action,
         })
-    return {'schema_version': 1, 'categories': categories, 'controls': list(CONTROLS),
+    controls = list(CONTROLS)
+    if {'accounts','content-workspace'} <= enabled and accounts_enabled and is_allowed(role or '', 'workspace-policy.read'):
+        for key,label,category,anchor,scope in (
+            ('require_review','Publishing review','organization','workspace-publishing-review','organization'),
+            ('public_access','Workspace content visibility','site-capabilities','workspace-content-visibility','site'),
+        ):
+            if category == 'organization' and not is_allowed(role or '', 'workspace-policy.write'):
+                continue
+            controls.append({'id':f'workspace-policy.{key}','label':label,'category':category,'anchor':anchor,
+                'description':'Versioned shared workspace policy. Existing resource permissions still apply.',
+                'synonyms':'review publish membership public visibility','scope':scope,
+                'permission':'workspace-policy.read','availability':'available',
+                'audit_action':'workspace.policy_updated','risk':'sensitive',
+                'path':f'/settings/{category}#{anchor}'})
+    return {'schema_version': 1, 'categories': categories, 'controls': controls,
             'modules': modules, 'locales': manifest.get('locales', ['en'])}

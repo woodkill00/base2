@@ -1,0 +1,16 @@
+{
+  "conclusion": "inconclusive",
+  "inspections": [
+    {
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-ultrawide/current-operations-center-chromium-ultrawide.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "b4bdffa0c1923b73d5e4c4ea902d859912495f0288684dad71980e944f95d617"
+    }
+  ],
+  "kind": "technical-review",
+  "manifest": "runs/41314740935-1-124872282068-13086074688.json",
+  "manifestSha256": "6cedf1cee8044e7e359b2016233a365f97087ecb5c190f1bf1ef155fb160b3e0",
+  "notes": "Desktop cancellation confirmation is completely visible with consequence text and both actions; white heading focus outline visible. Backdrop stops at viewport boundary in fullPage PNG, also present in expected reference; not a newly proven runtime defect. Recovery empty/error/partial/reauth/read-only states now captured. Read-only removes replay/cancel and acknowledge controls; reauth/stale banners visible. No independent new severe clipping/overlap found in retained states. Existing footer System evidence current remains misleading in unavailable/stale recovery states.",
+  "schemaVersion": 2
+}

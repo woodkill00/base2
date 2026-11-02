@@ -1,3 +1,5 @@
+import { requireReadOnlySnapshots } from './e2e/reference-readonly.mjs';
+requireReadOnlySnapshots();
 import { defineConfig } from '@playwright/test';
 import experience from './playwright.experience.config.mjs';
 
@@ -6,6 +8,8 @@ if (!/^[a-zA-Z0-9-]+$/.test(attempt)) throw new Error('Invalid journey attempt')
 process.env.JOURNEY_ATTEMPT = attempt;
 
 export default defineConfig({
+  updateSnapshots: 'none',
+  globalSetup: './e2e/reference-readonly.mjs',
   ...experience,
   testDir: './e2e/journeys',
   testIgnore: '**/enabled-modules.spec.ts',

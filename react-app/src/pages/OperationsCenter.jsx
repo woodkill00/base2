@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { createPortal } from 'react-dom';
+import ModalOwnership from '../components/glass/ModalOwnership';
 import AppShell from '../components/glass/AppShell';
 import GlassButton from '../components/glass/GlassButton';
 import GlassCard from '../components/glass/GlassCard';
@@ -470,11 +472,20 @@ export default function OperationsCenter() {
   const [pending, setPending] = useState('');
   const [recentAuthRequired, setRecentAuthRequired] = useState(false);
   const [cancelCandidate, setCancelCandidate] = useState(null);
+  const [restoreCancelFocus, setRestoreCancelFocus] = useState(false);
+  const operationsHeading = useRef(null);
   const timelineHeading = useRef(null);
   const timelineTrigger = useRef(null);
   const cancelHeading = useRef(null);
   const cancelTrigger = useRef(null);
   const cancelDialog = useRef(null);
+  useEffect(() => {
+    if (!restoreCancelFocus || pending) return;
+    const trigger = cancelTrigger.current;
+    const target = trigger?.isConnected && !trigger.disabled ? trigger : operationsHeading.current;
+    target?.focus({ preventScroll: true });
+    setRestoreCancelFocus(false);
+  }, [restoreCancelFocus, pending]);
 
   const presentError = useCallback(
     (reason) => {
@@ -569,46 +580,16 @@ export default function OperationsCenter() {
     }
   };
 
-  useEffect(() => {
-    if (!cancelCandidate) return undefined;
-    window.requestAnimationFrame(() => cancelHeading.current?.focus());
-    const onKeyDown = (event) => {
-      if (event.key === 'Escape') {
-        event.preventDefault();
-        setCancelCandidate(null);
-        window.setTimeout(() => cancelTrigger.current?.focus(), 0);
-        return;
-      }
-      if (event.key !== 'Tab') return;
-      const controls = Array.from(cancelDialog.current?.querySelectorAll('button') || []).filter(
-        (control) => !control.disabled
-      );
-      if (!controls.length) return;
-      const first = controls[0];
-      const last = controls[controls.length - 1];
-      if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault();
-        last.focus();
-      } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault();
-        first.focus();
-      }
-    };
-    document.addEventListener('keydown', onKeyDown);
-    return () => document.removeEventListener('keydown', onKeyDown);
-  }, [cancelCandidate]);
-
   const closeCancelConfirmation = () => {
     setCancelCandidate(null);
-    window.setTimeout(() => cancelTrigger.current?.focus(), 0);
   };
 
   const confirmCancel = async () => {
     const jobId = cancelCandidate?.jobId;
     if (!jobId) return;
+    setRestoreCancelFocus(true);
     setCancelCandidate(null);
     await actOnDeadLetter(jobId, 'cancel');
-    window.setTimeout(() => cancelTrigger.current?.focus(), 0);
   };
 
   const inspectIncident = async (incidentId, trigger) => {
@@ -677,10 +658,22 @@ export default function OperationsCenter() {
         dir={direction}
       >
         <style>{`
+          .operations-readable-grid {
+            display: grid;
+            gap: 1rem;
+            grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--operations-card-min, 18rem)), 1fr));
+          }
+          .operations-summary-grid { --operations-card-min: 12rem; }
+          .operations-readable-grid > * { min-inline-size: 0; overflow-wrap: break-word; }
+          .operations-readable-grid button { overflow-wrap: normal; word-break: normal; }
+
           @media (prefers-reduced-motion: reduce) {
-            .operations-center *,
-            .operations-center *::before,
-            .operations-center *::after {
+            html body .operations-center *,
+            html body .operations-center *::before,
+            html body .operations-center *::after,
+            html body .operations-cancel-modal *,
+            html body .operations-cancel-modal *::before,
+            html body .operations-cancel-modal *::after {
               animation-duration: 0s !important;
               scroll-behavior: auto !important;
               transition-duration: 0s !important;
@@ -690,7 +683,9 @@ export default function OperationsCenter() {
         <header className="mb-6 flex flex-wrap items-end justify-between gap-4">
           <div>
             <p className="text-sm uppercase tracking-[0.18em] opacity-70">{copy.eyebrow}</p>
-            <h1 className="text-3xl font-semibold">{copy.title}</h1>
+            <h1 ref={operationsHeading} tabIndex={-1} className="text-3xl font-semibold">
+              {copy.title}
+            </h1>
             <p className="mt-2 max-w-2xl opacity-80">{copy.description}</p>
           </div>
           <GlassButton type="button" variant="ghost" onClick={() => load()} disabled={loading}>
@@ -716,7 +711,7 @@ export default function OperationsCenter() {
 
         <section aria-label={copy.operationsSummary} className="mt-4">
           {evidenceLabel('summary') ? <p role="status">{evidenceLabel('summary')}</p> : null}
-          <div className="mt-4 grid gap-4 sm:grid-cols-3">
+          <div className="mt-4 operations-readable-grid operations-summary-grid">
             <GlassCard className="p-5">
               <p className="text-sm opacity-70">{copy.services}</p>
               <p className="mt-2 text-3xl font-semibold">
@@ -748,7 +743,7 @@ export default function OperationsCenter() {
           {available('overview') ? (
             <div className="mt-4 space-y-4">
               {evidenceLabel('overview') ? <p role="status">{evidenceLabel('overview')}</p> : null}
-              <div className="grid gap-3 sm:grid-cols-3">
+              <div className="operations-readable-grid operations-summary-grid">
                 <GlassCard className="p-5">
                   <h3 className="font-semibold">{copy.jobs}</h3>
                   <p className="mt-2 text-sm">
@@ -778,7 +773,7 @@ export default function OperationsCenter() {
                   </p>
                 </GlassCard>
               </div>
-              <div className="grid gap-3 lg:grid-cols-3">
+              <div className="operations-readable-grid">
                 <GlassCard className="p-5">
                   <h3 className="font-semibold">{copy.deadLetters}</h3>
                   {overview.runtime?.jobs?.items?.length ? (
@@ -1124,39 +1119,50 @@ export default function OperationsCenter() {
           </section>
         ) : null}
 
-        {cancelCandidate ? (
-          <div
-            ref={cancelDialog}
-            className="fixed inset-0 z-[70] grid place-items-center bg-black/60 p-4"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="cancel-job-heading"
-            aria-describedby="cancel-job-consequence"
-          >
-            <GlassCard className="w-full max-w-lg p-6">
-              <h2
-                id="cancel-job-heading"
-                ref={cancelHeading}
-                tabIndex={-1}
-                className="text-xl font-semibold"
+        {cancelCandidate
+          ? createPortal(
+              <div
+                ref={cancelDialog}
+                lang={locale}
+                dir={direction}
+                className="base2-modal-surface operations-cancel-modal fixed inset-0 z-[100] grid place-items-center bg-black/60 p-4 text-slate-900 dark:text-slate-100"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="cancel-job-heading"
+                aria-describedby="cancel-job-consequence"
               >
-                {copy.cancelTitle}
-              </h2>
-              <p id="cancel-job-consequence" className="mt-3 opacity-80">
-                {copy.cancelConsequence}
-              </p>
-              <p className="mt-3 text-sm opacity-70">{readable(cancelCandidate.jobType)}</p>
-              <div className="mt-6 flex flex-wrap justify-end gap-3">
-                <GlassButton type="button" variant="ghost" onClick={closeCancelConfirmation}>
-                  {copy.keepJob}
-                </GlassButton>
-                <GlassButton type="button" variant="danger" onClick={confirmCancel}>
-                  {copy.cancelJob}
-                </GlassButton>
-              </div>
-            </GlassCard>
-          </div>
-        ) : null}
+                <ModalOwnership
+                  dialogRef={cancelDialog}
+                  initialFocusRef={cancelHeading}
+                  returnFocusRef={cancelTrigger}
+                  onClose={closeCancelConfirmation}
+                />
+                <GlassCard className="w-full max-w-lg p-6">
+                  <h2
+                    id="cancel-job-heading"
+                    ref={cancelHeading}
+                    tabIndex={-1}
+                    className="text-xl font-semibold"
+                  >
+                    {copy.cancelTitle}
+                  </h2>
+                  <p id="cancel-job-consequence" className="mt-3 opacity-80">
+                    {copy.cancelConsequence}
+                  </p>
+                  <p className="mt-3 text-sm opacity-70">{readable(cancelCandidate.jobType)}</p>
+                  <div className="mt-6 flex flex-wrap justify-end gap-3">
+                    <GlassButton type="button" variant="ghost" onClick={closeCancelConfirmation}>
+                      {copy.keepJob}
+                    </GlassButton>
+                    <GlassButton type="button" variant="danger" onClick={confirmCancel}>
+                      {copy.cancelJob}
+                    </GlassButton>
+                  </div>
+                </GlassCard>
+              </div>,
+              document.body
+            )
+          : null}
       </div>
     </AppShell>
   );

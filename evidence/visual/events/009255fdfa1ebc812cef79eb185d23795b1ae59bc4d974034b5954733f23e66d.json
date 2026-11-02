@@ -1,0 +1,100 @@
+{
+  "conclusion": "inconclusive",
+  "inspections": [
+    {
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-firefox-desktop/current-operations-center-firefox-desktop.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "70bf093dbf4eba6447d23b37ce1366f6713932727079fb7ba01f63d89ea63464"
+    },
+    {
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-firefox-desktop/operations-center-firefox-desktop-actual.png",
+      "method": "contact-sheet-overview",
+      "role": "actual",
+      "sha256": "70bf093dbf4eba6447d23b37ce1366f6713932727079fb7ba01f63d89ea63464"
+    },
+    {
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-firefox-desktop/test-failed-1.png",
+      "method": "contact-sheet-overview",
+      "role": "failure",
+      "sha256": "c2268b09f7c9ae12256f75062c8935b51cc32c82f09fc9d5b3a2647b9f1bd4f0"
+    },
+    {
+      "member": "operations-release-operati-84a1a-ul-empty-and-failure-states-firefox-desktop/current-operations-center-empty.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "efa744fd6e39f91efb7fcc8743010df1e496f455f10fe09d41dc2917b2e98795"
+    },
+    {
+      "member": "operations-release-operati-84a1a-ul-empty-and-failure-states-firefox-desktop/current-operations-center-error.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "85edb2f5d5f357f174d428f1bf9322137189a73017c8febcf5cc5b8515fb2eda"
+    },
+    {
+      "member": "operations-release-operati-84a1a-ul-empty-and-failure-states-firefox-desktop/operations-center-empty-actual.png",
+      "method": "contact-sheet-overview",
+      "role": "actual",
+      "sha256": "efa744fd6e39f91efb7fcc8743010df1e496f455f10fe09d41dc2917b2e98795"
+    },
+    {
+      "member": "operations-release-operati-84a1a-ul-empty-and-failure-states-firefox-desktop/operations-center-error-actual.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "actual",
+      "sha256": "85edb2f5d5f357f174d428f1bf9322137189a73017c8febcf5cc5b8515fb2eda"
+    },
+    {
+      "member": "operations-release-operati-84a1a-ul-empty-and-failure-states-firefox-desktop/test-failed-1.png",
+      "method": "contact-sheet-overview",
+      "role": "failure",
+      "sha256": "b06f6221c9dfb63146213aa0a5e6e62059a0b35dc1d38eb77405e6e78f9c006d"
+    },
+    {
+      "member": "operations-release-operati-e5f8f-d-read-only-recovery-states-firefox-desktop/current-operations-center-partial.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "1613150040e84ac6a146514e181627d66d64b8636d521e42aa7f7b2eaff02bf3"
+    },
+    {
+      "member": "operations-release-operati-e5f8f-d-read-only-recovery-states-firefox-desktop/current-operations-center-read-only.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "cec645ca41ff29f227e1f67cfb81c1deb95e03de45323e8611563270b7f95c3d"
+    },
+    {
+      "member": "operations-release-operati-e5f8f-d-read-only-recovery-states-firefox-desktop/current-operations-center-reauth.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "30886763be852c5b8cef9f5c1dc036e806684b150af33fcf28998a8e40ee3d38"
+    },
+    {
+      "member": "operations-release-operati-e5f8f-d-read-only-recovery-states-firefox-desktop/operations-center-partial-actual.png",
+      "method": "contact-sheet-overview",
+      "role": "actual",
+      "sha256": "1613150040e84ac6a146514e181627d66d64b8636d521e42aa7f7b2eaff02bf3"
+    },
+    {
+      "member": "operations-release-operati-e5f8f-d-read-only-recovery-states-firefox-desktop/operations-center-read-only-actual.png",
+      "method": "contact-sheet-overview",
+      "role": "actual",
+      "sha256": "cec645ca41ff29f227e1f67cfb81c1deb95e03de45323e8611563270b7f95c3d"
+    },
+    {
+      "member": "operations-release-operati-e5f8f-d-read-only-recovery-states-firefox-desktop/operations-center-reauth-actual.png",
+      "method": "contact-sheet-overview",
+      "role": "actual",
+      "sha256": "30886763be852c5b8cef9f5c1dc036e806684b150af33fcf28998a8e40ee3d38"
+    },
+    {
+      "member": "operations-release-operati-e5f8f-d-read-only-recovery-states-firefox-desktop/test-failed-1.png",
+      "method": "contact-sheet-overview",
+      "role": "failure",
+      "sha256": "a3ca2bdc3dc4fd7731b0bab373dc49f5797579f3ea9fdafb792c954bec02e7af"
+    }
+  ],
+  "kind": "technical-review",
+  "manifest": "runs/41314740935-1-124872282068-13087105832.json",
+  "manifestSha256": "602a4022e8a253f466d0af495c302d28dcd97d07c8a37059d64fd273427bac34",
+  "notes": "Desktop cancellation confirmation is completely visible with consequence text and both actions; white heading focus outline visible. Backdrop stops at viewport boundary in fullPage PNG, also present in expected reference; not a newly proven runtime defect. Recovery empty/error/partial/reauth/read-only states now captured. Read-only removes replay/cancel and acknowledge controls; reauth/stale banners visible. No independent new severe clipping/overlap found in retained states. Existing footer System evidence current remains misleading in unavailable/stale recovery states.",
+  "schemaVersion": 2
+}

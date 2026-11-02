@@ -67,12 +67,77 @@ test('only forced-colors exposes the native Canvas backdrop without overriding u
   const rules = [...style.sheet.cssRules];
   const forced = rules.find((rule) => rule.conditionText === '(forced-colors: active)');
   expect(forced, 'the body backdrop must be observable only in forced-colors mode').toBeDefined();
-  expect(forced.cssRules).toHaveLength(1);
-  const bodyRule = forced.cssRules[0];
+  expect(forced.cssRules).toHaveLength(3);
+  const bodyRule = [...forced.cssRules].find((rule) => rule.selectorText === 'body');
   expect(bodyRule.selectorText).toBe('body');
   expect(bodyRule.style.length).toBe(1);
   expect(bodyRule.style.getPropertyValue('background-color').toLowerCase()).toBe('canvas');
   expect(bodyRule.style.getPropertyPriority('background-color')).toBe('');
   expect(rules.some((rule) => rule.selectorText === 'body')).toBe(false);
   expect(appearanceCss).not.toContain('forced-color-adjust:');
+});
+
+test.each([
+  [
+    "[data-theme='obsidian'] .app-shell-root .base2-button--primary:not(:disabled)",
+    { color: 'ButtonText', background: 'ButtonFace', 'border-color': 'ButtonText' },
+  ],
+  [
+    "[role='tab'][aria-selected='true']",
+    { 'text-decoration-line': 'underline', 'text-decoration-color': 'currentColor' },
+  ],
+])('forced colors supplies scoped system presentation for %s only', (selector, properties) => {
+  const rules = [...style.sheet.cssRules];
+  const forced = rules.find((rule) => rule.conditionText === '(forced-colors: active)');
+  const rule = [...forced.cssRules].find((item) => item.selectorText === selector);
+  expect(rule).toBeDefined();
+  for (const [property, value] of Object.entries(properties)) {
+    expect(rule.style.getPropertyValue(property).toLowerCase()).toBe(value.toLowerCase());
+    expect(rule.style.getPropertyPriority(property)).toBe('');
+  }
+  expect(rules.some((item) => item.selectorText === selector)).toBe(false);
+});
+
+test('forced colors exposes picker search and status boundaries without targeting checkboxes', () => {
+  const mediaStyle = document.createElement('style');
+  mediaStyle.textContent = readFileSync(`${process.cwd()}/src/styles/media-library.css`, 'utf8');
+  document.head.append(mediaStyle);
+  try {
+    const selector = '.media-picker > label > input, .media-picker > label > select';
+    const rules = [...mediaStyle.sheet.cssRules];
+    const forced = rules.find((rule) => rule.conditionText === '(forced-colors: active)');
+    const rule = [...forced.cssRules].find(
+      (item) => item.selectorText?.replace(/\s+/g, ' ') === selector
+    );
+    expect(rule).toBeDefined();
+    expect(rule.style.getPropertyValue('border')).toBe('1px solid buttontext');
+    expect(rule.style.getPropertyValue('color')).toBe('buttontext');
+    expect(rule.style.getPropertyValue('background')).toBe('buttonface');
+    const picker = document.createElement('section');
+    picker.className = 'media-picker';
+    picker.innerHTML =
+      '<label>Search<input></label><label>Status<select></select></label><ul><li><label><input type="checkbox"></label></li></ul>';
+    expect(picker.querySelector('label > input').matches(selector)).toBe(true);
+    expect(picker.querySelector('select').matches(selector)).toBe(true);
+    expect(picker.querySelector('[type="checkbox"]').matches(selector)).toBe(false);
+    expect(rules.some((item) => item.selectorText === selector)).toBe(false);
+  } finally {
+    mediaStyle.remove();
+  }
+});
+
+test('forced system selectors exclude disabled primary buttons and unselected tabs', () => {
+  const root = document.createElement('div');
+  root.dataset.theme = 'obsidian';
+  root.innerHTML =
+    '<main class="app-shell-root"><button class="base2-button--primary" role="tab" aria-selected="true">Records</button></main>';
+  const button = root.querySelector('button');
+  const primary = "[data-theme='obsidian'] .app-shell-root .base2-button--primary:not(:disabled)";
+  const selected = "[role='tab'][aria-selected='true']";
+  expect(button.matches(primary)).toBe(true);
+  expect(button.matches(selected)).toBe(true);
+  button.disabled = true;
+  button.setAttribute('aria-selected', 'false');
+  expect(button.matches(primary)).toBe(false);
+  expect(button.matches(selected)).toBe(false);
 });

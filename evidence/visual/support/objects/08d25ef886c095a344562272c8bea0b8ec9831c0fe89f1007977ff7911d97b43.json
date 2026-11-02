@@ -1,0 +1,564 @@
+{
+  "sourceCommit": "41978d1807f4b0e601a0a1448b2f2958a73f517c",
+  "sourceTree": "315d2db4a8e4b62ef0ae4b434d6906f2c0f4d30c",
+  "requestedHead": "da4d0a72c1e7893e069b95a60c7f3cfcbfa6004a",
+  "runId": "41316879851",
+  "attempt": "1",
+  "outcomes": {
+    "layout": "success",
+    "volcano": "failure",
+    "settings": "success",
+    "workspace": "failure"
+  },
+  "schemaVersion": 1,
+  "shard": 3,
+  "shards": 16,
+  "suites": {
+    "layout": {
+      "sourcePresent": true,
+      "captures": 121,
+      "excludedPngCount": 84,
+      "nativeOutcome": "success"
+    },
+    "volcano": {
+      "sourcePresent": true,
+      "captures": 206,
+      "excludedPngCount": 1,
+      "nativeOutcome": "failure"
+    },
+    "settings": {
+      "sourcePresent": true,
+      "captures": 15,
+      "excludedPngCount": 15,
+      "nativeOutcome": "success"
+    },
+    "workspace": {
+      "sourcePresent": true,
+      "captures": 79,
+      "excludedPngCount": 0,
+      "nativeOutcome": "failure"
+    }
+  },
+  "captureCount": 421,
+  "scope": "Synthetic diagnostic PNG copies; not approved references or visual acceptance. PNG bytes hashed, not decoded by packager.",
+  "captures": [
+    {
+      "path": "settings/settings-release-release-p-27468-essible-and-visually-stable-chromium-ultrawide/settings-release-before-axe.png",
+      "bytes": 1077323,
+      "sha256": "5bd83f7fa44433cf224552d2983aed3ebf614883114e40b1d3e78366c6c1d5e4",
+      "sourceRoot": "settings",
+      "role": "current-diagnostic"
+    },
+    {
+      "path": "settings/settings-release-release-p-27468-essible-and-visually-stable-firefox-desktop/settings-release-before-axe.png",
+      "bytes": 407215,
+      "sha256": "caa1dc407e2ced11e6af1f87f2996298bcb73496d6807404f789c02fa69389a2",
+      "sourceRoot": "settings",
+      "role": "current-diagnostic"
+    },
+    {
+      "path": "settings/settings-release-release-p-27468-essible-and-visually-stable-webkit-mobile/settings-release-before-axe.png",
+      "bytes": 819731,
+      "sha256": "f541674b35f259752b636719de7e335543eb27faf9c4be5141d3e5ef688fd433",
+      "sourceRoot": "settings",
+      "role": "current-diagnostic"
+    },
+    {
+      "path": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-400-zoom/current-scrollport-footer.png",
+      "bytes": 61993,
+      "sha256": "add1e96bb2d8903035e6c7fa75ef9afcc2ddc8eb10df1d7a7015845927358874",
+      "sourceRoot": "workspace",
+      "role": "current-diagnostic"
+    },
+    {
+      "path": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-400-zoom/current-scrollport-middle.png",
+      "bytes": 106171,
+      "sha256": "3b62e0c76d2f23cf06179a938b5d08acf5e0ffea236bc8cffb8847f5a584153d",
+      "sourceRoot": "workspace",
+      "role": "current-diagnostic"
+    },
+    {
+      "path": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-400-zoom/current-scrollport-top.png",
+      "bytes": 150600,
+      "sha256": "7629f540e1885a266b44daf48d891819ed5de71f1f9e020b9e6528c67dc5d566",
+      "sourceRoot": "workspace",
+      "role": "current-diagnostic"
+    },
+    {
+      "path": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-400-zoom/test-failed-1.png",
+      "bytes": 150574,
+      "sha256": "ac86afcf319a2b0d1822011aa08f3c071e598ec413531090b11ae4234f13c92a",
+      "sourceRoot": "workspace",
+      "role": "failure-diagnostic"
+    },
+    {
+      "path": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-400-zoom/workspace-records-chromium-400-zoom-actual.png",
+      "bytes": 150600,
+      "sha256": "7629f540e1885a266b44daf48d891819ed5de71f1f9e020b9e6528c67dc5d566",
+      "sourceRoot": "workspace",
+      "role": "comparison-actual"
+    },
+    {
+      "path": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-400-zoom/workspace-records-chromium-400-zoom-diff.png",
+      "bytes": 79275,
+      "sha256": "cc389dc658561af0e0240932efe694cdbe99772c665845cba51f24dce0a74a83",
+      "sourceRoot": "workspace",
+      "role": "comparison-diff"
+    },
+    {
+      "path": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-400-zoom/workspace-records-chromium-400-zoom-expected.png",
+      "bytes": 270927,
+      "sha256": "cba9136aac8754049ad3288d464dd5d0e6ad1d7bb55d9a81b8c3e5dc232eb3af",
+      "sourceRoot": "workspace",
+      "role": "comparison-expected"
+    },
+    {
+      "path": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-compact/current-scrollport-footer.png",
+      "bytes": 47891,
+      "sha256": "cffe6de4784171eed00f85ec6a079cecc478fccfe3e78bee1ffe001612c32f18",
+      "sourceRoot": "workspace",
+      "role": "current-diagnostic"
+    },
+    {
+      "path": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-compact/current-scrollport-middle.png",
+      "bytes": 84687,
+      "sha256": "1a77cba21350298f4f6549a9bd2fdc1ce4d1daa92eb903a1d57e15caa74adeb7",
+      "sourceRoot": "workspace",
+      "role": "current-diagnostic"
+    },
+    {
+      "path": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-compact/current-scrollport-top.png",
+      "bytes": 123899,
+      "sha256": "a5e7b15a41b0f84ac8f457d82b0e9d0f50fdb2d4978542aca1116238af26f464",
+      "sourceRoot": "workspace",
+      "role": "current-diagnostic"
+    },
+    {
+      "path": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-compact/test-failed-1.png",
+      "bytes": 123878,
+      "sha256": "a0c6c8695c7570ec49ca19aebf633913239927271c5a1e9dab6fbc7930f101f1",
+      "sourceRoot": "workspace",
+      "role": "failure-diagnostic"
+    },
+    {
+      "path": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-compact/workspace-records-chromium-compact-actual.png",
+      "bytes": 123899,
+      "sha256": "a5e7b15a41b0f84ac8f457d82b0e9d0f50fdb2d4978542aca1116238af26f464",
+      "sourceRoot": "workspace",
+      "role": "comparison-actual"
+    },
+    {
+      "path": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-compact/workspace-records-chromium-compact-diff.png",
+      "bytes": 74946,
+      "sha256": "811330d3bec872b022c0a3fb0995e5c738366702b476432c81c07314063dc7b2",
+      "sourceRoot": "workspace",
+      "role": "comparison-diff"
+    },
+    {
+      "path": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-compact/workspace-records-chromium-compact-expected.png",
+      "bytes": 255405,
+      "sha256": "402a59af0efbadffaf0029b1034184734f0d92738905d6768329cd92b0e81fb4",
+      "sourceRoot": "workspace",
+      "role": "comparison-expected"
+    },
+    {
+      "path": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-desktop/test-failed-1.png",
+      "bytes": 478328,
+      "sha256": "ee3dad0f0e3dc42edd81c09fb866e858bd504329f5a6c8adfbb436f69af5dcb0",
+      "sourceRoot": "workspace",
+      "role": "failure-diagnostic"
+    },
+    {
+      "path": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-desktop/workspace-records-chromium-desktop-actual.png",
+      "bytes": 625286,
+      "sha256": "ba1daa882caccce5937368ebaf44a336ee761c4382b8284105c33773c8095108",
+      "sourceRoot": "workspace",
+      "role": "comparison-actual"
+    },
+    {
+      "path": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-desktop/workspace-records-chromium-desktop-diff.png",
+      "bytes": 251699,
+      "sha256": "72401de1d12f34ce8fe039ff3c7c61a4509471013a821ace123ee2b50b499ef9",
+      "sourceRoot": "workspace",
+      "role": "comparison-diff"
+    },
+    {
+      "path": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-desktop/workspace-records-chromium-desktop-expected.png",
+      "bytes": 519149,
+      "sha256": "974094f4e108a3356d1888dcce80d991373039f99c4cbf0bbf28e74ce0e89534",
+      "sourceRoot": "workspace",
+      "role": "comparison-expected"
+    },
+    {
+      "path": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-high-contrast/test-failed-1.png",
+      "bytes": 394487,
+      "sha256": "859a00f50b3cba7e3333787a002183fb6ac6f70984157eea289ef342a73ca610",
+      "sourceRoot": "workspace",
+      "role": "failure-diagnostic"
+    },
+    {
+      "path": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-high-contrast/workspace-exports-chromium-high-contrast-actual.png",
+      "bytes": 476809,
+      "sha256": "bb08d6d67724674c3b4765f119fe1fbbd57b58ccae3054193e5dc2c32be83c4b",
+      "sourceRoot": "workspace",
+      "role": "comparison-actual"
+    },
+    {
+      "path": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-high-contrast/workspace-exports-chromium-high-contrast-diff.png",
+      "bytes": 207748,
+      "sha256": "0632877e09ac913d50f5de4fb39f86ff00a95bd8d8c08a688d239855dc928eae",
+      "sourceRoot": "workspace",
+      "role": "comparison-diff"
+    },
+    {
+      "path": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-high-contrast/workspace-exports-chromium-high-contrast-expected.png",
+      "bytes": 378319,
+      "sha256": "7e9ce3f60b1e9c8466707fe462e0159131b955a019f8962e57dfa01eabc8d233",
+      "sourceRoot": "workspace",
+      "role": "comparison-expected"
+    },
+    {
+      "path": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-high-contrast/workspace-exports-post-assert.png",
+      "bytes": 476809,
+      "sha256": "bb08d6d67724674c3b4765f119fe1fbbd57b58ccae3054193e5dc2c32be83c4b",
+      "sourceRoot": "workspace",
+      "role": "current-diagnostic"
+    },
+    {
+      "path": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-high-contrast/workspace-imports-chromium-high-contrast-actual.png",
+      "bytes": 442331,
+      "sha256": "910ad014c3a4bdb0d6a3cab78ea51a22092772859ca9dcdbfe6afe860b1125ea",
+      "sourceRoot": "workspace",
+      "role": "comparison-actual"
+    },
+    {
+      "path": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-high-contrast/workspace-imports-chromium-high-contrast-diff.png",
+      "bytes": 169490,
+      "sha256": "f2069ace48c6019aa8b374428b8c0e0590a5e5c1c104f364f29b0cebbb565eb5",
+      "sourceRoot": "workspace",
+      "role": "comparison-diff"
+    },
+    {
+      "path": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-high-contrast/workspace-imports-chromium-high-contrast-expected.png",
+      "bytes": 360557,
+      "sha256": "8a2598ad098085ebf595b135a01a43813267049ad587c4dfe4140b9841209245",
+      "sourceRoot": "workspace",
+      "role": "comparison-expected"
+    },
+    {
+      "path": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-high-contrast/workspace-imports-post-assert.png",
+      "bytes": 442328,
+      "sha256": "1f033f149bc2c5819e878aabbc60b8734f249d196adb665d118ee8b53ad2cb46",
+      "sourceRoot": "workspace",
+      "role": "current-diagnostic"
+    },
+    {
+      "path": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-high-contrast/workspace-records-chromium-high-contrast-actual.png",
+      "bytes": 493386,
+      "sha256": "9a10e80d4cc62bc23e9d30604b892e6aaeadd14819e2097aaae795c4370e01ce",
+      "sourceRoot": "workspace",
+      "role": "comparison-actual"
+    },
+    {
+      "path": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-high-contrast/workspace-records-chromium-high-contrast-diff.png",
+      "bytes": 222100,
+      "sha256": "623e322020eca1bb6ce0f463d265f00e204ea706f396ae362d5b1f4b7214cbd1",
+      "sourceRoot": "workspace",
+      "role": "comparison-diff"
+    },
+    {
+      "path": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-high-contrast/workspace-records-chromium-high-contrast-expected.png",
+      "bytes": 401390,
+      "sha256": "28fbeee09d5e63280ba83a5a97b5fec76b72577985fd5b5f9a7aec2a4c8a9cb0",
+      "sourceRoot": "workspace",
+      "role": "comparison-expected"
+    },
+    {
+      "path": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-high-contrast/workspace-records-post-assert.png",
+      "bytes": 493396,
+      "sha256": "2bb76d140e783ffc2f6b0808e7f230f888c352ab0dc4f0ee033b8c1c1b0a375a",
+      "sourceRoot": "workspace",
+      "role": "current-diagnostic"
+    },
+    {
+      "path": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-high-contrast/workspace-schema-chromium-high-contrast-actual.png",
+      "bytes": 528038,
+      "sha256": "7423786458865bb0ad6fd7535e8d03efb9b27350dda59bcadb3ea8529cfa1b96",
+      "sourceRoot": "workspace",
+      "role": "comparison-actual"
+    },
+    {
+      "path": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-high-contrast/workspace-schema-chromium-high-contrast-diff.png",
+      "bytes": 276172,
+      "sha256": "d76cda4dcd14953d096653c13daa1da48b02b6d62cc0566ba302777d5aea30c0",
+      "sourceRoot": "workspace",
+      "role": "comparison-diff"
+    },
+    {
+      "path": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-high-contrast/workspace-schema-chromium-high-contrast-expected.png",
+      "bytes": 426745,
+      "sha256": "90ee262788f063532814a7f5c892149d56b28de228a6c4986948665d28285c7f",
+      "sourceRoot": "workspace",
+      "role": "comparison-expected"
+    },
+    {
+      "path": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-high-contrast/workspace-schema-post-assert.png",
+      "bytes": 528028,
+      "sha256": "8f01d53345842fa44080b2a2505125ae90326ae9688fbd233a16563fe37ad396",
+      "sourceRoot": "workspace",
+      "role": "current-diagnostic"
+    },
+    {
+      "path": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-landscape-touch/current-scrollport-footer.png",
+      "bytes": 161180,
+      "sha256": "63cf246cb1c2f167e43f4dfc94ad7d859435f0849170e56e9ef8cc08437503b1",
+      "sourceRoot": "workspace",
+      "role": "current-diagnostic"
+    },
+    {
+      "path": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-landscape-touch/current-scrollport-middle.png",
+      "bytes": 125503,
+      "sha256": "e7a5fa86279ce54e9cebd695c24336dda82e8edb033ab3c1e0f2fdc21024c6e7",
+      "sourceRoot": "workspace",
+      "role": "current-diagnostic"
+    },
+    {
+      "path": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-landscape-touch/current-scrollport-top.png",
+      "bytes": 333550,
+      "sha256": "5335b0054d3fb1b9c9b5ce4ef6c43febf7d26944b31891172739b1d734dfb106",
+      "sourceRoot": "workspace",
+      "role": "current-diagnostic"
+    },
+    {
+      "path": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-landscape-touch/test-failed-1.png",
+      "bytes": 333464,
+      "sha256": "afb12cb07de339c25d4a2e360d174cdd42b7d542dcc20641243981ee118bcb65",
+      "sourceRoot": "workspace",
+      "role": "failure-diagnostic"
+    },
+    {
+      "path": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-landscape-touch/workspace-records-chromium-landscape-touch-actual.png",
+      "bytes": 115877,
+      "sha256": "7fff5a7eff14fba4f9417dc1dcc8ecf037be9c6ea8d4e79c5154d16ad26f784f",
+      "sourceRoot": "workspace",
+      "role": "comparison-actual"
+    },
+    {
+      "path": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-landscape-touch/workspace-records-chromium-landscape-touch-diff.png",
+      "bytes": 100859,
+      "sha256": "5e463bea4fb3646a62e7201406e999541b2822478e1e6c8f80b075a2b39b3f84",
+      "sourceRoot": "workspace",
+      "role": "comparison-diff"
+    },
+    {
+      "path": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-landscape-touch/workspace-records-chromium-landscape-touch-expected.png",
+      "bytes": 363996,
+      "sha256": "d54e1ba17b8b35554d86e094d67385ce2b4985eb5427a907ac6f4e7c475910f3",
+      "sourceRoot": "workspace",
+      "role": "comparison-expected"
+    },
+    {
+      "path": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-large-text/test-failed-1.png",
+      "bytes": 416227,
+      "sha256": "315a557120943a4050509c207a3a5b43babb5b7b1565ade2abcd22a40de0c5ad",
+      "sourceRoot": "workspace",
+      "role": "failure-diagnostic"
+    },
+    {
+      "path": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-large-text/workspace-records-chromium-large-text-actual.png",
+      "bytes": 588048,
+      "sha256": "7febdea01fcad39523b279a5500e48d05f573beeff45f262d25be8b90ad815a1",
+      "sourceRoot": "workspace",
+      "role": "comparison-actual"
+    },
+    {
+      "path": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-large-text/workspace-records-chromium-large-text-diff.png",
+      "bytes": 246623,
+      "sha256": "ed8e7936169852cde416aacdf94e7b1cd6731d777d5ba9b7108dd7ec38688a72",
+      "sourceRoot": "workspace",
+      "role": "comparison-diff"
+    },
+    {
+      "path": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-large-text/workspace-records-chromium-large-text-expected.png",
+      "bytes": 484786,
+      "sha256": "7bdddf6ec5dba35ab6e4fb546e4eca2ab8d78de28728111cec7ae704cd8e5f58",
+      "sourceRoot": "workspace",
+      "role": "comparison-expected"
+    },
+    {
+      "path": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-light/test-failed-1.png",
+      "bytes": 436123,
+      "sha256": "67fef07654231b365d55acfa9a76a64e80646d989fc010ef9608eec5e1f01410",
+      "sourceRoot": "workspace",
+      "role": "failure-diagnostic"
+    },
+    {
+      "path": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-light/workspace-records-chromium-light-actual.png",
+      "bytes": 619584,
+      "sha256": "fd95bb8ccc6ce9c4f99d6b8e07703835c1da75310b13cff7568bbc3d9aaf6100",
+      "sourceRoot": "workspace",
+      "role": "comparison-actual"
+    },
+    {
+      "path": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-light/workspace-records-chromium-light-diff.png",
+      "bytes": 232099,
+      "sha256": "0f1eac24f9f9f5d8eeacc8943fe059026d1642aa37ae20f76614849779342792",
+      "sourceRoot": "workspace",
+      "role": "comparison-diff"
+    },
+    {
+      "path": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-light/workspace-records-chromium-light-expected.png",
+      "bytes": 506530,
+      "sha256": "c4b06de96950ee685acfd752a791bd5665e32dedb76c73202ae4906563b3a690",
+      "sourceRoot": "workspace",
+      "role": "comparison-expected"
+    },
+    {
+      "path": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-phone-dpr3/current-scrollport-footer.png",
+      "bytes": 419241,
+      "sha256": "654824d06be76a3a67f86d2e0943cea5e4720563fdf86dac93b6e327257a7db4",
+      "sourceRoot": "workspace",
+      "role": "current-diagnostic"
+    },
+    {
+      "path": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-phone-dpr3/current-scrollport-middle.png",
+      "bytes": 646806,
+      "sha256": "b7fd49fa5c6626411efadfdd321e89db67ca275aa28183146cb58aa53aee2951",
+      "sourceRoot": "workspace",
+      "role": "current-diagnostic"
+    },
+    {
+      "path": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-phone-dpr3/current-scrollport-top.png",
+      "bytes": 1056807,
+      "sha256": "3b55e29e84b4973ac52709fd5f5a0d1b5ae404a7bf35888ab9c8f011339caab9",
+      "sourceRoot": "workspace",
+      "role": "current-diagnostic"
+    },
+    {
+      "path": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-phone-dpr3/test-failed-1.png",
+      "bytes": 1056723,
+      "sha256": "1d86820dc25925186748c3a355aa7897411a47d4ebcb2118ef51e2dcf2f4e20d",
+      "sourceRoot": "workspace",
+      "role": "failure-diagnostic"
+    },
+    {
+      "path": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-phone-dpr3/workspace-records-chromium-phone-dpr3-actual.png",
+      "bytes": 193846,
+      "sha256": "6b748da8bbd81c83cacb1a69665c366eaa40e835259ced77eda00ee5a5bf6d88",
+      "sourceRoot": "workspace",
+      "role": "comparison-actual"
+    },
+    {
+      "path": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-phone-dpr3/workspace-records-chromium-phone-dpr3-diff.png",
+      "bytes": 97399,
+      "sha256": "741738811b09cfaf0dce02b557aa17962ce18f873621ef0c03701308f025f01c",
+      "sourceRoot": "workspace",
+      "role": "comparison-diff"
+    },
+    {
+      "path": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-phone-dpr3/workspace-records-chromium-phone-dpr3-expected.png",
+      "bytes": 337456,
+      "sha256": "00e1c4614528d014b12dd245a67a0fcfcc9d7170e608d0ad9bf48330c0ce8a41",
+      "sourceRoot": "workspace",
+      "role": "comparison-expected"
+    },
+    {
+      "path": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-tablet/current-scrollport-footer.png",
+      "bytes": 169941,
+      "sha256": "3a99c7e094a808fcc4320ecef6d8e56d11d87a7683d4ff59e212f87c826d34c0",
+      "sourceRoot": "workspace",
+      "role": "current-diagnostic"
+    },
+    {
+      "path": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-tablet/current-scrollport-middle.png",
+      "bytes": 135704,
+      "sha256": "1385b1c0b86672e5b8ad510b2b4562d92c5f8041bbc784246eb4b3f383ee0ee3",
+      "sourceRoot": "workspace",
+      "role": "current-diagnostic"
+    },
+    {
+      "path": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-tablet/current-scrollport-top.png",
+      "bytes": 266094,
+      "sha256": "711d1f9c4d3ebc377bb7f9fea4084dac1f0b9067a9b8f92616936de9d3eeb3f8",
+      "sourceRoot": "workspace",
+      "role": "current-diagnostic"
+    },
+    {
+      "path": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-tablet/test-failed-1.png",
+      "bytes": 266062,
+      "sha256": "1d8722f3b72e3d89fcd9f55c3dd0cd864516346b763e1d86e6bc38cca22be721",
+      "sourceRoot": "workspace",
+      "role": "failure-diagnostic"
+    },
+    {
+      "path": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-tablet/workspace-records-chromium-tablet-actual.png",
+      "bytes": 266094,
+      "sha256": "711d1f9c4d3ebc377bb7f9fea4084dac1f0b9067a9b8f92616936de9d3eeb3f8",
+      "sourceRoot": "workspace",
+      "role": "comparison-actual"
+    },
+    {
+      "path": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-tablet/workspace-records-chromium-tablet-diff.png",
+      "bytes": 127190,
+      "sha256": "417b7d26dcb5294531b43869b66f3ab89acad050d2f1033bbb6af81fcebe14d1",
+      "sourceRoot": "workspace",
+      "role": "comparison-diff"
+    },
+    {
+      "path": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-tablet/workspace-records-chromium-tablet-expected.png",
+      "bytes": 441445,
+      "sha256": "82b976c968740bff538146eaa72b8eaaf3f54b98d762df9dabee8067408c18d9",
+      "sourceRoot": "workspace",
+      "role": "comparison-expected"
+    },
+    {
+      "path": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-ultrawide/test-failed-1.png",
+      "bytes": 1099601,
+      "sha256": "bd2ded161d3f17bcc55edf979443e10e614210bde5d30b2f67e6927ec69d6596",
+      "sourceRoot": "workspace",
+      "role": "failure-diagnostic"
+    },
+    {
+      "path": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-ultrawide/workspace-records-chromium-ultrawide-actual.png",
+      "bytes": 1237111,
+      "sha256": "b93d4676169d12ce6e03698604367edc18df19bbdb22be3a46a8cefbef10dbd5",
+      "sourceRoot": "workspace",
+      "role": "comparison-actual"
+    },
+    {
+      "path": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-ultrawide/workspace-records-chromium-ultrawide-diff.png",
+      "bytes": 287108,
+      "sha256": "085df0a36d196a33150352fd6d01fb010d2259e97ec53319059f6e545f3ad37f",
+      "sourceRoot": "workspace",
+      "role": "comparison-diff"
+    },
+    {
+      "path": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-ultrawide/workspace-records-chromium-ultrawide-expected.png",
+      "bytes": 1213091,
+      "sha256": "bd084223602d526803a15206d83e8a85cd2b82e038989db30863ae08ff0c5eef",
+      "sourceRoot": "workspace",
+      "role": "comparison-expected"
+    },
+    {
+      "path": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-firefox-desktop/test-failed-1.png",
+      "bytes": 716116,
+      "sha256": "86e9af3a71189a47123881c4d240be73f249173e3c1753ab10e601dcf5751143",
+      "sourceRoot": "workspace",
+      "role": "failure-diagnostic"
+    },
+    {
+      "path": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-firefox-desktop/workspace-records-firefox-desktop-actual.png",
+      "bytes": 890115,
+      "sha256": "cf61fd052b38ad8d4e7905d669b44dae71bd0a1c1df2501f80f72a68c18ac7a7",
+      "sourceRoot": "workspace",
+      "role": "comparison-actual"
+    },
+    {
+      "path": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-firefox-desktop/workspace-records-firefox-desktop-diff.png",
+      "bytes": 206455,
+      "sha256": "ed7fe253632a01cce4e6956e864de752f0e592e8cdc58487b88547acf52bad07",
+      "sourceRoot": "workspace",
+      "role": "comparison-diff"
+    }
+  ]
+}

@@ -108,3 +108,25 @@ test('notification normalization drops server-only keys and retains mandatory cl
     { event_family: 'product' },
   ]);
 });
+
+import { readNotificationSet } from '../services/settingsDiscovery';
+test.each([
+  {},
+  { schema_version: 2, version: 0, preferences: [] },
+  { schema_version: 1, version: -1, preferences: [] },
+  { schema_version: 1, version: 1.5, preferences: [] },
+  { schema_version: 1, version: Number.MAX_SAFE_INTEGER + 1, preferences: [] },
+])('rejects an unsafe notification set revision %j', (value) => {
+  expect(() => readNotificationSet(value, [])).toThrow('settings_notifications_invalid');
+});
+test('preserves set revision and projects missing product/email as disabled without opt-in', () => {
+  const defaults = [
+    { event_family: 'product', channel: 'email', delivery: 'disabled', mandatory: false },
+  ];
+  expect(readNotificationSet({ schema_version: 1, version: 0, preferences: [] }, defaults)).toEqual(
+    { schema_version: 1, version: 0, preferences: defaults }
+  );
+  expect(readNotificationSet({ schema_version: 1, version: 3, preferences: [] }, defaults)).toEqual(
+    { schema_version: 1, version: 3, preferences: defaults }
+  );
+});

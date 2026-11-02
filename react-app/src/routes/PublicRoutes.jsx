@@ -10,6 +10,7 @@ import PermissionRoute from '../components/PermissionRoute';
 import LocalizedExperience from './LocalizedExperience';
 import { useAuth } from '../contexts/AuthContext';
 import { siteManifest } from '../config/siteRuntime';
+import { authSession } from '../lib/authSession';
 
 const Home = lazy(() => import('../pages/Home'));
 const Login = lazy(() => import('../pages/Login'));
@@ -65,7 +66,10 @@ const WorkspaceRoute = () => {
   if (!moduleEnabled('content-workspace')) return <NotFoundPage />;
   return (
     <PermissionRoute user={user} permission="content-workspace.read">
-      <ContentWorkspace />
+      <ContentWorkspace
+        locale={user?.locale || 'en'}
+        key={`${siteManifest.siteId}:${user?.id || 'anonymous'}:${authSession.epoch()}`}
+      />
     </PermissionRoute>
   );
 };

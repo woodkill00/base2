@@ -4,8 +4,18 @@ import { axe, toHaveNoViolations } from 'jest-axe';
 import { MemoryRouter } from 'react-router-dom';
 import ContentWorkspace from '../pages/ContentWorkspace';
 import { contentWorkspaceAPI } from '../services/contentWorkspace';
+import { siteManifest } from '../config/siteRuntime';
 
 expect.extend(toHaveNoViolations);
+
+vi.mock('../contexts/AuthContext', () => ({
+  useAuth: () => ({
+    user: {
+      id: 'workspace-user',
+      permissions: ['content-workspace.read', 'content-workspace.write'],
+    },
+  }),
+}));
 
 vi.mock('../services/contentWorkspace', () => ({
   normalizeWorkspaceError: (error) => ({
@@ -20,6 +30,9 @@ vi.mock('../services/contentWorkspace', () => ({
     records: vi.fn(),
     record: vi.fn(),
     createRecord: vi.fn(),
+    approveReview: vi.fn(),
+    adoptReviewSubject: vi.fn(),
+    updateRecord: vi.fn(),
     versions: vi.fn(),
     views: vi.fn(),
     createView: vi.fn(),
@@ -71,14 +84,40 @@ describe('content workspace', () => {
         { fieldKey: 'summary', label: 'Summary', fieldKind: 'long_text', required: false },
       ],
     });
-    contentWorkspaceAPI.record.mockResolvedValue({
+    const recordDetail = {
+      publicContent: { excerpt: '', body: '' },
+      siteId: siteManifest.siteId,
+      typeKey: 'article',
+      schemaVersion: 1,
+      updatedAt: '2026-10-31T00:00:00Z',
+      allowedActions: [],
+      review: {
+        status: 'not_requested',
+        requiresReview: false,
+        policyVersion: 1,
+        semanticRevision: null,
+        deliveryAdapter: 'local_test',
+        recoveryReason: null,
+      },
       id: 'record-1',
       title: 'Hello',
       slug: 'hello',
       state: 'draft',
       version: 2,
       values: { title: 'Hello', summary: 'Safe synthetic summary' },
-    });
+    };
+    contentWorkspaceAPI.record.mockImplementation(async (_type, id) =>
+      id === 'record-2'
+        ? {
+            ...recordDetail,
+            id,
+            title: 'Second',
+            slug: 'second',
+            version: 1,
+            values: { title: 'Second', summary: 'New safe summary' },
+          }
+        : recordDetail
+    );
     contentWorkspaceAPI.versions.mockResolvedValue({ items: [] });
     contentWorkspaceAPI.createRecord.mockResolvedValue({
       id: 'record-2',
@@ -87,6 +126,7 @@ describe('content workspace', () => {
       state: 'draft',
       version: 1,
       values: { title: 'Second', summary: 'New safe summary' },
+      publicContent: { excerpt: '', body: '' },
     });
     contentWorkspaceAPI.views.mockResolvedValue({ items: [] });
     contentWorkspaceAPI.createView.mockResolvedValue({
@@ -105,6 +145,22 @@ describe('content workspace', () => {
     expect(await screen.findByRole('heading', { name: /records · articles/i })).toBeVisible();
     await waitFor(() => expect(screen.getByText('Hello')).toBeVisible());
     expect(screen.getByRole('tab', { name: 'Records' })).toHaveAttribute('aria-selected', 'true');
+  });
+
+  test('keeps Records divider widths and explicitly paints each item with subtle white borders', async () => {
+    contentWorkspaceAPI.records.mockResolvedValue({
+      items: [
+        { id: 'one', title: 'First', slug: 'first', state: 'draft', version: 1 },
+        { id: 'two', title: 'Second', slug: 'second', state: 'draft', version: 1 },
+      ],
+    });
+    renderWorkspace();
+    const list = await screen.findByRole('list', { name: 'Records' });
+    expect(list).toHaveClass('divide-y', 'divide-white/10');
+    expect(list.children).toHaveLength(2);
+    // Explicit item color outranks the universal compatibility border reset.
+    // Native computed-style checks verify paint; jsdom checks the scoped utility.
+    for (const item of list.children) expect(item).toHaveClass('py-4', 'border-white/10');
   });
 
   test.each([
@@ -197,6 +253,20 @@ describe('content workspace', () => {
     });
     await act(async () => {
       resolveDetail({
+        publicContent: { excerpt: '', body: '' },
+        siteId: siteManifest.siteId,
+        typeKey: 'article',
+        schemaVersion: 1,
+        updatedAt: '2026-10-31T00:00:00Z',
+        allowedActions: [],
+        review: {
+          status: 'not_requested',
+          requiresReview: false,
+          policyVersion: 1,
+          semanticRevision: null,
+          deliveryAdapter: 'local_test',
+          recoveryReason: null,
+        },
         id: 'record-1',
         title: 'Hello',
         slug: 'hello',
@@ -251,6 +321,7 @@ describe('content workspace', () => {
       expect(contentWorkspaceAPI.createRecord).toHaveBeenCalledWith('article', {
         title: 'Second',
         slug: 'second',
+        publicContent: { excerpt: '', body: '' },
         values: { title: 'Second', summary: 'New safe summary' },
       })
     );
@@ -319,4 +390,83 @@ describe('content workspace', () => {
     );
     expect(await screen.findByRole('option', { name: 'Safe records' })).toBeVisible();
   });
+
+  test.each(['approve', 'adopt', 'save'])(
+    'accepted %s invalidates a delayed open of the same record, including same-version metadata',
+    async (action) => {
+      const user = userEvent.setup();
+      const old = {
+        publicContent: { excerpt: '', body: '' },
+        siteId: siteManifest.siteId,
+        typeKey: 'article',
+        schemaVersion: 1,
+        updatedAt: '2026-10-31T00:00:00Z',
+        id: 'record-1',
+        title: 'Hello',
+        slug: 'hello',
+        state: 'in_review',
+        version: 2,
+        values: { title: 'Hello', summary: 'Original' },
+        allowedActions: ['approve_review', 'adopt_review_subject'],
+        review: {
+          status: 'pending',
+          requiresReview: true,
+          policyVersion: 1,
+          semanticRevision: 'revision-one',
+          deliveryAdapter: 'local_test',
+          recoveryReason: null,
+        },
+      };
+      const fresh = {
+        ...old,
+        version: action === 'approve' ? 2 : 3,
+        allowedActions: ['publish'],
+        review: { ...old.review, status: 'approved' },
+      };
+      let finishOpen;
+      contentWorkspaceAPI.record
+        .mockResolvedValueOnce(old)
+        .mockImplementationOnce(
+          () =>
+            new Promise((resolve) => {
+              finishOpen = resolve;
+            })
+        )
+        .mockResolvedValue(fresh);
+      contentWorkspaceAPI.approveReview.mockResolvedValue({
+        record_id: old.id,
+        version: fresh.version,
+      });
+      contentWorkspaceAPI.adoptReviewSubject.mockResolvedValue({
+        record_id: old.id,
+        version: fresh.version,
+      });
+      contentWorkspaceAPI.updateRecord.mockResolvedValue({
+        record_id: old.id,
+        version: fresh.version,
+      });
+      renderWorkspace();
+      await user.click(await screen.findByRole('button', { name: /Hello/ }));
+      await screen.findByRole('heading', { name: 'Hello' });
+      await user.click(screen.getByRole('button', { name: /Hello/ }));
+      if (action === 'save') {
+        await user.click(screen.getByRole('button', { name: 'Edit fields' }));
+        await user.type(screen.getByLabelText('Summary'), ' changed');
+        await user.click(screen.getByRole('button', { name: 'Save changes' }));
+      } else {
+        await user.click(
+          screen.getByRole('button', {
+            name: action === 'approve' ? 'Approve review' : 'Adopt current snapshot',
+          })
+        );
+        await user.click(screen.getByRole('button', { name: 'Confirm action' }));
+      }
+      await screen.findByRole('button', { name: 'Publish', exact: true });
+      await act(async () => finishOpen(old));
+      expect(screen.getByRole('button', { name: 'Publish', exact: true })).toBeInTheDocument();
+      expect(
+        screen.queryByRole('button', { name: 'Approve review', exact: true })
+      ).not.toBeInTheDocument();
+    }
+  );
 });

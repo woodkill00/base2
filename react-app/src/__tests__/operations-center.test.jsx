@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import OperationsCenter, { operationsReadable } from '../pages/OperationsCenter';
 import { operationsAPI } from '../services/operations';
+import HomeFooter from '../components/home/HomeFooter';
 
 const authState = vi.hoisted(() => ({
   user: {
@@ -40,6 +41,31 @@ const renderPage = () =>
       <OperationsCenter />
     </MemoryRouter>
   );
+
+test.each(['stale', 'unavailable', 'read-only'])(
+  'generic footer does not claim current evidence in %s state',
+  async (state) => {
+    if (state === 'unavailable') operationsAPI.overview.mockRejectedValueOnce(new Error('offline'));
+    if (state === 'read-only') authState.user.permissions = ['operations.read'];
+    render(
+      <MemoryRouter>
+        <OperationsCenter />
+        <HomeFooter />
+      </MemoryRouter>
+    );
+    if (state === 'stale') {
+      await screen.findByText('tenant-one');
+      operationsAPI.summary.mockRejectedValueOnce(new Error('offline'));
+      fireEvent.click(screen.getByRole('button', { name: 'Refresh evidence' }));
+      await screen.findByText('Stale evidence');
+    } else if (state === 'unavailable') await screen.findByRole('alert');
+    else await screen.findByText('tenant-one');
+    expect(screen.getByRole('contentinfo', { name: 'Footer' })).toHaveTextContent(
+      'Status details on each page'
+    );
+    expect(screen.queryByText('System evidence current')).not.toBeInTheDocument();
+  }
+);
 
 test.each([
   ['de', 'running', 'Läuft'],
@@ -310,6 +336,63 @@ test('requires keyboard-operable confirmation before cancelling a dead-letter jo
     expect(operationsAPI.actOnDeadLetter).toHaveBeenCalledWith('job-one', 'cancel')
   );
 });
+
+test('cancellation owns background inertness and traps Shift+Tab from its heading', async () => {
+  const { container } = renderPage();
+  const trigger = await screen.findByRole('button', { name: 'Cancel' });
+  fireEvent.click(trigger);
+  const heading = screen.getByRole('heading', { name: 'Cancel this dead-letter job?' });
+  await waitFor(() => expect(heading).toHaveFocus());
+  const dialog = screen.getByRole('dialog');
+  expect(dialog).toHaveClass('base2-modal-surface', 'operations-cancel-modal');
+  expect(document.querySelectorAll('.app-shell-root')).toHaveLength(1);
+  expect(container.querySelector('.app-shell-root')).toHaveAttribute('inert');
+  expect(dialog.closest('.app-shell-root')).toBeNull();
+  expect(document.body.style.overflow).toBe('hidden');
+  fireEvent.keyDown(heading, { key: 'Tab', shiftKey: true });
+  expect(screen.getByRole('button', { name: 'Cancel job' })).toHaveFocus();
+  fireEvent.keyDown(document.activeElement, { key: 'Tab' });
+  expect(screen.getByRole('button', { name: 'Keep job' })).toHaveFocus();
+  fireEvent.click(screen.getByRole('button', { name: 'Keep job' }));
+  await waitFor(() => expect(trigger).toHaveFocus());
+  expect(container.querySelector('.app-shell-root')).not.toHaveAttribute('inert');
+  expect(document.body.style.overflow).not.toBe('hidden');
+  expect(operationsAPI.actOnDeadLetter).not.toHaveBeenCalled();
+  fireEvent.click(trigger);
+  await waitFor(() => expect(screen.getByRole('dialog')).toBeInTheDocument());
+  fireEvent.keyDown(document, { key: 'Escape' });
+  await waitFor(() => expect(trigger).toHaveFocus());
+  expect(container.querySelector('.app-shell-root')).not.toHaveAttribute('inert');
+  expect(document.body.style.overflow).not.toBe('hidden');
+});
+
+test.each(['success', 'failure', 'removed'])(
+  'restores meaningful focus after deferred cancellation: %s',
+  async (outcome) => {
+    let resolveAction, rejectAction;
+    operationsAPI.actOnDeadLetter.mockImplementationOnce(
+      () =>
+        new Promise((resolve, reject) => {
+          resolveAction = resolve;
+          rejectAction = reject;
+        })
+    );
+    renderPage();
+    const trigger = await screen.findByRole('button', { name: 'Cancel', exact: true });
+    fireEvent.click(trigger);
+    fireEvent.click(await screen.findByRole('button', { name: 'Cancel job' }));
+    await waitFor(() => expect(trigger).toBeDisabled());
+    if (outcome === 'removed')
+      operationsAPI.overview.mockResolvedValueOnce({ site: {}, runtime: { deadLetters: [] } });
+    if (outcome === 'failure') rejectAction(new Error('synthetic cancellation failure'));
+    else resolveAction({});
+    await waitFor(() =>
+      expect(
+        outcome === 'removed' ? screen.getByRole('heading', { level: 1 }) : trigger
+      ).toHaveFocus()
+    );
+  }
+);
 
 test('never renders unavailable overview panels as empty facts', async () => {
   operationsAPI.overview.mockRejectedValueOnce(new Error('offline'));

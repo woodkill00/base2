@@ -1,0 +1,64 @@
+{
+  "conclusion": "inconclusive",
+  "inspections": [
+    {
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-landscape-touch/current-operations-center-chromium-landscape-touch.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "39a1a5ca1d6a0817da551e256f399b4773681e697840860dee5e22383f5bb45d"
+    },
+    {
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-landscape-touch/current-scrollport-footer.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "3345b9327254ff26759bbfc7ad92afdbbcfba7d3ab454245decf3184132fc261"
+    },
+    {
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-landscape-touch/current-scrollport-middle.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "016cf05f8670b8afc13a9c7445918dc8fdc336b79df8cba183fefe45693844c9"
+    },
+    {
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-landscape-touch/current-scrollport-operations-center-chromium-landscape-touch-footer.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "d808ec541b123482e9559209cd2c6f9b07dc936311af363823e6d6ad43a50e61"
+    },
+    {
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-landscape-touch/current-scrollport-operations-center-chromium-landscape-touch-middle.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "991c572b6102bf59450782e1eb309d9f11a3e742877182770a268df30525c902"
+    },
+    {
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-landscape-touch/current-scrollport-operations-center-chromium-landscape-touch-top.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "39a1a5ca1d6a0817da551e256f399b4773681e697840860dee5e22383f5bb45d"
+    },
+    {
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-landscape-touch/current-scrollport-top.png",
+      "method": "contact-sheet-overview",
+      "role": "current",
+      "sha256": "99b139b4c48f0d58e9e98caa4d103bc89a82e460652ac30ac3f0ee0738458371"
+    },
+    {
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-landscape-touch/operations-center-chromium-landscape-touch-actual.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "actual",
+      "sha256": "39a1a5ca1d6a0817da551e256f399b4773681e697840860dee5e22383f5bb45d"
+    },
+    {
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-landscape-touch/test-failed-1.png",
+      "method": "contact-sheet-overview",
+      "role": "failure",
+      "sha256": "1d67c93bafc526f6a569095ea0623e2d140463b3c38e5284c59021d9b035f6c8"
+    }
+  ],
+  "kind": "technical-review",
+  "manifest": "runs/41316938996-1-124878862228-13087838333.json",
+  "manifestSha256": "213b93c9fc272be27b8619144e6f3a1fd98bf69711e81087c8f2f67f4d827abc",
+  "notes": "Expected/diff inspections withheld: aggregate review states these were not inspected despite per-image flags.",
+  "schemaVersion": 2
+}

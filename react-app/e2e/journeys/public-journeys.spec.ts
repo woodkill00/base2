@@ -1,3 +1,5 @@
+import { captureScrollportExtent } from '../scroll-target';
+import { safeFocusSnapshot } from '../shell-diagnostics';
 import { setSessionFixture, fulfillSessionFixture } from '../session-fixture';
 import { expect, test, type Page, type TestInfo } from '@playwright/test';
 import { readFileSync } from 'node:fs';
@@ -39,12 +41,14 @@ const capture = async (page: Page, info: TestInfo, name: string) => {
     ((name === 'contact-received' && width === 390) ||
       (name === 'search-paginated' && width === 1440))
   ) {
-    await expect(page).toHaveScreenshot(`${name}-${width}.png`, {
+    await expect.soft(page).toHaveScreenshot(`${name}-${width}.png`, {
       fullPage: true,
       animations: 'disabled',
       maxDiffPixelRatio: 0.001,
     });
   }
+  if (name === 'contact-received' && width === 390)
+    await captureScrollportExtent(page, info, 'journey-contact-received', 0.001);
   await page.screenshot({
     path: info.outputPath(`${name}.png`),
     fullPage: true,
@@ -80,8 +84,25 @@ test('light preference, enlarged text and keyboard contact submission', async ({
     let index = 0;
     index < 20 && !(await name.evaluate((node) => node === document.activeElement));
     index++
-  )
+  ) {
     await page.keyboard.press('Tab');
+    console.log(
+      'contact-focus-step',
+      index,
+      safeFocusSnapshot(
+        await page.evaluate(() => {
+          const node = document.activeElement;
+          return {
+            tag: node?.tagName,
+            id: node?.id || '',
+            role: node?.getAttribute('role') || '',
+            testId: node?.getAttribute('data-testid') || '',
+            inert: Boolean(node?.closest('[inert]')),
+          };
+        })
+      )
+    );
+  }
   await expect(name).toBeFocused();
   await page.keyboard.type('Keyboard reviewer');
   await page.keyboard.press('Tab');
@@ -422,6 +443,8 @@ const installMember = async (page: Page) => {
     if (path === '/api/settings/notifications')
       return route.fulfill({
         json: {
+          schema_version: 1,
+          version: 1,
           preferences: [
             { event_family: 'security', channel: 'email', delivery: 'immediate', mandatory: true },
           ],

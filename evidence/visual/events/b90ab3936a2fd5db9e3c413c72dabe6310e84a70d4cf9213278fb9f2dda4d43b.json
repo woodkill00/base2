@@ -1,0 +1,28 @@
+{
+  "conclusion": "inconclusive",
+  "inspections": [
+    {
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-reduced-motion/current-operations-center-chromium-reduced-motion.png",
+      "method": "exact-byte-match-to-reviewed-capture",
+      "role": "current",
+      "sha256": "6b86eeec3b74600e66851e04ccd201f5bc6793b1b4fb7e1c75d1dfa4485b9f4a"
+    },
+    {
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-reduced-motion/operations-center-chromium-reduced-motion-actual.png",
+      "method": "contact-sheet-overview",
+      "role": "actual",
+      "sha256": "6b86eeec3b74600e66851e04ccd201f5bc6793b1b4fb7e1c75d1dfa4485b9f4a"
+    },
+    {
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-reduced-motion/test-failed-1.png",
+      "method": "contact-sheet-overview",
+      "role": "failure",
+      "sha256": "e35c3d5605be592d1a58baf8976af3217f1231cdedc23da2e1be9d110212825b"
+    }
+  ],
+  "kind": "technical-review",
+  "manifest": "runs/41314740935-1-124872282068-13087520031.json",
+  "manifestSha256": "6e72d17d5cf2df57b4f3715e1202a4aa934c04599fe7a51f86db6e87da3953a7",
+  "notes": "Desktop cancellation confirmation is completely visible with consequence text and both actions; white heading focus outline visible. Backdrop stops at viewport boundary in fullPage PNG, also present in expected reference; not a newly proven runtime defect. Recovery empty/error/partial/reauth/read-only states now captured. Read-only removes replay/cancel and acknowledge controls; reauth/stale banners visible. No independent new severe clipping/overlap found in retained states. Existing footer System evidence current remains misleading in unavailable/stale recovery states.",
+  "schemaVersion": 2
+}

@@ -1,0 +1,443 @@
+{
+  "archiveSha256": "070343cdfcd81fb4ad67a5871b54d3f09c4e9fe7d47a1b69915afa1fac053212",
+  "artifactId": 13087330407,
+  "attempt": 1,
+  "captures": [
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "chromium-landscape-touch.zip",
+          "sha256": "8e6d343143ad6ad96a9450a0ff46eaa90399f43208c7ba6e47c3448ceee9338c"
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-landscape-touch/current-operations-center-chromium-landscape-touch.png",
+          "sha256": "39a1a5ca1d6a0817da551e256f399b4773681e697840860dee5e22383f5bb45d"
+        }
+      ],
+      "bytes": 119519,
+      "dimensions": [
+        844,
+        390
+      ],
+      "identityBasis": "native-report",
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-landscape-touch/current-operations-center-chromium-landscape-touch.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-report",
+        "project": "chromium-landscape-touch",
+        "title": "operations center is accessible responsive and visually stable"
+      },
+      "project": "chromium-landscape-touch",
+      "role": "current",
+      "sha256": "39a1a5ca1d6a0817da551e256f399b4773681e697840860dee5e22383f5bb45d",
+      "storage": "objects/39a1a5ca1d6a0817da551e256f399b4773681e697840860dee5e22383f5bb45d.png",
+      "test": "operations center is accessible responsive and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "chromium-landscape-touch.zip",
+          "sha256": "8e6d343143ad6ad96a9450a0ff46eaa90399f43208c7ba6e47c3448ceee9338c"
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-landscape-touch/current-scrollport-footer.png",
+          "sha256": "3345b9327254ff26759bbfc7ad92afdbbcfba7d3ab454245decf3184132fc261"
+        }
+      ],
+      "bytes": 61763,
+      "dimensions": [
+        844,
+        390
+      ],
+      "identityBasis": "native-report",
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-landscape-touch/current-scrollport-footer.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-report",
+        "project": "chromium-landscape-touch",
+        "title": "operations center is accessible responsive and visually stable"
+      },
+      "project": "chromium-landscape-touch",
+      "role": "current",
+      "sha256": "3345b9327254ff26759bbfc7ad92afdbbcfba7d3ab454245decf3184132fc261",
+      "storage": "objects/3345b9327254ff26759bbfc7ad92afdbbcfba7d3ab454245decf3184132fc261.png",
+      "test": "operations center is accessible responsive and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "chromium-landscape-touch.zip",
+          "sha256": "8e6d343143ad6ad96a9450a0ff46eaa90399f43208c7ba6e47c3448ceee9338c"
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-landscape-touch/current-scrollport-middle.png",
+          "sha256": "016cf05f8670b8afc13a9c7445918dc8fdc336b79df8cba183fefe45693844c9"
+        }
+      ],
+      "bytes": 83205,
+      "dimensions": [
+        844,
+        390
+      ],
+      "identityBasis": "native-report",
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-landscape-touch/current-scrollport-middle.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-report",
+        "project": "chromium-landscape-touch",
+        "title": "operations center is accessible responsive and visually stable"
+      },
+      "project": "chromium-landscape-touch",
+      "role": "current",
+      "sha256": "016cf05f8670b8afc13a9c7445918dc8fdc336b79df8cba183fefe45693844c9",
+      "storage": "objects/016cf05f8670b8afc13a9c7445918dc8fdc336b79df8cba183fefe45693844c9.png",
+      "test": "operations center is accessible responsive and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "chromium-landscape-touch.zip",
+          "sha256": "8e6d343143ad6ad96a9450a0ff46eaa90399f43208c7ba6e47c3448ceee9338c"
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-landscape-touch/current-scrollport-operations-center-chromium-landscape-touch-footer.png",
+          "sha256": "3618dc18ca974950b9f436c9bd9294e9dce49bb14daede7bd6485364446394af"
+        }
+      ],
+      "bytes": 62431,
+      "dimensions": [
+        844,
+        390
+      ],
+      "identityBasis": "native-report",
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-landscape-touch/current-scrollport-operations-center-chromium-landscape-touch-footer.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-report",
+        "project": "chromium-landscape-touch",
+        "title": "operations center is accessible responsive and visually stable"
+      },
+      "project": "chromium-landscape-touch",
+      "role": "current",
+      "sha256": "3618dc18ca974950b9f436c9bd9294e9dce49bb14daede7bd6485364446394af",
+      "storage": "objects/3618dc18ca974950b9f436c9bd9294e9dce49bb14daede7bd6485364446394af.png",
+      "test": "operations center is accessible responsive and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "chromium-landscape-touch.zip",
+          "sha256": "8e6d343143ad6ad96a9450a0ff46eaa90399f43208c7ba6e47c3448ceee9338c"
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-landscape-touch/current-scrollport-operations-center-chromium-landscape-touch-middle.png",
+          "sha256": "991c572b6102bf59450782e1eb309d9f11a3e742877182770a268df30525c902"
+        }
+      ],
+      "bytes": 86251,
+      "dimensions": [
+        844,
+        390
+      ],
+      "identityBasis": "native-report",
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-landscape-touch/current-scrollport-operations-center-chromium-landscape-touch-middle.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-report",
+        "project": "chromium-landscape-touch",
+        "title": "operations center is accessible responsive and visually stable"
+      },
+      "project": "chromium-landscape-touch",
+      "role": "current",
+      "sha256": "991c572b6102bf59450782e1eb309d9f11a3e742877182770a268df30525c902",
+      "storage": "objects/991c572b6102bf59450782e1eb309d9f11a3e742877182770a268df30525c902.png",
+      "test": "operations center is accessible responsive and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "chromium-landscape-touch.zip",
+          "sha256": "8e6d343143ad6ad96a9450a0ff46eaa90399f43208c7ba6e47c3448ceee9338c"
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-landscape-touch/current-scrollport-operations-center-chromium-landscape-touch-top.png",
+          "sha256": "39a1a5ca1d6a0817da551e256f399b4773681e697840860dee5e22383f5bb45d"
+        }
+      ],
+      "bytes": 119519,
+      "dimensions": [
+        844,
+        390
+      ],
+      "identityBasis": "native-report",
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-landscape-touch/current-scrollport-operations-center-chromium-landscape-touch-top.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-report",
+        "project": "chromium-landscape-touch",
+        "title": "operations center is accessible responsive and visually stable"
+      },
+      "project": "chromium-landscape-touch",
+      "role": "current",
+      "sha256": "39a1a5ca1d6a0817da551e256f399b4773681e697840860dee5e22383f5bb45d",
+      "storage": "objects/39a1a5ca1d6a0817da551e256f399b4773681e697840860dee5e22383f5bb45d.png",
+      "test": "operations center is accessible responsive and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "chromium-landscape-touch.zip",
+          "sha256": "8e6d343143ad6ad96a9450a0ff46eaa90399f43208c7ba6e47c3448ceee9338c"
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-landscape-touch/current-scrollport-top.png",
+          "sha256": "e935e43eba9871b4174a50735c3e2e1213ae6920c7fb84c92c14e404a5ea4570"
+        }
+      ],
+      "bytes": 118750,
+      "dimensions": [
+        844,
+        390
+      ],
+      "identityBasis": "native-report",
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-landscape-touch/current-scrollport-top.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-report",
+        "project": "chromium-landscape-touch",
+        "title": "operations center is accessible responsive and visually stable"
+      },
+      "project": "chromium-landscape-touch",
+      "role": "current",
+      "sha256": "e935e43eba9871b4174a50735c3e2e1213ae6920c7fb84c92c14e404a5ea4570",
+      "storage": "objects/e935e43eba9871b4174a50735c3e2e1213ae6920c7fb84c92c14e404a5ea4570.png",
+      "test": "operations center is accessible responsive and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "chromium-landscape-touch.zip",
+          "sha256": "8e6d343143ad6ad96a9450a0ff46eaa90399f43208c7ba6e47c3448ceee9338c"
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-landscape-touch/operations-center-chromium-landscape-touch-actual.png",
+          "sha256": "39a1a5ca1d6a0817da551e256f399b4773681e697840860dee5e22383f5bb45d"
+        }
+      ],
+      "bytes": 119519,
+      "dimensions": [
+        844,
+        390
+      ],
+      "identityBasis": "native-report",
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-landscape-touch/operations-center-chromium-landscape-touch-actual.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-report",
+        "project": "chromium-landscape-touch",
+        "title": "operations center is accessible responsive and visually stable"
+      },
+      "project": "chromium-landscape-touch",
+      "role": "actual",
+      "sha256": "39a1a5ca1d6a0817da551e256f399b4773681e697840860dee5e22383f5bb45d",
+      "storage": "objects/39a1a5ca1d6a0817da551e256f399b4773681e697840860dee5e22383f5bb45d.png",
+      "test": "operations center is accessible responsive and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "chromium-landscape-touch.zip",
+          "sha256": "8e6d343143ad6ad96a9450a0ff46eaa90399f43208c7ba6e47c3448ceee9338c"
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-landscape-touch/operations-center-chromium-landscape-touch-diff.png",
+          "sha256": "e4e1cd1c6fe56ebf3d55b39de00cba164d4248ff525f9b763c1e8ad6c06478c2"
+        }
+      ],
+      "bytes": 151951,
+      "dimensions": [
+        844,
+        3618
+      ],
+      "identityBasis": "native-report",
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-landscape-touch/operations-center-chromium-landscape-touch-diff.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-report",
+        "project": "chromium-landscape-touch",
+        "title": "operations center is accessible responsive and visually stable"
+      },
+      "project": "chromium-landscape-touch",
+      "role": "diff",
+      "sha256": "e4e1cd1c6fe56ebf3d55b39de00cba164d4248ff525f9b763c1e8ad6c06478c2",
+      "storage": "objects/e4e1cd1c6fe56ebf3d55b39de00cba164d4248ff525f9b763c1e8ad6c06478c2.png",
+      "test": "operations center is accessible responsive and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "chromium-landscape-touch.zip",
+          "sha256": "8e6d343143ad6ad96a9450a0ff46eaa90399f43208c7ba6e47c3448ceee9338c"
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-landscape-touch/operations-center-chromium-landscape-touch-expected.png",
+          "sha256": "50bbd336227643bb90112b527340bbd0a188465bb76abb15f38c32ed10296389"
+        }
+      ],
+      "bytes": 494841,
+      "dimensions": [
+        844,
+        3618
+      ],
+      "identityBasis": "native-report",
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-landscape-touch/operations-center-chromium-landscape-touch-expected.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-report",
+        "project": "chromium-landscape-touch",
+        "title": "operations center is accessible responsive and visually stable"
+      },
+      "project": "chromium-landscape-touch",
+      "role": "expected",
+      "sha256": "50bbd336227643bb90112b527340bbd0a188465bb76abb15f38c32ed10296389",
+      "storage": "objects/50bbd336227643bb90112b527340bbd0a188465bb76abb15f38c32ed10296389.png",
+      "test": "operations center is accessible responsive and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "chromium-landscape-touch.zip",
+          "sha256": "8e6d343143ad6ad96a9450a0ff46eaa90399f43208c7ba6e47c3448ceee9338c"
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-landscape-touch/test-failed-1.png",
+          "sha256": "3ad54477f34b81efb9f12d7e50ff9105ff131a446df94798f3d8237df62264b6"
+        }
+      ],
+      "bytes": 85297,
+      "dimensions": [
+        844,
+        390
+      ],
+      "identityBasis": "native-report",
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-landscape-touch/test-failed-1.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-report",
+        "project": "chromium-landscape-touch",
+        "title": "operations center is accessible responsive and visually stable"
+      },
+      "project": "chromium-landscape-touch",
+      "role": "failure",
+      "sha256": "3ad54477f34b81efb9f12d7e50ff9105ff131a446df94798f3d8237df62264b6",
+      "storage": "objects/3ad54477f34b81efb9f12d7e50ff9105ff131a446df94798f3d8237df62264b6.png",
+      "test": "operations center is accessible responsive and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    }
+  ],
+  "fixtureScope": "synthetic-project-tests",
+  "jobId": 124872282068,
+  "laterValidation": "pending",
+  "observations": [],
+  "originalOutcome": "failed",
+  "repository": "woodkill00/base2",
+  "requestedHead": "696f710633d81cec46e872901f21a024bf735c5f",
+  "runId": 41314740935,
+  "schemaVersion": 2,
+  "sourceCommit": "696f710633d81cec46e872901f21a024bf735c5f",
+  "sourceTree": "b395ca42a261de3c2710034787f5410ff5599501",
+  "technicalReview": "pending",
+  "transfer": {
+    "blobs": {
+      "016cf05f8670b8afc13a9c7445918dc8fdc336b79df8cba183fefe45693844c9": "72ede25a50c7068d156b49c43ccdca34d0c81351",
+      "3345b9327254ff26759bbfc7ad92afdbbcfba7d3ab454245decf3184132fc261": "d6e3589a712cb6054149e1d769d8318ddffced6f",
+      "3618dc18ca974950b9f436c9bd9294e9dce49bb14daede7bd6485364446394af": "70bdd997db7ee57ab943177ef21417c09220c9b4",
+      "39a1a5ca1d6a0817da551e256f399b4773681e697840860dee5e22383f5bb45d": "34561253649f5547b20519928c74d9a1e2694881",
+      "3ad54477f34b81efb9f12d7e50ff9105ff131a446df94798f3d8237df62264b6": "2c2141e704cf4c393732f4544daffe945769422c",
+      "50bbd336227643bb90112b527340bbd0a188465bb76abb15f38c32ed10296389": "cf4ba2341d03eff3565a8904b8cd530997950075",
+      "991c572b6102bf59450782e1eb309d9f11a3e742877182770a268df30525c902": "c1dd1ceae45be47c8debd0bf3777de4c56c8fa22",
+      "e4e1cd1c6fe56ebf3d55b39de00cba164d4248ff525f9b763c1e8ad6c06478c2": "2dfb70d034ac3599dfbd5834bd83d638d6a2a9e2",
+      "e935e43eba9871b4174a50735c3e2e1213ae6920c7fb84c92c14e404a5ea4570": "6361f38b9df9232ecb7d4e6d1ebce540b305dbce"
+    },
+    "commit": "9cd69137e688113750cdc225ad4c7fce2eebc157",
+    "localVerification": "git-blob-sha256-size-dimensions-full-decode",
+    "originalArchiveVerification": "externally-verified-zip-and-members",
+    "tree": "6806be178646ad75161a0a142b2c935608c30b46"
+  }
+}

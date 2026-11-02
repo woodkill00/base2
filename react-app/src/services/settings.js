@@ -28,10 +28,24 @@ export const settingsAPI = {
       apiClient.get('/settings/notifications', { timeout: 10000 }),
       'Notification preferences are unavailable'
     ),
-  saveNotifications: (preferences) =>
+  saveNotifications: (preferences, expected_version) =>
     call(
-      apiClient.put('/settings/notifications', { preferences }, { timeout: 10000 }),
+      apiClient.put(
+        '/settings/notifications',
+        { preferences, expected_version },
+        { timeout: 10000 }
+      ),
       'Notification preferences could not be saved'
+    ),
+  workspacePolicy: () =>
+    call(
+      apiClient.get('/settings/workspace-policy', { timeout: 10000 }),
+      'Workspace policy is unavailable'
+    ),
+  saveWorkspacePolicy: (payload) =>
+    call(
+      apiClient.put('/settings/workspace-policy', payload, { timeout: 10000 }),
+      'Workspace policy could not be saved'
     ),
   securityEvents: () =>
     call(

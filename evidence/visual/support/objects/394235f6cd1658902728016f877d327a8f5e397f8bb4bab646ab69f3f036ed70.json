@@ -1,0 +1,1867 @@
+{
+  "schemaVersion": 2,
+  "sourceCommit": "da4d0a72c1e7893e069b95a60c7f3cfcbfa6004a",
+  "sourceTree": "315d2db4a8e4b62ef0ae4b434d6906f2c0f4d30c",
+  "runId": "41316938996",
+  "attempt": "1",
+  "matrix": "operations",
+  "scope": "Diagnostic packaging only; empty/missing captures are incomplete, not acceptance.",
+  "originalReports": [
+    {
+      "path": "source-before.json",
+      "bytes": 7561,
+      "sha256": "679f999faa843950d5d4e0a70c0ef388cd52b61ea6b8d264b834eb762a82f452"
+    },
+    {
+      "path": "source-after.json",
+      "bytes": 31189,
+      "sha256": "d253ab1d2bf34ce7b8d16145f1d49ee6c85e8724b24e3c175b283a89907f9be4"
+    },
+    {
+      "path": "operations-visual-runner.json",
+      "bytes": 9947,
+      "sha256": "57e21db6e8bfbc08617a95d8052f189bf8500036e7194373da714288cb31433f"
+    },
+    {
+      "path": "stages.md",
+      "bytes": 331,
+      "sha256": "f21c0153ddc62660667fe878d9c85670a05f2cd7347bc8266494a1997c95141b"
+    }
+  ],
+  "missingReports": [],
+  "projects": {
+    "chromium-400-zoom": {
+      "status": "packaged",
+      "captures": [
+        {
+          "path": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-400-zoom/current-operations-center-chromium-400-zoom.png",
+          "bytes": 150700,
+          "sha256": "cc11fb2f949ac06698ac976b6d451765f387ade5f9453e3f0745a90918a782ca",
+          "archive": "chromium-400-zoom.zip"
+        },
+        {
+          "path": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-400-zoom/current-scrollport-footer.png",
+          "bytes": 60992,
+          "sha256": "7e2551c908e27575232abff13cd4eac98115f036210ebfc077a3f5865f24fd1a",
+          "archive": "chromium-400-zoom.zip"
+        },
+        {
+          "path": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-400-zoom/current-scrollport-middle.png",
+          "bytes": 126802,
+          "sha256": "6824e92ae39c12cfae8e319f2f478c5750d93d964d82d78798b1a715a1637e76",
+          "archive": "chromium-400-zoom.zip"
+        },
+        {
+          "path": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-400-zoom/current-scrollport-operations-center-chromium-400-zoom-footer.png",
+          "bytes": 62272,
+          "sha256": "5e7fbea23ffc8c000949eab7c7783d308645d127b006e961dce5046496b15f9e",
+          "archive": "chromium-400-zoom.zip"
+        },
+        {
+          "path": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-400-zoom/current-scrollport-operations-center-chromium-400-zoom-middle.png",
+          "bytes": 127821,
+          "sha256": "06cbc05eb4c622955f71780641ad582dfd8e8accc8dfa6c32ae1b8b7eb0bbfd6",
+          "archive": "chromium-400-zoom.zip"
+        },
+        {
+          "path": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-400-zoom/current-scrollport-operations-center-chromium-400-zoom-top.png",
+          "bytes": 150700,
+          "sha256": "cc11fb2f949ac06698ac976b6d451765f387ade5f9453e3f0745a90918a782ca",
+          "archive": "chromium-400-zoom.zip"
+        },
+        {
+          "path": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-400-zoom/current-scrollport-top.png",
+          "bytes": 163529,
+          "sha256": "8e64f88b736d24c3dab6b8a3f0781ecabcf1f9bd53230eba60142c9ca57f4c6b",
+          "archive": "chromium-400-zoom.zip"
+        },
+        {
+          "path": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-400-zoom/operations-center-chromium-400-zoom-actual.png",
+          "bytes": 150700,
+          "sha256": "cc11fb2f949ac06698ac976b6d451765f387ade5f9453e3f0745a90918a782ca",
+          "archive": "chromium-400-zoom.zip"
+        },
+        {
+          "path": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-400-zoom/operations-center-chromium-400-zoom-diff.png",
+          "bytes": 108440,
+          "sha256": "03464113ec239a7cb08d04621fe2b5f2287d0ea637338a2e4612c526253c15f5",
+          "archive": "chromium-400-zoom.zip"
+        },
+        {
+          "path": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-400-zoom/operations-center-chromium-400-zoom-expected.png",
+          "bytes": 378163,
+          "sha256": "6e1b815ffe2b93971339240c6a6a2cf774841fbe83bdd46a80184898fc3e6942",
+          "archive": "chromium-400-zoom.zip"
+        },
+        {
+          "path": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-400-zoom/test-failed-1.png",
+          "bytes": 126733,
+          "sha256": "972862b6b7e0ddaa803d388f3541edcd232f530c9240061a43d67bd45f0790ef",
+          "archive": "chromium-400-zoom.zip"
+        }
+      ],
+      "expectedSupportedTests": [
+        {
+          "project": "chromium-400-zoom",
+          "title": "operations center is accessible responsive and visually stable",
+          "expectedStatus": "passed"
+        }
+      ],
+      "currentCaptureCount": 7,
+      "minimumCaptureShortfall": 0,
+      "captureCoverage": "requires-review",
+      "diagnostics": [],
+      "parts": [
+        {
+          "path": "chromium-400-zoom.zip",
+          "bytes": 1610404,
+          "sha256": "d5717424bca3d982d7d3d5cb1a6500330ccd5b66a11cabccbf574b3fd6be03d7",
+          "members": [
+            "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-400-zoom/current-operations-center-chromium-400-zoom.png",
+            "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-400-zoom/current-scrollport-footer.png",
+            "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-400-zoom/current-scrollport-middle.png",
+            "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-400-zoom/current-scrollport-operations-center-chromium-400-zoom-footer.png",
+            "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-400-zoom/current-scrollport-operations-center-chromium-400-zoom-middle.png",
+            "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-400-zoom/current-scrollport-operations-center-chromium-400-zoom-top.png",
+            "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-400-zoom/current-scrollport-top.png",
+            "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-400-zoom/operations-center-chromium-400-zoom-actual.png",
+            "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-400-zoom/operations-center-chromium-400-zoom-diff.png",
+            "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-400-zoom/operations-center-chromium-400-zoom-expected.png",
+            "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-400-zoom/test-failed-1.png"
+          ]
+        }
+      ],
+      "missingDiagnostics": []
+    },
+    "chromium-compact": {
+      "status": "packaged",
+      "captures": [
+        {
+          "path": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-compact/current-operations-center-chromium-compact.png",
+          "bytes": 121980,
+          "sha256": "0259a2a173adcf1d3c15c8945d93e5086a5a5c300d49135e827b0d0a0784141e",
+          "archive": "chromium-compact.zip"
+        },
+        {
+          "path": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-compact/current-scrollport-footer.png",
+          "bytes": 47175,
+          "sha256": "fb7f197d52e2786b22e3769fb91398cc538a63675a831bc61206497ec79a86da",
+          "archive": "chromium-compact.zip"
+        },
+        {
+          "path": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-compact/current-scrollport-middle.png",
+          "bytes": 101574,
+          "sha256": "850ab5fd9d1c09ccce264f8e97b6c0a932d2c210d07933eb3553286321ad3bc0",
+          "archive": "chromium-compact.zip"
+        },
+        {
+          "path": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-compact/current-scrollport-operations-center-chromium-compact-footer.png",
+          "bytes": 48340,
+          "sha256": "0593e9a6b3c3cf4979da15c5a13665db51961f9e04054ea997913f71af27531c",
+          "archive": "chromium-compact.zip"
+        },
+        {
+          "path": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-compact/current-scrollport-operations-center-chromium-compact-middle.png",
+          "bytes": 100643,
+          "sha256": "5947cd0192c3d764653935d6b202c9c5fc2dde0fd9a9bce862335bc7c375273b",
+          "archive": "chromium-compact.zip"
+        },
+        {
+          "path": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-compact/current-scrollport-operations-center-chromium-compact-top.png",
+          "bytes": 121980,
+          "sha256": "0259a2a173adcf1d3c15c8945d93e5086a5a5c300d49135e827b0d0a0784141e",
+          "archive": "chromium-compact.zip"
+        },
+        {
+          "path": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-compact/current-scrollport-top.png",
+          "bytes": 136836,
+          "sha256": "79d05da904547daaf4349ac0ab0bfcbec4d91ec8cbf5a0b7bbdcd32b713db661",
+          "archive": "chromium-compact.zip"
+        },
+        {
+          "path": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-compact/operations-center-chromium-compact-actual.png",
+          "bytes": 121980,
+          "sha256": "0259a2a173adcf1d3c15c8945d93e5086a5a5c300d49135e827b0d0a0784141e",
+          "archive": "chromium-compact.zip"
+        },
+        {
+          "path": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-compact/operations-center-chromium-compact-diff.png",
+          "bytes": 106075,
+          "sha256": "c1e09db239fa5c25550f51a475cffa4462e6ee05311dbe55196596bc857b4da4",
+          "archive": "chromium-compact.zip"
+        },
+        {
+          "path": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-compact/operations-center-chromium-compact-expected.png",
+          "bytes": 351424,
+          "sha256": "1907582b2709f28198d91e111eab82580202b17803192406b961524bb95b05c7",
+          "archive": "chromium-compact.zip"
+        },
+        {
+          "path": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-compact/test-failed-1.png",
+          "bytes": 100404,
+          "sha256": "936e6f36e1f86d054c3e8a2fc872e231ae11a0e675904e995e8ea314b678f91a",
+          "archive": "chromium-compact.zip"
+        },
+        {
+          "path": "operations-release-operati-84a1a-ul-empty-and-failure-states-chromium-compact/current-operations-center-empty.png",
+          "bytes": 122438,
+          "sha256": "500c413d233c577803c598bb84386983766318b6524ff757eed620ac01c62114",
+          "archive": "chromium-compact.zip"
+        },
+        {
+          "path": "operations-release-operati-84a1a-ul-empty-and-failure-states-chromium-compact/current-operations-center-error.png",
+          "bytes": 139633,
+          "sha256": "123f00677734bcf11ee2528e695182f208ece194e622adf6d4b989aece2f2008",
+          "archive": "chromium-compact.zip"
+        },
+        {
+          "path": "operations-release-operati-84a1a-ul-empty-and-failure-states-chromium-compact/current-scrollport-footer.png",
+          "bytes": 51214,
+          "sha256": "572c79bc61085741f8030912046952dbd38443f917360df6e944ed19666a737b",
+          "archive": "chromium-compact.zip"
+        },
+        {
+          "path": "operations-release-operati-84a1a-ul-empty-and-failure-states-chromium-compact/current-scrollport-middle.png",
+          "bytes": 101440,
+          "sha256": "df1164c84934ad6d98aaeb986edcb9f4eee893ac5d934594338587b681f70b3d",
+          "archive": "chromium-compact.zip"
+        },
+        {
+          "path": "operations-release-operati-84a1a-ul-empty-and-failure-states-chromium-compact/current-scrollport-operations-center-empty-footer.png",
+          "bytes": 51704,
+          "sha256": "2fa9749e8d497524d4fb901421b24ce082a0d129560a75fb60ba15b0c62a0a75",
+          "archive": "chromium-compact.zip"
+        },
+        {
+          "path": "operations-release-operati-84a1a-ul-empty-and-failure-states-chromium-compact/current-scrollport-operations-center-empty-middle.png",
+          "bytes": 101591,
+          "sha256": "d3bb59eff78b0d504378941a5ca49c91e5cbd32ba143aee2409a0649f602a282",
+          "archive": "chromium-compact.zip"
+        },
+        {
+          "path": "operations-release-operati-84a1a-ul-empty-and-failure-states-chromium-compact/current-scrollport-operations-center-empty-top.png",
+          "bytes": 122438,
+          "sha256": "500c413d233c577803c598bb84386983766318b6524ff757eed620ac01c62114",
+          "archive": "chromium-compact.zip"
+        },
+        {
+          "path": "operations-release-operati-84a1a-ul-empty-and-failure-states-chromium-compact/current-scrollport-operations-center-error-footer.png",
+          "bytes": 51214,
+          "sha256": "572c79bc61085741f8030912046952dbd38443f917360df6e944ed19666a737b",
+          "archive": "chromium-compact.zip"
+        },
+        {
+          "path": "operations-release-operati-84a1a-ul-empty-and-failure-states-chromium-compact/current-scrollport-operations-center-error-middle.png",
+          "bytes": 101440,
+          "sha256": "df1164c84934ad6d98aaeb986edcb9f4eee893ac5d934594338587b681f70b3d",
+          "archive": "chromium-compact.zip"
+        },
+        {
+          "path": "operations-release-operati-84a1a-ul-empty-and-failure-states-chromium-compact/current-scrollport-operations-center-error-top.png",
+          "bytes": 139633,
+          "sha256": "123f00677734bcf11ee2528e695182f208ece194e622adf6d4b989aece2f2008",
+          "archive": "chromium-compact.zip"
+        },
+        {
+          "path": "operations-release-operati-84a1a-ul-empty-and-failure-states-chromium-compact/current-scrollport-top.png",
+          "bytes": 139633,
+          "sha256": "123f00677734bcf11ee2528e695182f208ece194e622adf6d4b989aece2f2008",
+          "archive": "chromium-compact.zip"
+        },
+        {
+          "path": "operations-release-operati-84a1a-ul-empty-and-failure-states-chromium-compact/operations-center-empty-actual.png",
+          "bytes": 122438,
+          "sha256": "500c413d233c577803c598bb84386983766318b6524ff757eed620ac01c62114",
+          "archive": "chromium-compact.zip"
+        },
+        {
+          "path": "operations-release-operati-84a1a-ul-empty-and-failure-states-chromium-compact/operations-center-empty-diff.png",
+          "bytes": 78933,
+          "sha256": "b8a5524e09ce46bec32327a52183ce4b9411f705f696f40373d7c527cfce1863",
+          "archive": "chromium-compact.zip"
+        },
+        {
+          "path": "operations-release-operati-84a1a-ul-empty-and-failure-states-chromium-compact/operations-center-empty-expected.png",
+          "bytes": 277430,
+          "sha256": "05afd268630b390fd49e461a6bf13dc897bb9f44ee46795f2208f0aa6583949c",
+          "archive": "chromium-compact.zip"
+        },
+        {
+          "path": "operations-release-operati-84a1a-ul-empty-and-failure-states-chromium-compact/operations-center-error-actual.png",
+          "bytes": 139633,
+          "sha256": "123f00677734bcf11ee2528e695182f208ece194e622adf6d4b989aece2f2008",
+          "archive": "chromium-compact.zip"
+        },
+        {
+          "path": "operations-release-operati-84a1a-ul-empty-and-failure-states-chromium-compact/operations-center-error-diff.png",
+          "bytes": 69888,
+          "sha256": "071c2bca39f160ab98be11324b6163d632d24afe1d1a06ca310b2b2a145918f4",
+          "archive": "chromium-compact.zip"
+        },
+        {
+          "path": "operations-release-operati-84a1a-ul-empty-and-failure-states-chromium-compact/operations-center-error-expected.png",
+          "bytes": 260910,
+          "sha256": "81ff6f71c8f4c243e22120580070ef0b00fe29baf0c0a73610e855ddc407c6ac",
+          "archive": "chromium-compact.zip"
+        },
+        {
+          "path": "operations-release-operati-84a1a-ul-empty-and-failure-states-chromium-compact/test-failed-1.png",
+          "bytes": 139582,
+          "sha256": "21c2a264640d97ad0097c010ac407770942dd9e141131af013d77222651c86e1",
+          "archive": "chromium-compact.zip"
+        },
+        {
+          "path": "operations-release-operati-e5f8f-d-read-only-recovery-states-chromium-compact/current-operations-center-partial.png",
+          "bytes": 142962,
+          "sha256": "da395b89f6eb29029be6c6465e9f291e7fbfa1ec9baa68d910f499735951e425",
+          "archive": "chromium-compact.zip"
+        },
+        {
+          "path": "operations-release-operati-e5f8f-d-read-only-recovery-states-chromium-compact/current-operations-center-read-only.png",
+          "bytes": 122044,
+          "sha256": "daaf1ccb5ee33dc7864dde950ea07ca10d7c25706dd4b4e6315f7117e04cc6fd",
+          "archive": "chromium-compact.zip"
+        },
+        {
+          "path": "operations-release-operati-e5f8f-d-read-only-recovery-states-chromium-compact/current-operations-center-reauth.png",
+          "bytes": 142500,
+          "sha256": "d96c3b536144b956d11bf66f94e86ea4afc94c0e653b242ebd16c705b9e43f06",
+          "archive": "chromium-compact.zip"
+        },
+        {
+          "path": "operations-release-operati-e5f8f-d-read-only-recovery-states-chromium-compact/current-scrollport-footer.png",
+          "bytes": 51740,
+          "sha256": "b64bb440abdc3474fb6270de1a065f15d230fa4e56c3489749840227a01e3717",
+          "archive": "chromium-compact.zip"
+        },
+        {
+          "path": "operations-release-operati-e5f8f-d-read-only-recovery-states-chromium-compact/current-scrollport-middle.png",
+          "bytes": 99737,
+          "sha256": "483946e0b5d4cf71aea9cf43c404f3e355af2f43c6f120ef60ebdd71cb4f761c",
+          "archive": "chromium-compact.zip"
+        },
+        {
+          "path": "operations-release-operati-e5f8f-d-read-only-recovery-states-chromium-compact/current-scrollport-operations-center-partial-footer.png",
+          "bytes": 51009,
+          "sha256": "452c67ebb43506772021c465dba701492aef656f3627212454152db01b15ad46",
+          "archive": "chromium-compact.zip"
+        },
+        {
+          "path": "operations-release-operati-e5f8f-d-read-only-recovery-states-chromium-compact/current-scrollport-operations-center-partial-middle.png",
+          "bytes": 98852,
+          "sha256": "b5dcab983fe112ef122876460d85d19bd7aa98f4f495f5b427aa5696205ab732",
+          "archive": "chromium-compact.zip"
+        },
+        {
+          "path": "operations-release-operati-e5f8f-d-read-only-recovery-states-chromium-compact/current-scrollport-operations-center-partial-top.png",
+          "bytes": 142962,
+          "sha256": "da395b89f6eb29029be6c6465e9f291e7fbfa1ec9baa68d910f499735951e425",
+          "archive": "chromium-compact.zip"
+        },
+        {
+          "path": "operations-release-operati-e5f8f-d-read-only-recovery-states-chromium-compact/current-scrollport-operations-center-read-only-footer.png",
+          "bytes": 51740,
+          "sha256": "b64bb440abdc3474fb6270de1a065f15d230fa4e56c3489749840227a01e3717",
+          "archive": "chromium-compact.zip"
+        },
+        {
+          "path": "operations-release-operati-e5f8f-d-read-only-recovery-states-chromium-compact/current-scrollport-operations-center-read-only-middle.png",
+          "bytes": 99737,
+          "sha256": "483946e0b5d4cf71aea9cf43c404f3e355af2f43c6f120ef60ebdd71cb4f761c",
+          "archive": "chromium-compact.zip"
+        },
+        {
+          "path": "operations-release-operati-e5f8f-d-read-only-recovery-states-chromium-compact/current-scrollport-operations-center-read-only-top.png",
+          "bytes": 122044,
+          "sha256": "daaf1ccb5ee33dc7864dde950ea07ca10d7c25706dd4b4e6315f7117e04cc6fd",
+          "archive": "chromium-compact.zip"
+        },
+        {
+          "path": "operations-release-operati-e5f8f-d-read-only-recovery-states-chromium-compact/current-scrollport-operations-center-reauth-footer.png",
+          "bytes": 51009,
+          "sha256": "452c67ebb43506772021c465dba701492aef656f3627212454152db01b15ad46",
+          "archive": "chromium-compact.zip"
+        },
+        {
+          "path": "operations-release-operati-e5f8f-d-read-only-recovery-states-chromium-compact/current-scrollport-operations-center-reauth-middle.png",
+          "bytes": 98819,
+          "sha256": "a5c91a7573c46a8ef5f49c1933724427051b4b2ea0b9633f47e2a0e8a420df08",
+          "archive": "chromium-compact.zip"
+        },
+        {
+          "path": "operations-release-operati-e5f8f-d-read-only-recovery-states-chromium-compact/current-scrollport-operations-center-reauth-top.png",
+          "bytes": 142500,
+          "sha256": "d96c3b536144b956d11bf66f94e86ea4afc94c0e653b242ebd16c705b9e43f06",
+          "archive": "chromium-compact.zip"
+        },
+        {
+          "path": "operations-release-operati-e5f8f-d-read-only-recovery-states-chromium-compact/current-scrollport-top.png",
+          "bytes": 122044,
+          "sha256": "daaf1ccb5ee33dc7864dde950ea07ca10d7c25706dd4b4e6315f7117e04cc6fd",
+          "archive": "chromium-compact.zip"
+        },
+        {
+          "path": "operations-release-operati-e5f8f-d-read-only-recovery-states-chromium-compact/operations-center-partial-actual.png",
+          "bytes": 142962,
+          "sha256": "da395b89f6eb29029be6c6465e9f291e7fbfa1ec9baa68d910f499735951e425",
+          "archive": "chromium-compact.zip"
+        },
+        {
+          "path": "operations-release-operati-e5f8f-d-read-only-recovery-states-chromium-compact/operations-center-partial-diff.png",
+          "bytes": 110229,
+          "sha256": "083a2e56b7420a8c16c3be9d6d463b50cde671cbb92b045b6766145260fa1b27",
+          "archive": "chromium-compact.zip"
+        },
+        {
+          "path": "operations-release-operati-e5f8f-d-read-only-recovery-states-chromium-compact/operations-center-partial-expected.png",
+          "bytes": 376472,
+          "sha256": "5be4b1662b63e3e46653609ff711a2636b7021fa5b83ce1ffe98361ee1b38531",
+          "archive": "chromium-compact.zip"
+        },
+        {
+          "path": "operations-release-operati-e5f8f-d-read-only-recovery-states-chromium-compact/operations-center-read-only-actual.png",
+          "bytes": 122044,
+          "sha256": "daaf1ccb5ee33dc7864dde950ea07ca10d7c25706dd4b4e6315f7117e04cc6fd",
+          "archive": "chromium-compact.zip"
+        },
+        {
+          "path": "operations-release-operati-e5f8f-d-read-only-recovery-states-chromium-compact/operations-center-read-only-diff.png",
+          "bytes": 103164,
+          "sha256": "98312b4b46decd83626901a243b2013d461581c2533ae6500df86981815917fd",
+          "archive": "chromium-compact.zip"
+        },
+        {
+          "path": "operations-release-operati-e5f8f-d-read-only-recovery-states-chromium-compact/operations-center-read-only-expected.png",
+          "bytes": 337988,
+          "sha256": "1ffe6605af04070faa7224ded72b4290b518623ceae06b87a21435e700a9110b",
+          "archive": "chromium-compact.zip"
+        },
+        {
+          "path": "operations-release-operati-e5f8f-d-read-only-recovery-states-chromium-compact/operations-center-reauth-actual.png",
+          "bytes": 142500,
+          "sha256": "d96c3b536144b956d11bf66f94e86ea4afc94c0e653b242ebd16c705b9e43f06",
+          "archive": "chromium-compact.zip"
+        },
+        {
+          "path": "operations-release-operati-e5f8f-d-read-only-recovery-states-chromium-compact/operations-center-reauth-diff.png",
+          "bytes": 110600,
+          "sha256": "51ee6e3204d173bad2d8ee391332c5701a4118a3a84c8b003095ccbdb8d1315f",
+          "archive": "chromium-compact.zip"
+        },
+        {
+          "path": "operations-release-operati-e5f8f-d-read-only-recovery-states-chromium-compact/operations-center-reauth-expected.png",
+          "bytes": 376024,
+          "sha256": "ad3bfe59ca79de001291d61d9120e267fe09d51e514048fb86443e1122603261",
+          "archive": "chromium-compact.zip"
+        },
+        {
+          "path": "operations-release-operati-e5f8f-d-read-only-recovery-states-chromium-compact/test-failed-1.png",
+          "bytes": 122000,
+          "sha256": "d6283cd070b81d36dd506a010f927bb824befa5a7c8f469003df0c38c522f186",
+          "archive": "chromium-compact.zip"
+        }
+      ],
+      "expectedSupportedTests": [
+        {
+          "project": "chromium-compact",
+          "title": "operations center is accessible responsive and visually stable",
+          "expectedStatus": "passed"
+        },
+        {
+          "project": "chromium-compact",
+          "title": "operations center shows truthful empty and failure states",
+          "expectedStatus": "passed"
+        },
+        {
+          "project": "chromium-compact",
+          "title": "operations center exposes stale, reauthentication, and read-only recovery states",
+          "expectedStatus": "passed"
+        }
+      ],
+      "currentCaptureCount": 33,
+      "minimumCaptureShortfall": 0,
+      "captureCoverage": "requires-review",
+      "diagnostics": [],
+      "parts": [
+        {
+          "path": "chromium-compact.zip",
+          "bytes": 7070209,
+          "sha256": "a1f5202fda46ebfd93c9672b07ba70afa8acf9a77396f63e6ba6b1373450f148",
+          "members": [
+            "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-compact/current-operations-center-chromium-compact.png",
+            "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-compact/current-scrollport-footer.png",
+            "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-compact/current-scrollport-middle.png",
+            "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-compact/current-scrollport-operations-center-chromium-compact-footer.png",
+            "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-compact/current-scrollport-operations-center-chromium-compact-middle.png",
+            "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-compact/current-scrollport-operations-center-chromium-compact-top.png",
+            "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-compact/current-scrollport-top.png",
+            "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-compact/operations-center-chromium-compact-actual.png",
+            "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-compact/operations-center-chromium-compact-diff.png",
+            "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-compact/operations-center-chromium-compact-expected.png",
+            "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-compact/test-failed-1.png",
+            "operations-release-operati-84a1a-ul-empty-and-failure-states-chromium-compact/current-operations-center-empty.png",
+            "operations-release-operati-84a1a-ul-empty-and-failure-states-chromium-compact/current-operations-center-error.png",
+            "operations-release-operati-84a1a-ul-empty-and-failure-states-chromium-compact/current-scrollport-footer.png",
+            "operations-release-operati-84a1a-ul-empty-and-failure-states-chromium-compact/current-scrollport-middle.png",
+            "operations-release-operati-84a1a-ul-empty-and-failure-states-chromium-compact/current-scrollport-operations-center-empty-footer.png",
+            "operations-release-operati-84a1a-ul-empty-and-failure-states-chromium-compact/current-scrollport-operations-center-empty-middle.png",
+            "operations-release-operati-84a1a-ul-empty-and-failure-states-chromium-compact/current-scrollport-operations-center-empty-top.png",
+            "operations-release-operati-84a1a-ul-empty-and-failure-states-chromium-compact/current-scrollport-operations-center-error-footer.png",
+            "operations-release-operati-84a1a-ul-empty-and-failure-states-chromium-compact/current-scrollport-operations-center-error-middle.png",
+            "operations-release-operati-84a1a-ul-empty-and-failure-states-chromium-compact/current-scrollport-operations-center-error-top.png",
+            "operations-release-operati-84a1a-ul-empty-and-failure-states-chromium-compact/current-scrollport-top.png",
+            "operations-release-operati-84a1a-ul-empty-and-failure-states-chromium-compact/operations-center-empty-actual.png",
+            "operations-release-operati-84a1a-ul-empty-and-failure-states-chromium-compact/operations-center-empty-diff.png",
+            "operations-release-operati-84a1a-ul-empty-and-failure-states-chromium-compact/operations-center-empty-expected.png",
+            "operations-release-operati-84a1a-ul-empty-and-failure-states-chromium-compact/operations-center-error-actual.png",
+            "operations-release-operati-84a1a-ul-empty-and-failure-states-chromium-compact/operations-center-error-diff.png",
+            "operations-release-operati-84a1a-ul-empty-and-failure-states-chromium-compact/operations-center-error-expected.png",
+            "operations-release-operati-84a1a-ul-empty-and-failure-states-chromium-compact/test-failed-1.png",
+            "operations-release-operati-e5f8f-d-read-only-recovery-states-chromium-compact/current-operations-center-partial.png",
+            "operations-release-operati-e5f8f-d-read-only-recovery-states-chromium-compact/current-operations-center-read-only.png",
+            "operations-release-operati-e5f8f-d-read-only-recovery-states-chromium-compact/current-operations-center-reauth.png",
+            "operations-release-operati-e5f8f-d-read-only-recovery-states-chromium-compact/current-scrollport-footer.png",
+            "operations-release-operati-e5f8f-d-read-only-recovery-states-chromium-compact/current-scrollport-middle.png",
+            "operations-release-operati-e5f8f-d-read-only-recovery-states-chromium-compact/current-scrollport-operations-center-partial-footer.png",
+            "operations-release-operati-e5f8f-d-read-only-recovery-states-chromium-compact/current-scrollport-operations-center-partial-middle.png",
+            "operations-release-operati-e5f8f-d-read-only-recovery-states-chromium-compact/current-scrollport-operations-center-partial-top.png",
+            "operations-release-operati-e5f8f-d-read-only-recovery-states-chromium-compact/current-scrollport-operations-center-read-only-footer.png",
+            "operations-release-operati-e5f8f-d-read-only-recovery-states-chromium-compact/current-scrollport-operations-center-read-only-middle.png",
+            "operations-release-operati-e5f8f-d-read-only-recovery-states-chromium-compact/current-scrollport-operations-center-read-only-top.png",
+            "operations-release-operati-e5f8f-d-read-only-recovery-states-chromium-compact/current-scrollport-operations-center-reauth-footer.png",
+            "operations-release-operati-e5f8f-d-read-only-recovery-states-chromium-compact/current-scrollport-operations-center-reauth-middle.png",
+            "operations-release-operati-e5f8f-d-read-only-recovery-states-chromium-compact/current-scrollport-operations-center-reauth-top.png",
+            "operations-release-operati-e5f8f-d-read-only-recovery-states-chromium-compact/current-scrollport-top.png",
+            "operations-release-operati-e5f8f-d-read-only-recovery-states-chromium-compact/operations-center-partial-actual.png",
+            "operations-release-operati-e5f8f-d-read-only-recovery-states-chromium-compact/operations-center-partial-diff.png",
+            "operations-release-operati-e5f8f-d-read-only-recovery-states-chromium-compact/operations-center-partial-expected.png",
+            "operations-release-operati-e5f8f-d-read-only-recovery-states-chromium-compact/operations-center-read-only-actual.png",
+            "operations-release-operati-e5f8f-d-read-only-recovery-states-chromium-compact/operations-center-read-only-diff.png",
+            "operations-release-operati-e5f8f-d-read-only-recovery-states-chromium-compact/operations-center-read-only-expected.png",
+            "operations-release-operati-e5f8f-d-read-only-recovery-states-chromium-compact/operations-center-reauth-actual.png",
+            "operations-release-operati-e5f8f-d-read-only-recovery-states-chromium-compact/operations-center-reauth-diff.png",
+            "operations-release-operati-e5f8f-d-read-only-recovery-states-chromium-compact/operations-center-reauth-expected.png",
+            "operations-release-operati-e5f8f-d-read-only-recovery-states-chromium-compact/test-failed-1.png"
+          ]
+        }
+      ],
+      "missingDiagnostics": []
+    },
+    "chromium-desktop": {
+      "status": "packaged",
+      "captures": [
+        {
+          "path": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-desktop/current-operations-center-cancel-confirmation.png",
+          "bytes": 620528,
+          "sha256": "dad94e588af2cc1fcb0e45c2a707b9374814f06026173b15bafedccc04cf7877",
+          "archive": "chromium-desktop.zip"
+        },
+        {
+          "path": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-desktop/current-operations-center-chromium-desktop.png",
+          "bytes": 780981,
+          "sha256": "dc71ce7936937cadb07fbcbb1a4770e75974766705fda021ca812f86857bcd54",
+          "archive": "chromium-desktop.zip"
+        },
+        {
+          "path": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-desktop/operations-center-cancel-confirmation-actual.png",
+          "bytes": 620531,
+          "sha256": "b082b5b99da53cf4d5210423d151799715cd0da05d8fc84182041dc0657a2749",
+          "archive": "chromium-desktop.zip"
+        },
+        {
+          "path": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-desktop/operations-center-cancel-confirmation-diff.png",
+          "bytes": 412058,
+          "sha256": "2ac7dcefcad24645ce0e87915ba9367104b39f58af0b6668fbff9a313d3036a3",
+          "archive": "chromium-desktop.zip"
+        },
+        {
+          "path": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-desktop/operations-center-cancel-confirmation-expected.png",
+          "bytes": 584254,
+          "sha256": "1325d1e08bc97fb996fcb8cba4210b4084b4ee2e5d1764692dfb46c08c3db50b",
+          "archive": "chromium-desktop.zip"
+        },
+        {
+          "path": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-desktop/operations-center-chromium-desktop-actual.png",
+          "bytes": 780983,
+          "sha256": "77531b9444f00cba2a0dba0c905e89c97010494da9f787afd5f1eea21e0337e0",
+          "archive": "chromium-desktop.zip"
+        },
+        {
+          "path": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-desktop/operations-center-chromium-desktop-diff.png",
+          "bytes": 383721,
+          "sha256": "fedaca121356a90984ba0c1809fc5269c79238a8343f622f16677f9ce111c22d",
+          "archive": "chromium-desktop.zip"
+        },
+        {
+          "path": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-desktop/operations-center-chromium-desktop-expected.png",
+          "bytes": 710243,
+          "sha256": "7171b2cc03efee2906963f072245f4278ad1d8dbd4b1ad68d38621be9e7289d5",
+          "archive": "chromium-desktop.zip"
+        },
+        {
+          "path": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-desktop/test-failed-1.png",
+          "bytes": 456814,
+          "sha256": "e454b4eea710a42af6cfc7bd8bae8b374b4fdea0cba87085d2f7f08542dc0dea",
+          "archive": "chromium-desktop.zip"
+        },
+        {
+          "path": "operations-release-operati-84a1a-ul-empty-and-failure-states-chromium-desktop/current-operations-center-empty.png",
+          "bytes": 701542,
+          "sha256": "4ad34d64705391f03620307949031afa8b5977d93206bc17a3f51191abd54fba",
+          "archive": "chromium-desktop.zip"
+        },
+        {
+          "path": "operations-release-operati-84a1a-ul-empty-and-failure-states-chromium-desktop/current-operations-center-error.png",
+          "bytes": 698583,
+          "sha256": "bc0c2c270fbdb857865635e0eca94d87c93b7b585787d4b23699816d6a5352a2",
+          "archive": "chromium-desktop.zip"
+        },
+        {
+          "path": "operations-release-operati-84a1a-ul-empty-and-failure-states-chromium-desktop/operations-center-empty-actual.png",
+          "bytes": 701542,
+          "sha256": "4ad34d64705391f03620307949031afa8b5977d93206bc17a3f51191abd54fba",
+          "archive": "chromium-desktop.zip"
+        },
+        {
+          "path": "operations-release-operati-84a1a-ul-empty-and-failure-states-chromium-desktop/operations-center-empty-diff.png",
+          "bytes": 277436,
+          "sha256": "defe9ae60a199c374e0bfb2040205bc1e3b454f3db649b9efbf3ae52b7dcd821",
+          "archive": "chromium-desktop.zip"
+        },
+        {
+          "path": "operations-release-operati-84a1a-ul-empty-and-failure-states-chromium-desktop/operations-center-empty-expected.png",
+          "bytes": 632308,
+          "sha256": "f317be4c5f1268f70857c8dffce78999d4f64930ba29c870c6713baa98f8749d",
+          "archive": "chromium-desktop.zip"
+        },
+        {
+          "path": "operations-release-operati-84a1a-ul-empty-and-failure-states-chromium-desktop/operations-center-error-actual.png",
+          "bytes": 698583,
+          "sha256": "bc0c2c270fbdb857865635e0eca94d87c93b7b585787d4b23699816d6a5352a2",
+          "archive": "chromium-desktop.zip"
+        },
+        {
+          "path": "operations-release-operati-84a1a-ul-empty-and-failure-states-chromium-desktop/operations-center-error-diff.png",
+          "bytes": 234725,
+          "sha256": "4eb7e2c4889577b2d8eb71e189ca92827ef2182800464d25db284bfa2fae2b54",
+          "archive": "chromium-desktop.zip"
+        },
+        {
+          "path": "operations-release-operati-84a1a-ul-empty-and-failure-states-chromium-desktop/operations-center-error-expected.png",
+          "bytes": 636467,
+          "sha256": "45dcf6daa4c006a44b60dc87480d88c298d967d3e8e2b07ff8c05917c25ae960",
+          "archive": "chromium-desktop.zip"
+        },
+        {
+          "path": "operations-release-operati-84a1a-ul-empty-and-failure-states-chromium-desktop/test-failed-1.png",
+          "bytes": 550464,
+          "sha256": "241c825f7ed0d8e75d3b1e60d5934c8c0ee79f61d744f08c0016d5d3e16a91bc",
+          "archive": "chromium-desktop.zip"
+        },
+        {
+          "path": "operations-release-operati-e5f8f-d-read-only-recovery-states-chromium-desktop/current-operations-center-partial.png",
+          "bytes": 841459,
+          "sha256": "05a9e5ed16aea999f99a805bf0a8ed0bffefbe22b72fc837c98a9db63d3985dc",
+          "archive": "chromium-desktop.zip"
+        },
+        {
+          "path": "operations-release-operati-e5f8f-d-read-only-recovery-states-chromium-desktop/current-operations-center-read-only.png",
+          "bytes": 764624,
+          "sha256": "e26867e586ad589dd59a8a2e177ff634a304338f6b1067c798ef484bc97fe868",
+          "archive": "chromium-desktop.zip"
+        },
+        {
+          "path": "operations-release-operati-e5f8f-d-read-only-recovery-states-chromium-desktop/current-operations-center-reauth.png",
+          "bytes": 840948,
+          "sha256": "8b10f16cfdade9983160fa21cb49dcce0f7efc66746f2b892b25f1b18622ae51",
+          "archive": "chromium-desktop.zip"
+        },
+        {
+          "path": "operations-release-operati-e5f8f-d-read-only-recovery-states-chromium-desktop/operations-center-partial-actual.png",
+          "bytes": 841457,
+          "sha256": "0f305462438300b4b5921949077681abc22600a4e10136a2df8d8496b18e9d83",
+          "archive": "chromium-desktop.zip"
+        },
+        {
+          "path": "operations-release-operati-e5f8f-d-read-only-recovery-states-chromium-desktop/operations-center-partial-diff.png",
+          "bytes": 396200,
+          "sha256": "2fdf7219f513e06bc899ad72b401ee976fec9dcd83132a162b32a7373613be89",
+          "archive": "chromium-desktop.zip"
+        },
+        {
+          "path": "operations-release-operati-e5f8f-d-read-only-recovery-states-chromium-desktop/operations-center-partial-expected.png",
+          "bytes": 788323,
+          "sha256": "0228ba9ab17d774af6a3fa4796274190887ab15047aa9e376df9d7d65e04cbc8",
+          "archive": "chromium-desktop.zip"
+        },
+        {
+          "path": "operations-release-operati-e5f8f-d-read-only-recovery-states-chromium-desktop/operations-center-read-only-actual.png",
+          "bytes": 764617,
+          "sha256": "11812afc807dc8a8eb364d175528a1aa98f8fc22e18dbc5449b29e380b92f442",
+          "archive": "chromium-desktop.zip"
+        },
+        {
+          "path": "operations-release-operati-e5f8f-d-read-only-recovery-states-chromium-desktop/operations-center-read-only-diff.png",
+          "bytes": 368728,
+          "sha256": "37f5e204f5927ecca0b2e8c4f4add859e10a0f89f5e25c2537623c48960758fa",
+          "archive": "chromium-desktop.zip"
+        },
+        {
+          "path": "operations-release-operati-e5f8f-d-read-only-recovery-states-chromium-desktop/operations-center-read-only-expected.png",
+          "bytes": 693606,
+          "sha256": "d7e6412f2a9ea106e5b90dc0f9e5432cd859cc3df269f12e45c0476abe465e2e",
+          "archive": "chromium-desktop.zip"
+        },
+        {
+          "path": "operations-release-operati-e5f8f-d-read-only-recovery-states-chromium-desktop/operations-center-reauth-actual.png",
+          "bytes": 840939,
+          "sha256": "380601cb276752a5bca25897f7c6c35196d36289e52bb181789f22f2e473d041",
+          "archive": "chromium-desktop.zip"
+        },
+        {
+          "path": "operations-release-operati-e5f8f-d-read-only-recovery-states-chromium-desktop/operations-center-reauth-diff.png",
+          "bytes": 396120,
+          "sha256": "83d09ccc39d1012509723f2c0bccbafc7547037e71bc2627be8f1284f0566c36",
+          "archive": "chromium-desktop.zip"
+        },
+        {
+          "path": "operations-release-operati-e5f8f-d-read-only-recovery-states-chromium-desktop/operations-center-reauth-expected.png",
+          "bytes": 787858,
+          "sha256": "4092d751bd0e40b83b1728aae8c08fce0d2a3bf101004da06b9959db29b88219",
+          "archive": "chromium-desktop.zip"
+        },
+        {
+          "path": "operations-release-operati-e5f8f-d-read-only-recovery-states-chromium-desktop/test-failed-1.png",
+          "bytes": 524382,
+          "sha256": "8e8b62eee98b6a56b46858c68c55cb4e631dec3ed67f53a85abfbf1c34b1dd8e",
+          "archive": "chromium-desktop.zip"
+        }
+      ],
+      "expectedSupportedTests": [
+        {
+          "project": "chromium-desktop",
+          "title": "operations center is accessible responsive and visually stable",
+          "expectedStatus": "passed"
+        },
+        {
+          "project": "chromium-desktop",
+          "title": "operations center shows truthful empty and failure states",
+          "expectedStatus": "passed"
+        },
+        {
+          "project": "chromium-desktop",
+          "title": "operations center exposes stale, reauthentication, and read-only recovery states",
+          "expectedStatus": "passed"
+        }
+      ],
+      "currentCaptureCount": 7,
+      "minimumCaptureShortfall": 0,
+      "captureCoverage": "requires-review",
+      "diagnostics": [],
+      "parts": [
+        {
+          "path": "chromium-desktop.zip",
+          "bytes": 19340514,
+          "sha256": "6d94a27cdce1ae6ac55a31371ba4b7a758baf2c37ba198a529600d6769ca5714",
+          "members": [
+            "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-desktop/current-operations-center-cancel-confirmation.png",
+            "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-desktop/current-operations-center-chromium-desktop.png",
+            "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-desktop/operations-center-cancel-confirmation-actual.png",
+            "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-desktop/operations-center-cancel-confirmation-diff.png",
+            "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-desktop/operations-center-cancel-confirmation-expected.png",
+            "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-desktop/operations-center-chromium-desktop-actual.png",
+            "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-desktop/operations-center-chromium-desktop-diff.png",
+            "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-desktop/operations-center-chromium-desktop-expected.png",
+            "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-desktop/test-failed-1.png",
+            "operations-release-operati-84a1a-ul-empty-and-failure-states-chromium-desktop/current-operations-center-empty.png",
+            "operations-release-operati-84a1a-ul-empty-and-failure-states-chromium-desktop/current-operations-center-error.png",
+            "operations-release-operati-84a1a-ul-empty-and-failure-states-chromium-desktop/operations-center-empty-actual.png",
+            "operations-release-operati-84a1a-ul-empty-and-failure-states-chromium-desktop/operations-center-empty-diff.png",
+            "operations-release-operati-84a1a-ul-empty-and-failure-states-chromium-desktop/operations-center-empty-expected.png",
+            "operations-release-operati-84a1a-ul-empty-and-failure-states-chromium-desktop/operations-center-error-actual.png",
+            "operations-release-operati-84a1a-ul-empty-and-failure-states-chromium-desktop/operations-center-error-diff.png",
+            "operations-release-operati-84a1a-ul-empty-and-failure-states-chromium-desktop/operations-center-error-expected.png",
+            "operations-release-operati-84a1a-ul-empty-and-failure-states-chromium-desktop/test-failed-1.png",
+            "operations-release-operati-e5f8f-d-read-only-recovery-states-chromium-desktop/current-operations-center-partial.png",
+            "operations-release-operati-e5f8f-d-read-only-recovery-states-chromium-desktop/current-operations-center-read-only.png",
+            "operations-release-operati-e5f8f-d-read-only-recovery-states-chromium-desktop/current-operations-center-reauth.png",
+            "operations-release-operati-e5f8f-d-read-only-recovery-states-chromium-desktop/operations-center-partial-actual.png",
+            "operations-release-operati-e5f8f-d-read-only-recovery-states-chromium-desktop/operations-center-partial-diff.png",
+            "operations-release-operati-e5f8f-d-read-only-recovery-states-chromium-desktop/operations-center-partial-expected.png",
+            "operations-release-operati-e5f8f-d-read-only-recovery-states-chromium-desktop/operations-center-read-only-actual.png",
+            "operations-release-operati-e5f8f-d-read-only-recovery-states-chromium-desktop/operations-center-read-only-diff.png",
+            "operations-release-operati-e5f8f-d-read-only-recovery-states-chromium-desktop/operations-center-read-only-expected.png",
+            "operations-release-operati-e5f8f-d-read-only-recovery-states-chromium-desktop/operations-center-reauth-actual.png",
+            "operations-release-operati-e5f8f-d-read-only-recovery-states-chromium-desktop/operations-center-reauth-diff.png",
+            "operations-release-operati-e5f8f-d-read-only-recovery-states-chromium-desktop/operations-center-reauth-expected.png",
+            "operations-release-operati-e5f8f-d-read-only-recovery-states-chromium-desktop/test-failed-1.png"
+          ]
+        }
+      ],
+      "missingDiagnostics": []
+    },
+    "chromium-german": {
+      "status": "packaged",
+      "captures": [
+        {
+          "path": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-german/current-operations-center-chromium-german.png",
+          "bytes": 740508,
+          "sha256": "87c52c712ee6778e71f7c5a2a330e47325069492ca2c5962cde3446c6933d6eb",
+          "archive": "chromium-german.zip"
+        },
+        {
+          "path": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-german/operations-center-chromium-german-actual.png",
+          "bytes": 740497,
+          "sha256": "7b1c9065bc35234c3ed705c2e44a392001ab8acaee3655b93ac8422e755e82ab",
+          "archive": "chromium-german.zip"
+        },
+        {
+          "path": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-german/operations-center-chromium-german-diff.png",
+          "bytes": 392366,
+          "sha256": "8fbdc0e118efffd855fe3ad9b3fae4c73f5e9f55274414a6db6b8bf0423304c4",
+          "archive": "chromium-german.zip"
+        },
+        {
+          "path": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-german/operations-center-chromium-german-expected.png",
+          "bytes": 644957,
+          "sha256": "8baca809c8fc24f5ec50a0009530baedaa5fe7f31104283287dbcb078f8501f0",
+          "archive": "chromium-german.zip"
+        },
+        {
+          "path": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-german/test-failed-1.png",
+          "bytes": 388165,
+          "sha256": "59f2eb7b2bb749424796160dda1c386013b2a8f5be6679135e9e69a2dde8ee9e",
+          "archive": "chromium-german.zip"
+        }
+      ],
+      "expectedSupportedTests": [
+        {
+          "project": "chromium-german",
+          "title": "operations center is accessible responsive and visually stable",
+          "expectedStatus": "passed"
+        }
+      ],
+      "currentCaptureCount": 1,
+      "minimumCaptureShortfall": 0,
+      "captureCoverage": "requires-review",
+      "diagnostics": [],
+      "parts": [
+        {
+          "path": "chromium-german.zip",
+          "bytes": 2908053,
+          "sha256": "2d8112bdcb5e656708e2296e7059468746970612ad6e0310693f311ae18c5a1b",
+          "members": [
+            "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-german/current-operations-center-chromium-german.png",
+            "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-german/operations-center-chromium-german-actual.png",
+            "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-german/operations-center-chromium-german-diff.png",
+            "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-german/operations-center-chromium-german-expected.png",
+            "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-german/test-failed-1.png"
+          ]
+        }
+      ],
+      "missingDiagnostics": []
+    },
+    "chromium-high-contrast": {
+      "status": "packaged",
+      "captures": [
+        {
+          "path": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-high-contrast/current-operations-center-chromium-high-contrast.png",
+          "bytes": 637032,
+          "sha256": "4da0149ebb5157aad6f8a87d87c32bc7fae93a26bc8d6acd9ee12e6f1d193a88",
+          "archive": "chromium-high-contrast.zip"
+        },
+        {
+          "path": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-high-contrast/operations-center-chromium-high-contrast-actual.png",
+          "bytes": 636906,
+          "sha256": "0f095c237202296b9beaf6ff2472f37bb38406c5aa1cce8e37e7491405993119",
+          "archive": "chromium-high-contrast.zip"
+        },
+        {
+          "path": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-high-contrast/operations-center-chromium-high-contrast-diff.png",
+          "bytes": 352384,
+          "sha256": "c933ae0ad08242e626f888df234b6a0f8968a1464f779ed63a293d10f16955ea",
+          "archive": "chromium-high-contrast.zip"
+        },
+        {
+          "path": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-high-contrast/operations-center-chromium-high-contrast-expected.png",
+          "bytes": 533646,
+          "sha256": "b2be5bb2b7727f82ab60524d796d008158bf62106672ae197c7bb94c00347b24",
+          "archive": "chromium-high-contrast.zip"
+        },
+        {
+          "path": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-high-contrast/test-failed-1.png",
+          "bytes": 358297,
+          "sha256": "1f6eec1848cbced3ab6085b8faadc71e118ee1dd237abb323fd70ba99b0db142",
+          "archive": "chromium-high-contrast.zip"
+        }
+      ],
+      "expectedSupportedTests": [
+        {
+          "project": "chromium-high-contrast",
+          "title": "operations center is accessible responsive and visually stable",
+          "expectedStatus": "passed"
+        }
+      ],
+      "currentCaptureCount": 1,
+      "minimumCaptureShortfall": 0,
+      "captureCoverage": "requires-review",
+      "diagnostics": [],
+      "parts": [
+        {
+          "path": "chromium-high-contrast.zip",
+          "bytes": 2519951,
+          "sha256": "d64dbda02d4d699f16d4a10ff755682d2b9501e8cc579d8e6c6346c2ad56a3b2",
+          "members": [
+            "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-high-contrast/current-operations-center-chromium-high-contrast.png",
+            "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-high-contrast/operations-center-chromium-high-contrast-actual.png",
+            "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-high-contrast/operations-center-chromium-high-contrast-diff.png",
+            "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-high-contrast/operations-center-chromium-high-contrast-expected.png",
+            "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-high-contrast/test-failed-1.png"
+          ]
+        }
+      ],
+      "missingDiagnostics": []
+    },
+    "chromium-landscape-touch": {
+      "status": "packaged",
+      "captures": [
+        {
+          "path": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-landscape-touch/current-operations-center-chromium-landscape-touch.png",
+          "bytes": 119519,
+          "sha256": "39a1a5ca1d6a0817da551e256f399b4773681e697840860dee5e22383f5bb45d",
+          "archive": "chromium-landscape-touch.zip"
+        },
+        {
+          "path": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-landscape-touch/current-scrollport-footer.png",
+          "bytes": 61763,
+          "sha256": "3345b9327254ff26759bbfc7ad92afdbbcfba7d3ab454245decf3184132fc261",
+          "archive": "chromium-landscape-touch.zip"
+        },
+        {
+          "path": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-landscape-touch/current-scrollport-middle.png",
+          "bytes": 83205,
+          "sha256": "016cf05f8670b8afc13a9c7445918dc8fdc336b79df8cba183fefe45693844c9",
+          "archive": "chromium-landscape-touch.zip"
+        },
+        {
+          "path": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-landscape-touch/current-scrollport-operations-center-chromium-landscape-touch-footer.png",
+          "bytes": 62435,
+          "sha256": "d808ec541b123482e9559209cd2c6f9b07dc936311af363823e6d6ad43a50e61",
+          "archive": "chromium-landscape-touch.zip"
+        },
+        {
+          "path": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-landscape-touch/current-scrollport-operations-center-chromium-landscape-touch-middle.png",
+          "bytes": 86251,
+          "sha256": "991c572b6102bf59450782e1eb309d9f11a3e742877182770a268df30525c902",
+          "archive": "chromium-landscape-touch.zip"
+        },
+        {
+          "path": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-landscape-touch/current-scrollport-operations-center-chromium-landscape-touch-top.png",
+          "bytes": 119519,
+          "sha256": "39a1a5ca1d6a0817da551e256f399b4773681e697840860dee5e22383f5bb45d",
+          "archive": "chromium-landscape-touch.zip"
+        },
+        {
+          "path": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-landscape-touch/current-scrollport-top.png",
+          "bytes": 118754,
+          "sha256": "99b139b4c48f0d58e9e98caa4d103bc89a82e460652ac30ac3f0ee0738458371",
+          "archive": "chromium-landscape-touch.zip"
+        },
+        {
+          "path": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-landscape-touch/operations-center-chromium-landscape-touch-actual.png",
+          "bytes": 119519,
+          "sha256": "39a1a5ca1d6a0817da551e256f399b4773681e697840860dee5e22383f5bb45d",
+          "archive": "chromium-landscape-touch.zip"
+        },
+        {
+          "path": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-landscape-touch/operations-center-chromium-landscape-touch-diff.png",
+          "bytes": 151951,
+          "sha256": "e4e1cd1c6fe56ebf3d55b39de00cba164d4248ff525f9b763c1e8ad6c06478c2",
+          "archive": "chromium-landscape-touch.zip"
+        },
+        {
+          "path": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-landscape-touch/operations-center-chromium-landscape-touch-expected.png",
+          "bytes": 494841,
+          "sha256": "50bbd336227643bb90112b527340bbd0a188465bb76abb15f38c32ed10296389",
+          "archive": "chromium-landscape-touch.zip"
+        },
+        {
+          "path": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-landscape-touch/test-failed-1.png",
+          "bytes": 85297,
+          "sha256": "1d67c93bafc526f6a569095ea0623e2d140463b3c38e5284c59021d9b035f6c8",
+          "archive": "chromium-landscape-touch.zip"
+        }
+      ],
+      "expectedSupportedTests": [
+        {
+          "project": "chromium-landscape-touch",
+          "title": "operations center is accessible responsive and visually stable",
+          "expectedStatus": "passed"
+        }
+      ],
+      "currentCaptureCount": 7,
+      "minimumCaptureShortfall": 0,
+      "captureCoverage": "requires-review",
+      "diagnostics": [],
+      "parts": [
+        {
+          "path": "chromium-landscape-touch.zip",
+          "bytes": 1506858,
+          "sha256": "b518188942b9e6b37ddf3f659d42c5949c4f5542464ab480e47ba5ea3881fe06",
+          "members": [
+            "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-landscape-touch/current-operations-center-chromium-landscape-touch.png",
+            "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-landscape-touch/current-scrollport-footer.png",
+            "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-landscape-touch/current-scrollport-middle.png",
+            "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-landscape-touch/current-scrollport-operations-center-chromium-landscape-touch-footer.png",
+            "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-landscape-touch/current-scrollport-operations-center-chromium-landscape-touch-middle.png",
+            "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-landscape-touch/current-scrollport-operations-center-chromium-landscape-touch-top.png",
+            "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-landscape-touch/current-scrollport-top.png",
+            "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-landscape-touch/operations-center-chromium-landscape-touch-actual.png",
+            "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-landscape-touch/operations-center-chromium-landscape-touch-diff.png",
+            "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-landscape-touch/operations-center-chromium-landscape-touch-expected.png",
+            "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-landscape-touch/test-failed-1.png"
+          ]
+        }
+      ],
+      "missingDiagnostics": []
+    },
+    "chromium-large-text": {
+      "status": "packaged",
+      "captures": [
+        {
+          "path": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-large-text/current-operations-center-chromium-large-text.png",
+          "bytes": 1136516,
+          "sha256": "0a926c7892f15bab11b7a59d9dec094fd1e062d96db4cccdbaa9adab10403c16",
+          "archive": "chromium-large-text.zip"
+        },
+        {
+          "path": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-large-text/operations-center-chromium-large-text-actual.png",
+          "bytes": 1136529,
+          "sha256": "efaab2b3cbbd7f53774fc5382b762d874c5ea07f6ac49fb441f2ac3fcce69cbe",
+          "archive": "chromium-large-text.zip"
+        },
+        {
+          "path": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-large-text/operations-center-chromium-large-text-diff.png",
+          "bytes": 674032,
+          "sha256": "a968a96fa613725eea375493f24e6a56866eb52ddd18af2976c7af6e42beeb3a",
+          "archive": "chromium-large-text.zip"
+        },
+        {
+          "path": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-large-text/operations-center-chromium-large-text-expected.png",
+          "bytes": 1045489,
+          "sha256": "eeded87bd5855d0714b39ceee2deb7aa5a417b03c0dc7f06f3a0246424335212",
+          "archive": "chromium-large-text.zip"
+        },
+        {
+          "path": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-large-text/test-failed-1.png",
+          "bytes": 367616,
+          "sha256": "b3be5eee6e86b593b3a1872b5358dd5ebac7bbc6ff7df3f4299e5cfa5efbc00f",
+          "archive": "chromium-large-text.zip"
+        }
+      ],
+      "expectedSupportedTests": [
+        {
+          "project": "chromium-large-text",
+          "title": "operations center is accessible responsive and visually stable",
+          "expectedStatus": "passed"
+        }
+      ],
+      "currentCaptureCount": 1,
+      "minimumCaptureShortfall": 0,
+      "captureCoverage": "requires-review",
+      "diagnostics": [],
+      "parts": [
+        {
+          "path": "chromium-large-text.zip",
+          "bytes": 4361814,
+          "sha256": "c6186ee9da985ca89a24e71bbea13b3d7c3d5450392ab9da8ded0ddfe7c643df",
+          "members": [
+            "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-large-text/current-operations-center-chromium-large-text.png",
+            "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-large-text/operations-center-chromium-large-text-actual.png",
+            "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-large-text/operations-center-chromium-large-text-diff.png",
+            "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-large-text/operations-center-chromium-large-text-expected.png",
+            "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-large-text/test-failed-1.png"
+          ]
+        }
+      ],
+      "missingDiagnostics": []
+    },
+    "chromium-light": {
+      "status": "packaged",
+      "captures": [
+        {
+          "path": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-light/current-operations-center-chromium-light.png",
+          "bytes": 823211,
+          "sha256": "ca221c33c93e8a9b43dfc568950b02a38227c35441c328307c767cf154cec9f0",
+          "archive": "chromium-light.zip"
+        },
+        {
+          "path": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-light/operations-center-chromium-light-actual.png",
+          "bytes": 823211,
+          "sha256": "ca221c33c93e8a9b43dfc568950b02a38227c35441c328307c767cf154cec9f0",
+          "archive": "chromium-light.zip"
+        },
+        {
+          "path": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-light/operations-center-chromium-light-diff.png",
+          "bytes": 355184,
+          "sha256": "97eb1a67d3305367544d82a9d510034bf7f6a0670345b50cca4e85f06a4ef453",
+          "archive": "chromium-light.zip"
+        },
+        {
+          "path": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-light/operations-center-chromium-light-expected.png",
+          "bytes": 699028,
+          "sha256": "ef61d67b2780a6255dfe40cdb745a457205d180e7eb8d951ef950b6fd741f81d",
+          "archive": "chromium-light.zip"
+        },
+        {
+          "path": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-light/test-failed-1.png",
+          "bytes": 411789,
+          "sha256": "73c812174c82a221ee1b80fc08b764981cf0316b22881d9e6ab2e0195f22b294",
+          "archive": "chromium-light.zip"
+        }
+      ],
+      "expectedSupportedTests": [
+        {
+          "project": "chromium-light",
+          "title": "operations center is accessible responsive and visually stable",
+          "expectedStatus": "passed"
+        }
+      ],
+      "currentCaptureCount": 1,
+      "minimumCaptureShortfall": 0,
+      "captureCoverage": "requires-review",
+      "diagnostics": [],
+      "parts": [
+        {
+          "path": "chromium-light.zip",
+          "bytes": 3113965,
+          "sha256": "45fb2150f2dbe7864e4a198f5d29fd562373dec2e9ea326ac10728631f8445d5",
+          "members": [
+            "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-light/current-operations-center-chromium-light.png",
+            "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-light/operations-center-chromium-light-actual.png",
+            "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-light/operations-center-chromium-light-diff.png",
+            "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-light/operations-center-chromium-light-expected.png",
+            "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-light/test-failed-1.png"
+          ]
+        }
+      ],
+      "missingDiagnostics": []
+    },
+    "chromium-reduced-motion": {
+      "status": "packaged",
+      "captures": [
+        {
+          "path": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-reduced-motion/current-operations-center-chromium-reduced-motion.png",
+          "bytes": 766472,
+          "sha256": "6b86eeec3b74600e66851e04ccd201f5bc6793b1b4fb7e1c75d1dfa4485b9f4a",
+          "archive": "chromium-reduced-motion.zip"
+        },
+        {
+          "path": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-reduced-motion/operations-center-chromium-reduced-motion-actual.png",
+          "bytes": 766472,
+          "sha256": "6b86eeec3b74600e66851e04ccd201f5bc6793b1b4fb7e1c75d1dfa4485b9f4a",
+          "archive": "chromium-reduced-motion.zip"
+        },
+        {
+          "path": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-reduced-motion/operations-center-chromium-reduced-motion-diff.png",
+          "bytes": 376026,
+          "sha256": "49ab9e2e9495d204a9abd2d81d511e341e4d3654f6b313a87b1537511b18c5c5",
+          "archive": "chromium-reduced-motion.zip"
+        },
+        {
+          "path": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-reduced-motion/operations-center-chromium-reduced-motion-expected.png",
+          "bytes": 650722,
+          "sha256": "953059595ab6f82214a71ba3fff4f61753362d43faf8003d390d234eab50ea1f",
+          "archive": "chromium-reduced-motion.zip"
+        },
+        {
+          "path": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-reduced-motion/test-failed-1.png",
+          "bytes": 384959,
+          "sha256": "e35c3d5605be592d1a58baf8976af3217f1231cdedc23da2e1be9d110212825b",
+          "archive": "chromium-reduced-motion.zip"
+        }
+      ],
+      "expectedSupportedTests": [
+        {
+          "project": "chromium-reduced-motion",
+          "title": "operations center is accessible responsive and visually stable",
+          "expectedStatus": "passed"
+        }
+      ],
+      "currentCaptureCount": 1,
+      "minimumCaptureShortfall": 0,
+      "captureCoverage": "requires-review",
+      "diagnostics": [],
+      "parts": [
+        {
+          "path": "chromium-reduced-motion.zip",
+          "bytes": 2946355,
+          "sha256": "2ccf0a305517e5f93216ffed45ceaeac9bb2cbf8725f25bc2f8a67f1c2558447",
+          "members": [
+            "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-reduced-motion/current-operations-center-chromium-reduced-motion.png",
+            "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-reduced-motion/operations-center-chromium-reduced-motion-actual.png",
+            "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-reduced-motion/operations-center-chromium-reduced-motion-diff.png",
+            "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-reduced-motion/operations-center-chromium-reduced-motion-expected.png",
+            "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-reduced-motion/test-failed-1.png"
+          ]
+        }
+      ],
+      "missingDiagnostics": []
+    },
+    "chromium-rtl": {
+      "status": "packaged",
+      "captures": [
+        {
+          "path": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-rtl/current-operations-center-chromium-rtl.png",
+          "bytes": 700836,
+          "sha256": "51548f3ecdf307d60a525efbea058489f167ae89f79121b72126c1f3cf41f8ba",
+          "archive": "chromium-rtl.zip"
+        },
+        {
+          "path": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-rtl/operations-center-chromium-rtl-actual.png",
+          "bytes": 700834,
+          "sha256": "4a7b54f9841fe17924c663839874399c66cac0493cf649505bad22ce6b93cb79",
+          "archive": "chromium-rtl.zip"
+        },
+        {
+          "path": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-rtl/operations-center-chromium-rtl-diff.png",
+          "bytes": 366043,
+          "sha256": "c310f23f2b22fd640e4942c13da15a60c651a704b9122b21d2cc95eb7240ea99",
+          "archive": "chromium-rtl.zip"
+        },
+        {
+          "path": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-rtl/operations-center-chromium-rtl-expected.png",
+          "bytes": 600884,
+          "sha256": "6d956dbc372443c8117b7af2091181e8fc17110c7bcaad0d8109bdccca1f24d1",
+          "archive": "chromium-rtl.zip"
+        },
+        {
+          "path": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-rtl/test-failed-1.png",
+          "bytes": 382756,
+          "sha256": "c7690d410cc9258f42e554e22c6b102832d2d8593b92dc6a032e95fa8fc291a5",
+          "archive": "chromium-rtl.zip"
+        }
+      ],
+      "expectedSupportedTests": [
+        {
+          "project": "chromium-rtl",
+          "title": "operations center is accessible responsive and visually stable",
+          "expectedStatus": "passed"
+        }
+      ],
+      "currentCaptureCount": 1,
+      "minimumCaptureShortfall": 0,
+      "captureCoverage": "requires-review",
+      "diagnostics": [],
+      "parts": [
+        {
+          "path": "chromium-rtl.zip",
+          "bytes": 2752859,
+          "sha256": "5a771af9ba00da19629773a25c85a957b23cca7e3e60c2fbb01a8a7413adbfbe",
+          "members": [
+            "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-rtl/current-operations-center-chromium-rtl.png",
+            "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-rtl/operations-center-chromium-rtl-actual.png",
+            "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-rtl/operations-center-chromium-rtl-diff.png",
+            "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-rtl/operations-center-chromium-rtl-expected.png",
+            "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-rtl/test-failed-1.png"
+          ]
+        }
+      ],
+      "missingDiagnostics": []
+    },
+    "chromium-tablet": {
+      "status": "packaged",
+      "captures": [
+        {
+          "path": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-tablet/current-operations-center-chromium-tablet.png",
+          "bytes": 313797,
+          "sha256": "183ba7a93eadfea8005bc7c1f7095210092a9fb40a7b970039c66bc75a0e4426",
+          "archive": "chromium-tablet.zip"
+        },
+        {
+          "path": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-tablet/current-scrollport-footer.png",
+          "bytes": 168321,
+          "sha256": "293184d53bc08fe9db6025c18743ce7a42e0f625f3796b52bb8f246df6106054",
+          "archive": "chromium-tablet.zip"
+        },
+        {
+          "path": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-tablet/current-scrollport-middle.png",
+          "bytes": 219552,
+          "sha256": "dede06968d9042b5a8db833839257fcd461d5db3a17fdcc404bf08a3cd5a32c2",
+          "archive": "chromium-tablet.zip"
+        },
+        {
+          "path": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-tablet/current-scrollport-operations-center-chromium-tablet-footer.png",
+          "bytes": 169004,
+          "sha256": "0b24581ffde96e85b62f4d87950333c101c4e720bf2e053caf61a4559026d969",
+          "archive": "chromium-tablet.zip"
+        },
+        {
+          "path": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-tablet/current-scrollport-operations-center-chromium-tablet-middle.png",
+          "bytes": 207057,
+          "sha256": "e4ab64a16fb52734cfb46aa726764b460ce8c11fbfbd48f0229233c55085cbf7",
+          "archive": "chromium-tablet.zip"
+        },
+        {
+          "path": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-tablet/current-scrollport-operations-center-chromium-tablet-top.png",
+          "bytes": 313797,
+          "sha256": "183ba7a93eadfea8005bc7c1f7095210092a9fb40a7b970039c66bc75a0e4426",
+          "archive": "chromium-tablet.zip"
+        },
+        {
+          "path": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-tablet/current-scrollport-top.png",
+          "bytes": 321377,
+          "sha256": "550e5e1a2ac04465b7b631b7996688ad64150ec5becd7ba79efc8879c08f09b3",
+          "archive": "chromium-tablet.zip"
+        },
+        {
+          "path": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-tablet/operations-center-chromium-tablet-actual.png",
+          "bytes": 313797,
+          "sha256": "183ba7a93eadfea8005bc7c1f7095210092a9fb40a7b970039c66bc75a0e4426",
+          "archive": "chromium-tablet.zip"
+        },
+        {
+          "path": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-tablet/operations-center-chromium-tablet-diff.png",
+          "bytes": 165802,
+          "sha256": "7a4ba7231c9103f80956d264524a2b3bd234e460caf93008bb87765d188e141c",
+          "archive": "chromium-tablet.zip"
+        },
+        {
+          "path": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-tablet/operations-center-chromium-tablet-expected.png",
+          "bytes": 621708,
+          "sha256": "5a789f501af5626cf1edf97b3f9a2885a080bca4594220df934ae964c28b383e",
+          "archive": "chromium-tablet.zip"
+        },
+        {
+          "path": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-tablet/test-failed-1.png",
+          "bytes": 199183,
+          "sha256": "07448d7f93034a4b30ccf0974e285b141de522f87b3b5701b2d9e740f9185405",
+          "archive": "chromium-tablet.zip"
+        }
+      ],
+      "expectedSupportedTests": [
+        {
+          "project": "chromium-tablet",
+          "title": "operations center is accessible responsive and visually stable",
+          "expectedStatus": "passed"
+        }
+      ],
+      "currentCaptureCount": 7,
+      "minimumCaptureShortfall": 0,
+      "captureCoverage": "requires-review",
+      "diagnostics": [],
+      "parts": [
+        {
+          "path": "chromium-tablet.zip",
+          "bytes": 3016875,
+          "sha256": "022e59acda4bf37637263eea420d364870b3a69ef906a9f323d25085bc1cd7d3",
+          "members": [
+            "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-tablet/current-operations-center-chromium-tablet.png",
+            "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-tablet/current-scrollport-footer.png",
+            "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-tablet/current-scrollport-middle.png",
+            "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-tablet/current-scrollport-operations-center-chromium-tablet-footer.png",
+            "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-tablet/current-scrollport-operations-center-chromium-tablet-middle.png",
+            "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-tablet/current-scrollport-operations-center-chromium-tablet-top.png",
+            "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-tablet/current-scrollport-top.png",
+            "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-tablet/operations-center-chromium-tablet-actual.png",
+            "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-tablet/operations-center-chromium-tablet-diff.png",
+            "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-tablet/operations-center-chromium-tablet-expected.png",
+            "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-tablet/test-failed-1.png"
+          ]
+        }
+      ],
+      "missingDiagnostics": []
+    },
+    "chromium-ultrawide": {
+      "status": "packaged",
+      "captures": [
+        {
+          "path": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-ultrawide/current-operations-center-chromium-ultrawide.png",
+          "bytes": 1413677,
+          "sha256": "b4bdffa0c1923b73d5e4c4ea902d859912495f0288684dad71980e944f95d617",
+          "archive": "chromium-ultrawide.zip"
+        }
+      ],
+      "expectedSupportedTests": [
+        {
+          "project": "chromium-ultrawide",
+          "title": "operations center is accessible responsive and visually stable",
+          "expectedStatus": "passed"
+        }
+      ],
+      "currentCaptureCount": 1,
+      "minimumCaptureShortfall": 0,
+      "captureCoverage": "requires-review",
+      "diagnostics": [],
+      "parts": [
+        {
+          "path": "chromium-ultrawide.zip",
+          "bytes": 1414031,
+          "sha256": "62a7c275ced88acee96b2869252115e297413891d74e4aada08b30297061e2fc",
+          "members": [
+            "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-ultrawide/current-operations-center-chromium-ultrawide.png"
+          ]
+        }
+      ],
+      "missingDiagnostics": []
+    },
+    "firefox-desktop": {
+      "status": "packaged",
+      "captures": [
+        {
+          "path": "operations-release-operati-5407b-ponsive-and-visually-stable-firefox-desktop/current-operations-center-firefox-desktop.png",
+          "bytes": 1108910,
+          "sha256": "70bf093dbf4eba6447d23b37ce1366f6713932727079fb7ba01f63d89ea63464",
+          "archive": "firefox-desktop.zip"
+        },
+        {
+          "path": "operations-release-operati-5407b-ponsive-and-visually-stable-firefox-desktop/operations-center-firefox-desktop-actual.png",
+          "bytes": 1108910,
+          "sha256": "70bf093dbf4eba6447d23b37ce1366f6713932727079fb7ba01f63d89ea63464",
+          "archive": "firefox-desktop.zip"
+        },
+        {
+          "path": "operations-release-operati-5407b-ponsive-and-visually-stable-firefox-desktop/operations-center-firefox-desktop-diff.png",
+          "bytes": 338098,
+          "sha256": "4ce6e64d543148ec378effd5e967ca9d636c59b4afc7db367338570bd8e4e984",
+          "archive": "firefox-desktop.zip"
+        },
+        {
+          "path": "operations-release-operati-5407b-ponsive-and-visually-stable-firefox-desktop/operations-center-firefox-desktop-expected.png",
+          "bytes": 994124,
+          "sha256": "a094ae700e522cda919684a716238dc95496a9bb0cd610dcf8d9cf9e2535a043",
+          "archive": "firefox-desktop.zip"
+        },
+        {
+          "path": "operations-release-operati-5407b-ponsive-and-visually-stable-firefox-desktop/test-failed-1.png",
+          "bytes": 656480,
+          "sha256": "069afe65a5beaab5f9ce2ab7adb3a11c37f64e1a81c427f7e6fc326258994458",
+          "archive": "firefox-desktop.zip"
+        },
+        {
+          "path": "operations-release-operati-84a1a-ul-empty-and-failure-states-firefox-desktop/current-operations-center-empty.png",
+          "bytes": 986007,
+          "sha256": "efa744fd6e39f91efb7fcc8743010df1e496f455f10fe09d41dc2917b2e98795",
+          "archive": "firefox-desktop.zip"
+        },
+        {
+          "path": "operations-release-operati-84a1a-ul-empty-and-failure-states-firefox-desktop/current-operations-center-error.png",
+          "bytes": 989550,
+          "sha256": "85edb2f5d5f357f174d428f1bf9322137189a73017c8febcf5cc5b8515fb2eda",
+          "archive": "firefox-desktop.zip"
+        },
+        {
+          "path": "operations-release-operati-84a1a-ul-empty-and-failure-states-firefox-desktop/operations-center-empty-actual.png",
+          "bytes": 986007,
+          "sha256": "efa744fd6e39f91efb7fcc8743010df1e496f455f10fe09d41dc2917b2e98795",
+          "archive": "firefox-desktop.zip"
+        },
+        {
+          "path": "operations-release-operati-84a1a-ul-empty-and-failure-states-firefox-desktop/operations-center-empty-diff.png",
+          "bytes": 232658,
+          "sha256": "dc85a5cc5bdf10c6dea2ee526b919a3e25e3b6c35b01fe6cec510ac42f15db4e",
+          "archive": "firefox-desktop.zip"
+        },
+        {
+          "path": "operations-release-operati-84a1a-ul-empty-and-failure-states-firefox-desktop/operations-center-empty-expected.png",
+          "bytes": 885338,
+          "sha256": "4c78c9d3387a5712fb94a8b313259afdeef01cc2d47bb7b1c73d1bfb3186c98e",
+          "archive": "firefox-desktop.zip"
+        },
+        {
+          "path": "operations-release-operati-84a1a-ul-empty-and-failure-states-firefox-desktop/operations-center-error-actual.png",
+          "bytes": 989550,
+          "sha256": "85edb2f5d5f357f174d428f1bf9322137189a73017c8febcf5cc5b8515fb2eda",
+          "archive": "firefox-desktop.zip"
+        },
+        {
+          "path": "operations-release-operati-84a1a-ul-empty-and-failure-states-firefox-desktop/operations-center-error-diff.png",
+          "bytes": 189243,
+          "sha256": "0142a2ca910c12a09f9b233894db809b279b0ef7c42c5c8403057c3056b0f4e4",
+          "archive": "firefox-desktop.zip"
+        },
+        {
+          "path": "operations-release-operati-84a1a-ul-empty-and-failure-states-firefox-desktop/operations-center-error-expected.png",
+          "bytes": 905674,
+          "sha256": "bd7bf9433f80f19045fcd17299d83c1215556d0db35877392e79234b12ecb685",
+          "archive": "firefox-desktop.zip"
+        },
+        {
+          "path": "operations-release-operati-84a1a-ul-empty-and-failure-states-firefox-desktop/test-failed-1.png",
+          "bytes": 823317,
+          "sha256": "b06f6221c9dfb63146213aa0a5e6e62059a0b35dc1d38eb77405e6e78f9c006d",
+          "archive": "firefox-desktop.zip"
+        },
+        {
+          "path": "operations-release-operati-e5f8f-d-read-only-recovery-states-firefox-desktop/current-operations-center-partial.png",
+          "bytes": 1209806,
+          "sha256": "1613150040e84ac6a146514e181627d66d64b8636d521e42aa7f7b2eaff02bf3",
+          "archive": "firefox-desktop.zip"
+        },
+        {
+          "path": "operations-release-operati-e5f8f-d-read-only-recovery-states-firefox-desktop/current-operations-center-read-only.png",
+          "bytes": 1081702,
+          "sha256": "cec645ca41ff29f227e1f67cfb81c1deb95e03de45323e8611563270b7f95c3d",
+          "archive": "firefox-desktop.zip"
+        },
+        {
+          "path": "operations-release-operati-e5f8f-d-read-only-recovery-states-firefox-desktop/current-operations-center-reauth.png",
+          "bytes": 1209118,
+          "sha256": "30886763be852c5b8cef9f5c1dc036e806684b150af33fcf28998a8e40ee3d38",
+          "archive": "firefox-desktop.zip"
+        },
+        {
+          "path": "operations-release-operati-e5f8f-d-read-only-recovery-states-firefox-desktop/operations-center-partial-actual.png",
+          "bytes": 1209806,
+          "sha256": "1613150040e84ac6a146514e181627d66d64b8636d521e42aa7f7b2eaff02bf3",
+          "archive": "firefox-desktop.zip"
+        },
+        {
+          "path": "operations-release-operati-e5f8f-d-read-only-recovery-states-firefox-desktop/operations-center-partial-diff.png",
+          "bytes": 352253,
+          "sha256": "952e65675759115c967eb09101ae7a422ee9a00cedfa3f63900908fa8d4bbebd",
+          "archive": "firefox-desktop.zip"
+        },
+        {
+          "path": "operations-release-operati-e5f8f-d-read-only-recovery-states-firefox-desktop/operations-center-partial-expected.png",
+          "bytes": 1119181,
+          "sha256": "74c254bfe1ac1e3ef3c5c9e655965db0aa33ce849ddeb54ce9947c6a1b241ca0",
+          "archive": "firefox-desktop.zip"
+        },
+        {
+          "path": "operations-release-operati-e5f8f-d-read-only-recovery-states-firefox-desktop/operations-center-read-only-actual.png",
+          "bytes": 1081702,
+          "sha256": "cec645ca41ff29f227e1f67cfb81c1deb95e03de45323e8611563270b7f95c3d",
+          "archive": "firefox-desktop.zip"
+        },
+        {
+          "path": "operations-release-operati-e5f8f-d-read-only-recovery-states-firefox-desktop/operations-center-read-only-diff.png",
+          "bytes": 326051,
+          "sha256": "4d0cf56f03c29c705838fe84fab97600801bf832234742776403e9f44f8cfc8c",
+          "archive": "firefox-desktop.zip"
+        },
+        {
+          "path": "operations-release-operati-e5f8f-d-read-only-recovery-states-firefox-desktop/operations-center-read-only-expected.png",
+          "bytes": 972052,
+          "sha256": "349733628a5bb172bbc1fb89f212692aeb44a3018d6952ddb915d004912b727b",
+          "archive": "firefox-desktop.zip"
+        },
+        {
+          "path": "operations-release-operati-e5f8f-d-read-only-recovery-states-firefox-desktop/operations-center-reauth-actual.png",
+          "bytes": 1209118,
+          "sha256": "30886763be852c5b8cef9f5c1dc036e806684b150af33fcf28998a8e40ee3d38",
+          "archive": "firefox-desktop.zip"
+        },
+        {
+          "path": "operations-release-operati-e5f8f-d-read-only-recovery-states-firefox-desktop/operations-center-reauth-diff.png",
+          "bytes": 351069,
+          "sha256": "dae6eaca2cdef9dcd9fedf102c93750ab6d466f68cf6ec1dcbbd227a0dfd39e0",
+          "archive": "firefox-desktop.zip"
+        },
+        {
+          "path": "operations-release-operati-e5f8f-d-read-only-recovery-states-firefox-desktop/operations-center-reauth-expected.png",
+          "bytes": 1117782,
+          "sha256": "e80e19b0b79281d4a416459f871c98b1de3c0e601cbd485d049a3ecbab9a4ab9",
+          "archive": "firefox-desktop.zip"
+        },
+        {
+          "path": "operations-release-operati-e5f8f-d-read-only-recovery-states-firefox-desktop/test-failed-1.png",
+          "bytes": 773433,
+          "sha256": "a3ca2bdc3dc4fd7731b0bab373dc49f5797579f3ea9fdafb792c954bec02e7af",
+          "archive": "firefox-desktop.zip"
+        }
+      ],
+      "expectedSupportedTests": [
+        {
+          "project": "firefox-desktop",
+          "title": "operations center is accessible responsive and visually stable",
+          "expectedStatus": "passed"
+        },
+        {
+          "project": "firefox-desktop",
+          "title": "operations center shows truthful empty and failure states",
+          "expectedStatus": "passed"
+        },
+        {
+          "project": "firefox-desktop",
+          "title": "operations center exposes stale, reauthentication, and read-only recovery states",
+          "expectedStatus": "passed"
+        }
+      ],
+      "currentCaptureCount": 6,
+      "minimumCaptureShortfall": 0,
+      "captureCoverage": "requires-review",
+      "diagnostics": [],
+      "parts": [
+        {
+          "path": "firefox-desktop.zip",
+          "bytes": 23215053,
+          "sha256": "ce3bf7c69cd8e0b7dbabe0b32560b3d581f741ecbf2b99d60295f1bdc83eb017",
+          "members": [
+            "operations-release-operati-5407b-ponsive-and-visually-stable-firefox-desktop/current-operations-center-firefox-desktop.png",
+            "operations-release-operati-5407b-ponsive-and-visually-stable-firefox-desktop/operations-center-firefox-desktop-actual.png",
+            "operations-release-operati-5407b-ponsive-and-visually-stable-firefox-desktop/operations-center-firefox-desktop-diff.png",
+            "operations-release-operati-5407b-ponsive-and-visually-stable-firefox-desktop/operations-center-firefox-desktop-expected.png",
+            "operations-release-operati-5407b-ponsive-and-visually-stable-firefox-desktop/test-failed-1.png",
+            "operations-release-operati-84a1a-ul-empty-and-failure-states-firefox-desktop/current-operations-center-empty.png",
+            "operations-release-operati-84a1a-ul-empty-and-failure-states-firefox-desktop/current-operations-center-error.png",
+            "operations-release-operati-84a1a-ul-empty-and-failure-states-firefox-desktop/operations-center-empty-actual.png",
+            "operations-release-operati-84a1a-ul-empty-and-failure-states-firefox-desktop/operations-center-empty-diff.png",
+            "operations-release-operati-84a1a-ul-empty-and-failure-states-firefox-desktop/operations-center-empty-expected.png",
+            "operations-release-operati-84a1a-ul-empty-and-failure-states-firefox-desktop/operations-center-error-actual.png",
+            "operations-release-operati-84a1a-ul-empty-and-failure-states-firefox-desktop/operations-center-error-diff.png",
+            "operations-release-operati-84a1a-ul-empty-and-failure-states-firefox-desktop/operations-center-error-expected.png",
+            "operations-release-operati-84a1a-ul-empty-and-failure-states-firefox-desktop/test-failed-1.png",
+            "operations-release-operati-e5f8f-d-read-only-recovery-states-firefox-desktop/current-operations-center-partial.png",
+            "operations-release-operati-e5f8f-d-read-only-recovery-states-firefox-desktop/current-operations-center-read-only.png",
+            "operations-release-operati-e5f8f-d-read-only-recovery-states-firefox-desktop/current-operations-center-reauth.png",
+            "operations-release-operati-e5f8f-d-read-only-recovery-states-firefox-desktop/operations-center-partial-actual.png",
+            "operations-release-operati-e5f8f-d-read-only-recovery-states-firefox-desktop/operations-center-partial-diff.png",
+            "operations-release-operati-e5f8f-d-read-only-recovery-states-firefox-desktop/operations-center-partial-expected.png",
+            "operations-release-operati-e5f8f-d-read-only-recovery-states-firefox-desktop/operations-center-read-only-actual.png",
+            "operations-release-operati-e5f8f-d-read-only-recovery-states-firefox-desktop/operations-center-read-only-diff.png",
+            "operations-release-operati-e5f8f-d-read-only-recovery-states-firefox-desktop/operations-center-read-only-expected.png",
+            "operations-release-operati-e5f8f-d-read-only-recovery-states-firefox-desktop/operations-center-reauth-actual.png",
+            "operations-release-operati-e5f8f-d-read-only-recovery-states-firefox-desktop/operations-center-reauth-diff.png",
+            "operations-release-operati-e5f8f-d-read-only-recovery-states-firefox-desktop/operations-center-reauth-expected.png",
+            "operations-release-operati-e5f8f-d-read-only-recovery-states-firefox-desktop/test-failed-1.png"
+          ]
+        }
+      ],
+      "missingDiagnostics": []
+    },
+    "webkit-desktop": {
+      "status": "packaged",
+      "captures": [
+        {
+          "path": "operations-release-operati-5407b-ponsive-and-visually-stable-webkit-desktop/current-operations-center-webkit-desktop.png",
+          "bytes": 2194777,
+          "sha256": "21e1765b95b29331b42fd53b57de74e5107ec98be5b65719412afd0f1eff5a00",
+          "archive": "webkit-desktop-part-001.zip"
+        },
+        {
+          "path": "operations-release-operati-5407b-ponsive-and-visually-stable-webkit-desktop/operations-center-webkit-desktop-actual.png",
+          "bytes": 898677,
+          "sha256": "3a3b7d7bb315f03d679dbaf382369667b9f72f4437f2054542db571a28b5e645",
+          "archive": "webkit-desktop-part-001.zip"
+        },
+        {
+          "path": "operations-release-operati-5407b-ponsive-and-visually-stable-webkit-desktop/operations-center-webkit-desktop-diff.png",
+          "bytes": 357160,
+          "sha256": "e288d8ae700f36ee60017d551cb243f6aa79f49fcce134419e293702644caf7e",
+          "archive": "webkit-desktop-part-001.zip"
+        },
+        {
+          "path": "operations-release-operati-5407b-ponsive-and-visually-stable-webkit-desktop/operations-center-webkit-desktop-expected.png",
+          "bytes": 811959,
+          "sha256": "a0464fe78f5b306d5729abf61f501166a3b0919fb45a420e71889619db6f7fb9",
+          "archive": "webkit-desktop-part-001.zip"
+        },
+        {
+          "path": "operations-release-operati-5407b-ponsive-and-visually-stable-webkit-desktop/test-failed-1.png",
+          "bytes": 1351796,
+          "sha256": "c1b3d1515e91d3d70de6177ccb80b4f33f3f47166957e303b632b32bb50b91e7",
+          "archive": "webkit-desktop-part-001.zip"
+        },
+        {
+          "path": "operations-release-operati-84a1a-ul-empty-and-failure-states-webkit-desktop/current-operations-center-empty.png",
+          "bytes": 1934651,
+          "sha256": "ab4e86d0d7f465a38bed1b76aef90fe66f56a5c177e3732abf802a3b0e5a3375",
+          "archive": "webkit-desktop-part-001.zip"
+        },
+        {
+          "path": "operations-release-operati-84a1a-ul-empty-and-failure-states-webkit-desktop/current-operations-center-error.png",
+          "bytes": 1961286,
+          "sha256": "463cd514cb0f6f8587866db665405ae546c1f25d789afaaf0a60b0470ecc2594",
+          "archive": "webkit-desktop-part-001.zip"
+        },
+        {
+          "path": "operations-release-operati-84a1a-ul-empty-and-failure-states-webkit-desktop/operations-center-empty-actual.png",
+          "bytes": 786412,
+          "sha256": "e0be3ab0bb859ca80818e7dcae65e1040858cdfd1bfde780df593fc5801cad2f",
+          "archive": "webkit-desktop-part-001.zip"
+        },
+        {
+          "path": "operations-release-operati-84a1a-ul-empty-and-failure-states-webkit-desktop/operations-center-empty-diff.png",
+          "bytes": 242372,
+          "sha256": "79c0d2cf1450de7644a4b74da6807830dc096cce6d20bd31da2fe34170240875",
+          "archive": "webkit-desktop-part-001.zip"
+        },
+        {
+          "path": "operations-release-operati-84a1a-ul-empty-and-failure-states-webkit-desktop/operations-center-empty-expected.png",
+          "bytes": 705096,
+          "sha256": "745a6b367e5132042b67f60e00a24fa3b200c439a1befb0aa0d1d2f093d71807",
+          "archive": "webkit-desktop-part-001.zip"
+        },
+        {
+          "path": "operations-release-operati-84a1a-ul-empty-and-failure-states-webkit-desktop/operations-center-error-actual.png",
+          "bytes": 788658,
+          "sha256": "c5cdbc407ff155008701b20453f83ee80e4d8f0045b0f80491bdba3a77e9f32a",
+          "archive": "webkit-desktop-part-001.zip"
+        },
+        {
+          "path": "operations-release-operati-84a1a-ul-empty-and-failure-states-webkit-desktop/operations-center-error-diff.png",
+          "bytes": 193709,
+          "sha256": "d1e6eb765ed93ac2395b9108a3e3a20da55244355c6ae3340d907d9cfa8516d9",
+          "archive": "webkit-desktop-part-001.zip"
+        },
+        {
+          "path": "operations-release-operati-84a1a-ul-empty-and-failure-states-webkit-desktop/operations-center-error-expected.png",
+          "bytes": 714867,
+          "sha256": "d113391f6f87b41a10723cc53be63273fca915121f90f68a9a4fb55f8db88051",
+          "archive": "webkit-desktop-part-001.zip"
+        },
+        {
+          "path": "operations-release-operati-84a1a-ul-empty-and-failure-states-webkit-desktop/test-failed-1.png",
+          "bytes": 1685111,
+          "sha256": "96796bd5153355f12bfaf9980b625aa7dd55a184c07978f4909da1d58f4787bc",
+          "archive": "webkit-desktop-part-001.zip"
+        },
+        {
+          "path": "operations-release-operati-e5f8f-d-read-only-recovery-states-webkit-desktop/current-operations-center-partial.png",
+          "bytes": 2400451,
+          "sha256": "dd7cc19f8249ff6d94b7cbc1cb62ab50df7f928a04babf13ad57d74c2e5c9691",
+          "archive": "webkit-desktop-part-001.zip"
+        },
+        {
+          "path": "operations-release-operati-e5f8f-d-read-only-recovery-states-webkit-desktop/current-operations-center-read-only.png",
+          "bytes": 2144840,
+          "sha256": "0ade581254692f411d7238b8f349d02b9a7c24406ff3355d900caf107ed3b312",
+          "archive": "webkit-desktop-part-001.zip"
+        },
+        {
+          "path": "operations-release-operati-e5f8f-d-read-only-recovery-states-webkit-desktop/current-operations-center-reauth.png",
+          "bytes": 2398001,
+          "sha256": "0e814bbe1a9ca1eda84d107356abb46bd05e2be0c151037aa3b606a9ca95c210",
+          "archive": "webkit-desktop-part-001.zip"
+        },
+        {
+          "path": "operations-release-operati-e5f8f-d-read-only-recovery-states-webkit-desktop/operations-center-partial-actual.png",
+          "bytes": 974597,
+          "sha256": "a3fea0493d5c99a94b4d928490d188a656fe7b3810b77c4d7d21e987e377059d",
+          "archive": "webkit-desktop-part-001.zip"
+        },
+        {
+          "path": "operations-release-operati-e5f8f-d-read-only-recovery-states-webkit-desktop/operations-center-partial-diff.png",
+          "bytes": 367790,
+          "sha256": "2fd95c63cb923b58995608e163cf936209a9a07af26e7175a5050e11b7159609",
+          "archive": "webkit-desktop-part-001.zip"
+        },
+        {
+          "path": "operations-release-operati-e5f8f-d-read-only-recovery-states-webkit-desktop/operations-center-partial-expected.png",
+          "bytes": 907080,
+          "sha256": "ddd87bc1b577c6d12932fd13c2fb0c9c9dd62a243f1b1eab66ba83d8295d6385",
+          "archive": "webkit-desktop-part-001.zip"
+        },
+        {
+          "path": "operations-release-operati-e5f8f-d-read-only-recovery-states-webkit-desktop/operations-center-read-only-actual.png",
+          "bytes": 876933,
+          "sha256": "64683b02d27388dad27d06399239b979102511955d76302a6f3b4d7a9ca61204",
+          "archive": "webkit-desktop-part-001.zip"
+        },
+        {
+          "path": "operations-release-operati-e5f8f-d-read-only-recovery-states-webkit-desktop/operations-center-read-only-diff.png",
+          "bytes": 340932,
+          "sha256": "ab5447cdcbda30246aaa39cf87320a184725f30612a998fcab0aebbf119d3a14",
+          "archive": "webkit-desktop-part-001.zip"
+        },
+        {
+          "path": "operations-release-operati-e5f8f-d-read-only-recovery-states-webkit-desktop/operations-center-read-only-expected.png",
+          "bytes": 796306,
+          "sha256": "fbfd55961d274beedf660de9f3e5e40289043f2b5d99e40fe502867e70990d1d",
+          "archive": "webkit-desktop-part-001.zip"
+        },
+        {
+          "path": "operations-release-operati-e5f8f-d-read-only-recovery-states-webkit-desktop/operations-center-reauth-actual.png",
+          "bytes": 974935,
+          "sha256": "5496249aae5d4a6fbd02ab2293ecad83e3753fcb06f870b35f57d1bddb408e4f",
+          "archive": "webkit-desktop-part-001.zip"
+        },
+        {
+          "path": "operations-release-operati-e5f8f-d-read-only-recovery-states-webkit-desktop/operations-center-reauth-diff.png",
+          "bytes": 367446,
+          "sha256": "2e89401c418bc08d92a523a671644c90f381595d0ddbc3e2a52cc2cff0a4b893",
+          "archive": "webkit-desktop-part-001.zip"
+        },
+        {
+          "path": "operations-release-operati-e5f8f-d-read-only-recovery-states-webkit-desktop/operations-center-reauth-expected.png",
+          "bytes": 907198,
+          "sha256": "592be231f7c4cebf64a99b696a5399a711ef8f916e98835a59ccda111c20927d",
+          "archive": "webkit-desktop-part-001.zip"
+        },
+        {
+          "path": "operations-release-operati-e5f8f-d-read-only-recovery-states-webkit-desktop/test-failed-1.png",
+          "bytes": 1583704,
+          "sha256": "3b4f23b0370f4edb273886124eb08df09ee937f304dd893ab66b0e545efd192f",
+          "archive": "webkit-desktop-part-002.zip"
+        }
+      ],
+      "expectedSupportedTests": [
+        {
+          "project": "webkit-desktop",
+          "title": "operations center is accessible responsive and visually stable",
+          "expectedStatus": "passed"
+        },
+        {
+          "project": "webkit-desktop",
+          "title": "operations center shows truthful empty and failure states",
+          "expectedStatus": "passed"
+        },
+        {
+          "project": "webkit-desktop",
+          "title": "operations center exposes stale, reauthentication, and read-only recovery states",
+          "expectedStatus": "passed"
+        }
+      ],
+      "currentCaptureCount": 6,
+      "minimumCaptureShortfall": 0,
+      "captureCoverage": "requires-review",
+      "diagnostics": [],
+      "parts": [
+        {
+          "path": "webkit-desktop-part-001.zip",
+          "bytes": 28090830,
+          "sha256": "be0c33c7d422deddb22635cdfb856d76298bf3cc124ebaa04b88a94f2958c806",
+          "members": [
+            "operations-release-operati-5407b-ponsive-and-visually-stable-webkit-desktop/current-operations-center-webkit-desktop.png",
+            "operations-release-operati-5407b-ponsive-and-visually-stable-webkit-desktop/operations-center-webkit-desktop-actual.png",
+            "operations-release-operati-5407b-ponsive-and-visually-stable-webkit-desktop/operations-center-webkit-desktop-diff.png",
+            "operations-release-operati-5407b-ponsive-and-visually-stable-webkit-desktop/operations-center-webkit-desktop-expected.png",
+            "operations-release-operati-5407b-ponsive-and-visually-stable-webkit-desktop/test-failed-1.png",
+            "operations-release-operati-84a1a-ul-empty-and-failure-states-webkit-desktop/current-operations-center-empty.png",
+            "operations-release-operati-84a1a-ul-empty-and-failure-states-webkit-desktop/current-operations-center-error.png",
+            "operations-release-operati-84a1a-ul-empty-and-failure-states-webkit-desktop/operations-center-empty-actual.png",
+            "operations-release-operati-84a1a-ul-empty-and-failure-states-webkit-desktop/operations-center-empty-diff.png",
+            "operations-release-operati-84a1a-ul-empty-and-failure-states-webkit-desktop/operations-center-empty-expected.png",
+            "operations-release-operati-84a1a-ul-empty-and-failure-states-webkit-desktop/operations-center-error-actual.png",
+            "operations-release-operati-84a1a-ul-empty-and-failure-states-webkit-desktop/operations-center-error-diff.png",
+            "operations-release-operati-84a1a-ul-empty-and-failure-states-webkit-desktop/operations-center-error-expected.png",
+            "operations-release-operati-84a1a-ul-empty-and-failure-states-webkit-desktop/test-failed-1.png",
+            "operations-release-operati-e5f8f-d-read-only-recovery-states-webkit-desktop/current-operations-center-partial.png",
+            "operations-release-operati-e5f8f-d-read-only-recovery-states-webkit-desktop/current-operations-center-read-only.png",
+            "operations-release-operati-e5f8f-d-read-only-recovery-states-webkit-desktop/current-operations-center-reauth.png",
+            "operations-release-operati-e5f8f-d-read-only-recovery-states-webkit-desktop/operations-center-partial-actual.png",
+            "operations-release-operati-e5f8f-d-read-only-recovery-states-webkit-desktop/operations-center-partial-diff.png",
+            "operations-release-operati-e5f8f-d-read-only-recovery-states-webkit-desktop/operations-center-partial-expected.png",
+            "operations-release-operati-e5f8f-d-read-only-recovery-states-webkit-desktop/operations-center-read-only-actual.png",
+            "operations-release-operati-e5f8f-d-read-only-recovery-states-webkit-desktop/operations-center-read-only-diff.png",
+            "operations-release-operati-e5f8f-d-read-only-recovery-states-webkit-desktop/operations-center-read-only-expected.png",
+            "operations-release-operati-e5f8f-d-read-only-recovery-states-webkit-desktop/operations-center-reauth-actual.png",
+            "operations-release-operati-e5f8f-d-read-only-recovery-states-webkit-desktop/operations-center-reauth-diff.png",
+            "operations-release-operati-e5f8f-d-read-only-recovery-states-webkit-desktop/operations-center-reauth-expected.png"
+          ]
+        },
+        {
+          "path": "webkit-desktop-part-002.zip",
+          "bytes": 1583988,
+          "sha256": "53cc5559622df534b13e460c5e1b13c46e5067490991d5485daf8106cdd58f22",
+          "members": [
+            "operations-release-operati-e5f8f-d-read-only-recovery-states-webkit-desktop/test-failed-1.png"
+          ]
+        }
+      ],
+      "missingDiagnostics": []
+    }
+  },
+  "errors": []
+}

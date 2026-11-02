@@ -250,7 +250,7 @@ def object_inventory(root: Path, *, maximum_files: int = 10000) -> dict[str, Any
     base = root.resolve()
     if root.is_symlink() or not base.is_dir() or not 1 <= maximum_files <= 100000:
         raise RecoveryDenied("backup:object_root_invalid")
-    members = []
+    members: list[dict[str, Any]] = []
     for path in sorted(base.rglob("*")):
         if path.is_symlink():
             raise RecoveryDenied("backup:object_symlink_denied")
@@ -451,6 +451,7 @@ def create_database_object_bundle(
     key: bytes,
     key_ref: str,
     now: datetime | None = None,
+    security_manifest: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     inventory = object_inventory(object_root)
     with tempfile.TemporaryDirectory(prefix="base2-backup-bundle-") as temporary:
@@ -483,6 +484,10 @@ def create_database_object_bundle(
         with tarfile.open(archive, "w") as bundle:
             bundle.add(database_dump, arcname="database.dump", recursive=False)
             bundle.add(manifest, arcname="objects.json", recursive=False)
+            if security_manifest is not None:
+                security = root / "security.json"
+                security.write_text(json.dumps(security_manifest, sort_keys=True), encoding="utf-8")
+                bundle.add(security, arcname="security.json", recursive=False)
             # Inventory and payload are one encrypted recovery unit. Every name
             # is derived from the verified private snapshot, never a second
             # read of the mutable live object tree.

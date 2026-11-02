@@ -1,0 +1,173 @@
+{
+  "schemaVersion": 1,
+  "scope": "Direct screenshot call sites plus automatic failure-screenshot configurations; delegated helpers are recorded separately with exact dependency identities. No claim that pending suites are retained or natively validated.",
+  "explicitCaptureSources": [
+    {
+      "path": "e2e/tests/workspace-representative.spec.js",
+      "collection": "pending-bounded-adapter"
+    },
+    {
+      "path": "react-app/e2e/account/settings-foundation.spec.ts",
+      "collection": "pending-bounded-adapter"
+    },
+    {
+      "path": "react-app/e2e/account/settings-platform.spec.ts",
+      "collection": "pending-bounded-adapter"
+    },
+    {
+      "path": "react-app/e2e/account/settings-release.spec.ts",
+      "collection": "pending-bounded-adapter"
+    },
+    {
+      "path": "react-app/e2e/experience/shared-experience.spec.ts",
+      "collection": "pending-bounded-adapter"
+    },
+    {
+      "path": "react-app/e2e/google-binding/binding.spec.ts",
+      "collection": "pending-bounded-adapter"
+    },
+    {
+      "path": "react-app/e2e/journeys/enabled-modules.spec.ts",
+      "collection": "pending-bounded-adapter"
+    },
+    {
+      "path": "react-app/e2e/journeys/operations-media-journeys.spec.ts",
+      "collection": "pending-bounded-adapter"
+    },
+    {
+      "path": "react-app/e2e/journeys/password-visibility.spec.ts",
+      "collection": "pending-bounded-adapter"
+    },
+    {
+      "path": "react-app/e2e/journeys/public-journeys.spec.ts",
+      "collection": "pending-bounded-adapter"
+    },
+    {
+      "path": "react-app/e2e/journeys/workspace-journeys.spec.ts",
+      "collection": "pending-bounded-adapter"
+    },
+    {
+      "path": "react-app/e2e/layout/appearance-preferences.spec.ts",
+      "collection": "pending-bounded-adapter"
+    },
+    {
+      "path": "react-app/e2e/layout/auth-journeys.spec.ts",
+      "collection": "pending-bounded-adapter"
+    },
+    {
+      "path": "react-app/e2e/layout/interaction-contract.spec.ts",
+      "collection": "pending-bounded-adapter"
+    },
+    {
+      "path": "react-app/e2e/layout/representative.spec.ts",
+      "collection": "pending-bounded-adapter"
+    },
+    {
+      "path": "react-app/e2e/layout/route-families.spec.ts",
+      "collection": "pending-bounded-adapter"
+    },
+    {
+      "path": "react-app/e2e/layout/settings-interruption.spec.ts",
+      "collection": "pending-bounded-adapter"
+    },
+    {
+      "path": "react-app/e2e/layout/volcano-preservation.spec.ts",
+      "collection": "pending-bounded-adapter"
+    },
+    {
+      "path": "react-app/e2e/live/approved-reference.ts",
+      "collection": "pending-bounded-adapter"
+    },
+    {
+      "path": "react-app/e2e/live/full-preview-live.spec.ts",
+      "collection": "pending-bounded-adapter"
+    },
+    {
+      "path": "react-app/e2e/media/media-release.spec.ts",
+      "collection": "pending-bounded-adapter"
+    },
+    {
+      "path": "react-app/e2e/operations/operations-release.spec.ts",
+      "collection": "pending-bounded-adapter"
+    },
+    {
+      "path": "react-app/e2e/restricted/notice.spec.ts",
+      "collection": "pending-bounded-adapter"
+    },
+    {
+      "path": "react-app/e2e/visual/hermetic-visual.spec.ts",
+      "collection": "pending-bounded-adapter"
+    },
+    {
+      "path": "react-app/e2e/visual/obsidian-localization.spec.ts",
+      "collection": "pending-bounded-adapter"
+    },
+    {
+      "path": "react-app/e2e/visual/obsidian-restoration.spec.ts",
+      "collection": "pending-bounded-adapter"
+    },
+    {
+      "path": "react-app/e2e/workspace-capture-ownership.ts",
+      "sha256": "cf4efb366a4ae77b25823d72d9bba40954855eafe7cc5aff8e9dccc565805806",
+      "collection": "bounded-owned-screenshots-and-partial-frame-receipts-pending-native-workspace-validation"
+    },
+    {
+      "path": "react-app/e2e/workspace/workspace-release.spec.ts",
+      "collection": "bounded-workspace-high-contrast"
+    }
+  ],
+  "automaticFailureConfigurations": [
+    {
+      "path": "react-app/playwright.compatibility.config.mjs",
+      "collection": "pending-failure-screenshot-adapter"
+    },
+    {
+      "path": "react-app/playwright.config.js",
+      "collection": "pending-failure-screenshot-adapter"
+    },
+    {
+      "path": "react-app/playwright.experience.config.mjs",
+      "collection": "pending-failure-screenshot-adapter"
+    },
+    {
+      "path": "react-app/playwright.live-full-preview.config.mjs",
+      "collection": "pending-failure-screenshot-adapter"
+    },
+    {
+      "path": "react-app/playwright.media-release.config.mjs",
+      "collection": "pending-failure-screenshot-adapter"
+    },
+    {
+      "path": "react-app/playwright.operations-release.config.mjs",
+      "collection": "pending-failure-screenshot-adapter"
+    },
+    {
+      "path": "react-app/playwright.settings-release.config.mjs",
+      "collection": "pending-failure-screenshot-adapter"
+    },
+    {
+      "path": "react-app/playwright.visual-release.config.mjs",
+      "collection": "pending-failure-screenshot-adapter"
+    },
+    {
+      "path": "react-app/playwright.visual.config.mjs",
+      "collection": "pending-failure-screenshot-adapter"
+    },
+    {
+      "path": "react-app/playwright.workspace-release.config.mjs",
+      "collection": "pending-failure-screenshot-adapter"
+    }
+  ],
+  "delegatedCaptureSources": [
+    {
+      "path": "react-app/e2e/continuous-scroll.ts",
+      "sha256": "0edf8b9f0e3f4f83bed5c76c39459461cef379b98096bac9ea8bdd509ea1071d",
+      "via": "react-app/e2e/workspace-capture-ownership.ts"
+    },
+    {
+      "path": "react-app/e2e/scroll-target.ts",
+      "sha256": "7aae26d91854f5ba15abf7099be575cea569eef42c743676176d788ed88b1178",
+      "via": "react-app/e2e/workspace-capture-ownership.ts"
+    }
+  ]
+}

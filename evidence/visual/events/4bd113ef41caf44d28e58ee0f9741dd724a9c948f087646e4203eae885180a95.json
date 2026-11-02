@@ -1,0 +1,13 @@
+{
+  "captureHashes": [
+    "7e9ce3f60b1e9c8466707fe462e0159131b955a019f8962e57dfa01eabc8d233",
+    "bca8fac9742239f4a2e788288bb06b5489978465160438bb7a0b8102b0b57343"
+  ],
+  "conclusion": "passed",
+  "evidence": "runs/41282645641-1-124777526141-13073737327.json",
+  "kind": "native-validation",
+  "manifest": "runs/41277438310-1-124762365127-13072570680.json",
+  "manifestSha256": "41f5a16f3337abe7d9f06e20527e5ef6060edba556e0b36ab72fcd674c6d5d4c",
+  "notes": "Later targeted high-contrast native cases passed on the recorded tree-equivalent merge. Original results and technical reviews remain immutable. Current PNGs were externally inspected; ZIP/member verification was external and transferred PNG bytes were locally verified. This is not full visual matrix acceptance. Media detail is a scrolled Applying action dialog slice, not full or terminal-state proof; media library retains authored surround colors. No traces or axe JSON are included in these archives.",
+  "schemaVersion": 1
+}

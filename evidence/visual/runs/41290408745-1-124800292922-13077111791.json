@@ -1,0 +1,212 @@
+{
+  "archiveSha256": "3d6639ca98e7e94fb8ca1f8c135673fd0b81677ec2f5f40c74f6d3877bea159b",
+  "artifactId": 13077111791,
+  "attempt": 1,
+  "captures": [
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "unavailable-in-retained-inventory",
+          "member": "chromium-tablet.zip",
+          "sha256": null
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-tablet/current-media-library-viewport-0.png",
+          "sha256": "3332ef40e34b71104037c8f736abc0771660e1f43dd8070cb39299606e8cc554"
+        }
+      ],
+      "bytes": 422585,
+      "dimensions": [
+        1024,
+        768
+      ],
+      "identityBasis": "native-report",
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-tablet/current-media-library-viewport-0.png",
+      "originalOutcome": "passed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "passed"
+        ],
+        "basis": "retained-native-report",
+        "project": "chromium-tablet",
+        "title": "media library is accessible responsive and visually reviewed"
+      },
+      "project": "chromium-tablet",
+      "role": "current",
+      "sha256": "3332ef40e34b71104037c8f736abc0771660e1f43dd8070cb39299606e8cc554",
+      "storage": "objects/3332ef40e34b71104037c8f736abc0771660e1f43dd8070cb39299606e8cc554.png",
+      "test": "media library is accessible responsive and visually reviewed",
+      "viewport": [
+        1024,
+        768
+      ],
+      "viewportBasis": "native-project-config"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "unavailable-in-retained-inventory",
+          "member": "chromium-tablet.zip",
+          "sha256": null
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-tablet/current-media-library-viewport-2.png",
+          "sha256": "3332ef40e34b71104037c8f736abc0771660e1f43dd8070cb39299606e8cc554"
+        }
+      ],
+      "bytes": 422585,
+      "dimensions": [
+        1024,
+        768
+      ],
+      "identityBasis": "native-report",
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-tablet/current-media-library-viewport-2.png",
+      "originalOutcome": "passed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "passed"
+        ],
+        "basis": "retained-native-report",
+        "project": "chromium-tablet",
+        "title": "media library is accessible responsive and visually reviewed"
+      },
+      "project": "chromium-tablet",
+      "role": "current",
+      "sha256": "3332ef40e34b71104037c8f736abc0771660e1f43dd8070cb39299606e8cc554",
+      "storage": "objects/3332ef40e34b71104037c8f736abc0771660e1f43dd8070cb39299606e8cc554.png",
+      "test": "media library is accessible responsive and visually reviewed",
+      "viewport": [
+        1024,
+        768
+      ],
+      "viewportBasis": "native-project-config"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "unavailable-in-retained-inventory",
+          "member": "chromium-tablet.zip",
+          "sha256": null
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-tablet/current-media-library-viewport-4.png",
+          "sha256": "008d8ea937642412d8bb3de0d568e3c0c7948b7b121b8ce4e353ae978f3e835a"
+        }
+      ],
+      "bytes": 380007,
+      "dimensions": [
+        1024,
+        768
+      ],
+      "identityBasis": "native-report",
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-tablet/current-media-library-viewport-4.png",
+      "originalOutcome": "passed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "passed"
+        ],
+        "basis": "retained-native-report",
+        "project": "chromium-tablet",
+        "title": "media library is accessible responsive and visually reviewed"
+      },
+      "project": "chromium-tablet",
+      "role": "current",
+      "sha256": "008d8ea937642412d8bb3de0d568e3c0c7948b7b121b8ce4e353ae978f3e835a",
+      "storage": "objects/008d8ea937642412d8bb3de0d568e3c0c7948b7b121b8ce4e353ae978f3e835a.png",
+      "test": "media library is accessible responsive and visually reviewed",
+      "viewport": [
+        1024,
+        768
+      ],
+      "viewportBasis": "native-project-config"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "unavailable-in-retained-inventory",
+          "member": "chromium-tablet.zip",
+          "sha256": null
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-tablet/current-media-library.png",
+          "sha256": "90cf28b047654d10726d07851e37a8eea4baeec2b88286a288599adcb9d69be2"
+        }
+      ],
+      "bytes": 627566,
+      "dimensions": [
+        1024,
+        2041
+      ],
+      "identityBasis": "native-report",
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-tablet/current-media-library.png",
+      "originalOutcome": "passed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "passed"
+        ],
+        "basis": "retained-native-report",
+        "project": "chromium-tablet",
+        "title": "media library is accessible responsive and visually reviewed"
+      },
+      "project": "chromium-tablet",
+      "role": "current",
+      "sha256": "90cf28b047654d10726d07851e37a8eea4baeec2b88286a288599adcb9d69be2",
+      "storage": "objects/90cf28b047654d10726d07851e37a8eea4baeec2b88286a288599adcb9d69be2.png",
+      "test": "media library is accessible responsive and visually reviewed",
+      "viewport": [
+        1024,
+        768
+      ],
+      "viewportBasis": "native-project-config"
+    }
+  ],
+  "fixtureScope": "synthetic-project-tests",
+  "jobId": 124800292922,
+  "laterValidation": "pending",
+  "observations": [
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "unavailable-in-retained-inventory",
+          "member": "chromium-tablet.zip",
+          "sha256": null
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-tablet/media-viewport-observations.json",
+          "sha256": "cb99c67da45192f36adda82ef323c5ed63fb0cfcead2c7842fd6369f3445b8a5"
+        }
+      ],
+      "bytes": 31506,
+      "member": "media-release-media-librar-1b4ce-nsive-and-visually-reviewed-chromium-tablet/media-viewport-observations.json",
+      "project": "chromium-tablet",
+      "schemaVersion": 2,
+      "sha256": "cb99c67da45192f36adda82ef323c5ed63fb0cfcead2c7842fd6369f3445b8a5",
+      "storage": "observations/cb99c67da45192f36adda82ef323c5ed63fb0cfcead2c7842fd6369f3445b8a5.json"
+    }
+  ],
+  "originalOutcome": "failed",
+  "repository": "woodkill00/base2",
+  "requestedHead": "2939e45fd409127bbcac56df4a5f1acb7f27fbaa",
+  "runId": 41290408745,
+  "schemaVersion": 2,
+  "sourceCommit": "2939e45fd409127bbcac56df4a5f1acb7f27fbaa",
+  "sourceTree": "ff51d9cad431505872f3ccb8a904b9a6809e6ff1",
+  "technicalReview": "pending",
+  "transfer": {
+    "blobs": {
+      "008d8ea937642412d8bb3de0d568e3c0c7948b7b121b8ce4e353ae978f3e835a": "4364c83c43dd2554b5c59a4f7cae8d7602879c58",
+      "3332ef40e34b71104037c8f736abc0771660e1f43dd8070cb39299606e8cc554": "b40029a4dd26a33bd66601125150a6d735b66d88",
+      "90cf28b047654d10726d07851e37a8eea4baeec2b88286a288599adcb9d69be2": "1fa052b9e4bf1fda22da73f31859997c3d475ef7",
+      "cb99c67da45192f36adda82ef323c5ed63fb0cfcead2c7842fd6369f3445b8a5": "e359d5cd388f7a86d80fafb8a68692d9c0ec5d73"
+    },
+    "commit": "2aaf20e2fbed13a2613bc6db276ed42994645fe2",
+    "localVerification": "git-blob-sha256-size-dimensions-full-decode",
+    "originalArchiveVerification": "externally-verified-zip-and-members",
+    "tree": "94354a1a0db2fe3af17918e7f7cfe0cb6da8d002"
+  }
+}

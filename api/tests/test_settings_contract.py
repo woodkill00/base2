@@ -91,11 +91,12 @@ def test_api_migration_runner_executes_every_checked_in_sql_migration_in_order()
     root = Path(__file__).resolve().parents[2]
     checked_in = tuple(path.stem for path in sorted((root / 'api/migrations/sql').glob('*.sql')))
     assert checked_in == MIGRATIONS
-    assert MIGRATIONS[-4:] == (
+    assert MIGRATIONS[-5:] == (
         '010_add_email_delivery_fencing',
         '011_contract_email_delivery_fencing',
         '012_add_data_rights_claim_fencing',
         '013_add_global_data_rights_operations',
+        '014_create_notification_preference_sets',
     )
 
 
@@ -154,13 +155,14 @@ def test_notification_endpoint_preserves_required_families_and_audits_exact_coun
     captured = {}
     monkeypatch.setattr(
         'api.routes.settings.repository.replace_notifications',
-        lambda **kwargs: captured.update(kwargs) or kwargs['preferences'],
+        lambda **kwargs: captured.update(kwargs) or {'schema_version': 1, 'version': 1, 'preferences': kwargs['preferences']},
     )
     monkeypatch.setattr(
         'api.routes.settings.insert_audit_event',
         lambda **kwargs: captured.setdefault('audit', kwargs),
     )
     payload = {
+        'expected_version': 0,
         'preferences': [
             {'event_family': 'security', 'channel': 'email', 'delivery': 'immediate'},
             {'event_family': 'marketing', 'channel': 'email', 'delivery': 'disabled'},
@@ -171,7 +173,9 @@ def test_notification_endpoint_preserves_required_families_and_audits_exact_coun
     assert captured['tenant_id'] == 'tenant-a'
     assert captured['preferences'][0]['mandatory'] is True
     assert captured['preferences'][1]['mandatory'] is False
-    assert captured['audit']['metadata']['preference_count'] == 2
+    assert captured['expected_version'] == 0
+    assert response.json()['version'] == 1
+    assert 'audit' not in captured  # The repository audits atomically, not this route.
 
     payload['preferences'][0]['delivery'] = 'disabled'
     denied = TestClient(app).put('/api/settings/notifications', json=payload)
@@ -200,3 +204,23 @@ def test_capability_contract_uses_closed_known_category_ids(monkeypatch):
     monkeypatch.setattr('api.routes.settings.membership', lambda **kwargs: {'role': 'owner'})
     enabled = TestClient(app).get('/api/settings/capabilities').json()
     assert [item['id'] for item in enabled['categories']][-3:] == ['organization', 'developer', 'site-capabilities']
+
+
+def test_notification_endpoint_requires_version_and_reports_conflict(monkeypatch):
+    _admit_settings(monkeypatch)
+    monkeypatch.setattr('api.routes.settings.repository.replace_notifications', lambda **kwargs: None)
+    client = TestClient(app)
+    missing = client.put('/api/settings/notifications', json={'preferences': []})
+    assert missing.status_code == 422
+    conflict = client.put('/api/settings/notifications', json={'preferences': [], 'expected_version': 0})
+    assert conflict.status_code == 409
+    assert conflict.json() == {'detail': 'settings_version_conflict'}
+
+
+def test_notification_get_returns_full_coherent_versioned_snapshot(monkeypatch):
+    _admit_settings(monkeypatch)
+    snapshot = {'schema_version': 1, 'version': 0, 'preferences': []}
+    monkeypatch.setattr('api.routes.settings.repository.get_notifications', lambda **kwargs: snapshot)
+    response = TestClient(app).get('/api/settings/notifications')
+    assert response.status_code == 200
+    assert response.json() == snapshot

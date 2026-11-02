@@ -1,0 +1,367 @@
+{
+  "archiveSha256": "dfbfcc2655e52f6c64171f8ea8dd95e634e0f613266f69eac5aca64fdcd5f3fd",
+  "artifactId": 13078649244,
+  "attempt": 1,
+  "captures": [
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-firefox-desktop/workspace-records-firefox-desktop-actual.png",
+          "sha256": "ce00d362e41ee2c3c2d980c7aa87614ceec9f346b7e7a3024663dc7c212e94ce"
+        }
+      ],
+      "bytes": 879027,
+      "dimensions": [
+        1440,
+        2110
+      ],
+      "identityBasis": "native-report",
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-firefox-desktop/workspace-records-firefox-desktop-actual.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-log",
+        "project": "firefox-desktop",
+        "sourceSha256": "b40560077402ebc9da6f4182244a2f9c47d6fd560d1ee50a2ec7ae75d3fabf0e",
+        "title": "workspace release corpus is accessible, responsive, and visually stable"
+      },
+      "project": "firefox-desktop",
+      "role": "actual",
+      "sha256": "ce00d362e41ee2c3c2d980c7aa87614ceec9f346b7e7a3024663dc7c212e94ce",
+      "storage": "objects/ce00d362e41ee2c3c2d980c7aa87614ceec9f346b7e7a3024663dc7c212e94ce.png",
+      "test": "workspace release corpus is accessible, responsive, and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-firefox-desktop/workspace-records-firefox-desktop-diff.png",
+          "sha256": "657058568fb729a9652dca72d0e212c884cb888f81500340029b2b2a16dfcc1f"
+        }
+      ],
+      "bytes": 206278,
+      "dimensions": [
+        1440,
+        2110
+      ],
+      "identityBasis": "native-report",
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-firefox-desktop/workspace-records-firefox-desktop-diff.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-log",
+        "project": "firefox-desktop",
+        "sourceSha256": "b40560077402ebc9da6f4182244a2f9c47d6fd560d1ee50a2ec7ae75d3fabf0e",
+        "title": "workspace release corpus is accessible, responsive, and visually stable"
+      },
+      "project": "firefox-desktop",
+      "role": "diff",
+      "sha256": "657058568fb729a9652dca72d0e212c884cb888f81500340029b2b2a16dfcc1f",
+      "storage": "objects/657058568fb729a9652dca72d0e212c884cb888f81500340029b2b2a16dfcc1f.png",
+      "test": "workspace release corpus is accessible, responsive, and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-firefox-desktop/workspace-records-firefox-desktop-expected.png",
+          "sha256": "b6f49fb71469b16c8ce91e821841e78bc92e0f7c54ad9cbe705e1cf7f13a5429"
+        }
+      ],
+      "bytes": 725424,
+      "dimensions": [
+        1440,
+        2029
+      ],
+      "identityBasis": "native-report",
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-firefox-desktop/workspace-records-firefox-desktop-expected.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-log",
+        "project": "firefox-desktop",
+        "sourceSha256": "b40560077402ebc9da6f4182244a2f9c47d6fd560d1ee50a2ec7ae75d3fabf0e",
+        "title": "workspace release corpus is accessible, responsive, and visually stable"
+      },
+      "project": "firefox-desktop",
+      "role": "expected",
+      "sha256": "b6f49fb71469b16c8ce91e821841e78bc92e0f7c54ad9cbe705e1cf7f13a5429",
+      "storage": "objects/b6f49fb71469b16c8ce91e821841e78bc92e0f7c54ad9cbe705e1cf7f13a5429.png",
+      "test": "workspace release corpus is accessible, responsive, and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-webkit-mobile/current-scrollport-footer.png",
+          "sha256": "c008b9db3aedc35e0a0072e34ba3c20c0e3a9a2af319e92bd6722faccfdb9286"
+        }
+      ],
+      "bytes": 329502,
+      "dimensions": [
+        1170,
+        2532
+      ],
+      "identityBasis": "native-report",
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-webkit-mobile/current-scrollport-footer.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-log",
+        "project": "webkit-mobile",
+        "sourceSha256": "b40560077402ebc9da6f4182244a2f9c47d6fd560d1ee50a2ec7ae75d3fabf0e",
+        "title": "workspace release corpus is accessible, responsive, and visually stable"
+      },
+      "project": "webkit-mobile",
+      "role": "current",
+      "sha256": "c008b9db3aedc35e0a0072e34ba3c20c0e3a9a2af319e92bd6722faccfdb9286",
+      "storage": "objects/c008b9db3aedc35e0a0072e34ba3c20c0e3a9a2af319e92bd6722faccfdb9286.png",
+      "test": "workspace release corpus is accessible, responsive, and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-webkit-mobile/current-scrollport-middle.png",
+          "sha256": "6148cb2799376b59f9c07b4b6400e56014ae51f8e5105582ea55a970f07ffada"
+        }
+      ],
+      "bytes": 649195,
+      "dimensions": [
+        1170,
+        2532
+      ],
+      "identityBasis": "native-report",
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-webkit-mobile/current-scrollport-middle.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-log",
+        "project": "webkit-mobile",
+        "sourceSha256": "b40560077402ebc9da6f4182244a2f9c47d6fd560d1ee50a2ec7ae75d3fabf0e",
+        "title": "workspace release corpus is accessible, responsive, and visually stable"
+      },
+      "project": "webkit-mobile",
+      "role": "current",
+      "sha256": "6148cb2799376b59f9c07b4b6400e56014ae51f8e5105582ea55a970f07ffada",
+      "storage": "objects/6148cb2799376b59f9c07b4b6400e56014ae51f8e5105582ea55a970f07ffada.png",
+      "test": "workspace release corpus is accessible, responsive, and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-webkit-mobile/current-scrollport-top.png",
+          "sha256": "13a6bf07c6a382efc2d79469a5f7fa886c9d505a2abea1a5ffd1748c484e06a8"
+        }
+      ],
+      "bytes": 1026553,
+      "dimensions": [
+        1170,
+        2532
+      ],
+      "identityBasis": "native-report",
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-webkit-mobile/current-scrollport-top.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-log",
+        "project": "webkit-mobile",
+        "sourceSha256": "b40560077402ebc9da6f4182244a2f9c47d6fd560d1ee50a2ec7ae75d3fabf0e",
+        "title": "workspace release corpus is accessible, responsive, and visually stable"
+      },
+      "project": "webkit-mobile",
+      "role": "current",
+      "sha256": "13a6bf07c6a382efc2d79469a5f7fa886c9d505a2abea1a5ffd1748c484e06a8",
+      "storage": "objects/13a6bf07c6a382efc2d79469a5f7fa886c9d505a2abea1a5ffd1748c484e06a8.png",
+      "test": "workspace release corpus is accessible, responsive, and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-webkit-mobile/test-failed-1.png",
+          "sha256": "b1c2770721660ac35cbe9464ef53144646e8ea89db23d64d89dc49893a527d3c"
+        }
+      ],
+      "bytes": 1026433,
+      "dimensions": [
+        1170,
+        2532
+      ],
+      "identityBasis": "native-report",
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-webkit-mobile/test-failed-1.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-log",
+        "project": "webkit-mobile",
+        "sourceSha256": "b40560077402ebc9da6f4182244a2f9c47d6fd560d1ee50a2ec7ae75d3fabf0e",
+        "title": "workspace release corpus is accessible, responsive, and visually stable"
+      },
+      "project": "webkit-mobile",
+      "role": "failure",
+      "sha256": "b1c2770721660ac35cbe9464ef53144646e8ea89db23d64d89dc49893a527d3c",
+      "storage": "objects/b1c2770721660ac35cbe9464ef53144646e8ea89db23d64d89dc49893a527d3c.png",
+      "test": "workspace release corpus is accessible, responsive, and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-webkit-mobile/workspace-records-webkit-mobile-actual.png",
+          "sha256": "8327763a785bdad1a02ce8cc641033fce39532c5f8c81104408629ce41052352"
+        }
+      ],
+      "bytes": 232540,
+      "dimensions": [
+        390,
+        844
+      ],
+      "identityBasis": "native-report",
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-webkit-mobile/workspace-records-webkit-mobile-actual.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-log",
+        "project": "webkit-mobile",
+        "sourceSha256": "b40560077402ebc9da6f4182244a2f9c47d6fd560d1ee50a2ec7ae75d3fabf0e",
+        "title": "workspace release corpus is accessible, responsive, and visually stable"
+      },
+      "project": "webkit-mobile",
+      "role": "actual",
+      "sha256": "8327763a785bdad1a02ce8cc641033fce39532c5f8c81104408629ce41052352",
+      "storage": "objects/8327763a785bdad1a02ce8cc641033fce39532c5f8c81104408629ce41052352.png",
+      "test": "workspace release corpus is accessible, responsive, and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-webkit-mobile/workspace-records-webkit-mobile-diff.png",
+          "sha256": "ff385f416fd07fd8df3fed0080c5525a111082da1f2f6c13f62abf691c499536"
+        }
+      ],
+      "bytes": 94240,
+      "dimensions": [
+        390,
+        2807
+      ],
+      "identityBasis": "native-report",
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-webkit-mobile/workspace-records-webkit-mobile-diff.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-log",
+        "project": "webkit-mobile",
+        "sourceSha256": "b40560077402ebc9da6f4182244a2f9c47d6fd560d1ee50a2ec7ae75d3fabf0e",
+        "title": "workspace release corpus is accessible, responsive, and visually stable"
+      },
+      "project": "webkit-mobile",
+      "role": "diff",
+      "sha256": "ff385f416fd07fd8df3fed0080c5525a111082da1f2f6c13f62abf691c499536",
+      "storage": "objects/ff385f416fd07fd8df3fed0080c5525a111082da1f2f6c13f62abf691c499536.png",
+      "test": "workspace release corpus is accessible, responsive, and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-webkit-mobile/workspace-records-webkit-mobile-expected.png",
+          "sha256": "66bff880077d908f6143f1f798bf5e2d2d6fb172bb4afb0016e46723268bfa5c"
+        }
+      ],
+      "bytes": 377776,
+      "dimensions": [
+        390,
+        2807
+      ],
+      "identityBasis": "native-report",
+      "member": "workspace/workspace-release-workspac-d0657-ponsive-and-visually-stable-webkit-mobile/workspace-records-webkit-mobile-expected.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-log",
+        "project": "webkit-mobile",
+        "sourceSha256": "b40560077402ebc9da6f4182244a2f9c47d6fd560d1ee50a2ec7ae75d3fabf0e",
+        "title": "workspace release corpus is accessible, responsive, and visually stable"
+      },
+      "project": "webkit-mobile",
+      "role": "expected",
+      "sha256": "66bff880077d908f6143f1f798bf5e2d2d6fb172bb4afb0016e46723268bfa5c",
+      "storage": "objects/66bff880077d908f6143f1f798bf5e2d2d6fb172bb4afb0016e46723268bfa5c.png",
+      "test": "workspace release corpus is accessible, responsive, and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    }
+  ],
+  "fixtureScope": "synthetic-project-tests",
+  "jobId": 124813891550,
+  "laterValidation": "pending",
+  "observations": [],
+  "originalOutcome": "failed",
+  "repository": "woodkill00/base2",
+  "requestedHead": "cb674560dc15de030d39491367646b2a15276be7",
+  "runId": 41295005783,
+  "schemaVersion": 2,
+  "sourceCommit": "0f64b31d9402f741ee6b3efaccc6e99752a25109",
+  "sourceTree": "14a670e2b5049b6658e453d6307727cbf66670c4",
+  "technicalReview": "pending",
+  "transfer": {
+    "blobs": {
+      "13a6bf07c6a382efc2d79469a5f7fa886c9d505a2abea1a5ffd1748c484e06a8": "aa314ec26ffb52368864f4d0f28d21c317d8c7be",
+      "6148cb2799376b59f9c07b4b6400e56014ae51f8e5105582ea55a970f07ffada": "66cda7745dd95ed983e70cd5d3c7056f02dc7c57",
+      "657058568fb729a9652dca72d0e212c884cb888f81500340029b2b2a16dfcc1f": "c5f34cf8a333ff37f40c7f2090b0779d6607e2a9",
+      "66bff880077d908f6143f1f798bf5e2d2d6fb172bb4afb0016e46723268bfa5c": "696a69b2964cc889b8ef6052f6a11715150bc329",
+      "8327763a785bdad1a02ce8cc641033fce39532c5f8c81104408629ce41052352": "581d08d9b10ad0ed3560965c6744f09c223e0ef1",
+      "b1c2770721660ac35cbe9464ef53144646e8ea89db23d64d89dc49893a527d3c": "62a492c146b8df117cfb3489d7876ee7bb582a26",
+      "b6f49fb71469b16c8ce91e821841e78bc92e0f7c54ad9cbe705e1cf7f13a5429": "28ff6ecd97d00514c7d0ca02fe6922f2e19a084c",
+      "c008b9db3aedc35e0a0072e34ba3c20c0e3a9a2af319e92bd6722faccfdb9286": "78d322ed9cd36953372f09fb08867a543fe946c5",
+      "ce00d362e41ee2c3c2d980c7aa87614ceec9f346b7e7a3024663dc7c212e94ce": "9c339b0df750a6df5c1f57d7473efbc7a1a20877",
+      "ff385f416fd07fd8df3fed0080c5525a111082da1f2f6c13f62abf691c499536": "c9b6743a281ffc5bbedce9ea8036a87cc60bfda3"
+    },
+    "commit": "f64e46dd898a3c4253577498388d38be3425cc4b",
+    "localVerification": "git-blob-sha256-size-dimensions-full-decode",
+    "originalArchiveVerification": "externally-verified-zip-and-members",
+    "tree": "e8425cadd61d77bbc02d87ac4738a894a2401263"
+  }
+}

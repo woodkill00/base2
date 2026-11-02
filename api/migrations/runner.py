@@ -23,6 +23,7 @@ MIGRATIONS = (
     '011_contract_email_delivery_fencing',
     '012_add_data_rights_claim_fencing',
     '013_add_global_data_rights_operations',
+    '014_create_notification_preference_sets',
 )
 
 

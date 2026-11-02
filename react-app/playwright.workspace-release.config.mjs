@@ -1,3 +1,5 @@
+import { requireReadOnlySnapshots } from './e2e/reference-readonly.mjs';
+requireReadOnlySnapshots();
 import { defineConfig, devices } from '@playwright/test';
 
 const chromium = (name, viewport, extra = {}) => ({
@@ -6,6 +8,8 @@ const chromium = (name, viewport, extra = {}) => ({
 });
 
 export default defineConfig({
+  updateSnapshots: 'none',
+  globalSetup: './e2e/reference-readonly.mjs',
   testDir: './e2e/workspace',
   testMatch: 'workspace-release.spec.ts',
   fullyParallel: false,
@@ -32,7 +36,11 @@ export default defineConfig({
     chromium('chromium-large-text', { width: 1280, height: 900 }),
     chromium('chromium-400-zoom', { width: 320, height: 720 }),
     chromium('chromium-light', { width: 1280, height: 900 }, { colorScheme: 'light' }),
-    chromium('chromium-high-contrast', { width: 1280, height: 900 }, { forcedColors: 'active' }),
+    chromium(
+      'chromium-high-contrast',
+      { width: 1280, height: 900 },
+      { contextOptions: { forcedColors: 'active' } }
+    ),
     {
       name: 'firefox-desktop',
       use: {

@@ -1,0 +1,363 @@
+{
+  "schemaVersion": 1,
+  "fixtureScope": "synthetic-project-tests",
+  "project": "chromium-desktop",
+  "test": "media library is accessible responsive and visually reviewed",
+  "scope": "Diagnostic viewport observations; not visual acceptance.",
+  "viewportObservations": [
+    {
+      "cardIndex": 0,
+      "scrollY": 405,
+      "viewport": [
+        1440,
+        1000
+      ],
+      "controls": [
+        {
+          "id": "base2-scroll-ascend",
+          "rect": {
+            "x": 52,
+            "y": 876,
+            "width": 68,
+            "height": 68,
+            "top": 876,
+            "right": 120,
+            "bottom": 944,
+            "left": 52
+          }
+        },
+        {
+          "id": "base2-scroll-descend",
+          "rect": {
+            "x": 1320,
+            "y": 876,
+            "width": 68,
+            "height": 68,
+            "top": 876,
+            "right": 1388,
+            "bottom": 944,
+            "left": 1320
+          }
+        }
+      ],
+      "targets": [
+        {
+          "kind": "filename",
+          "rect": {
+            "x": 80.1875,
+            "y": 484.703125,
+            "width": 280.625,
+            "height": 30.375,
+            "top": 484.703125,
+            "right": 360.8125,
+            "bottom": 515.078125,
+            "left": 80.1875
+          },
+          "centerInViewport": true,
+          "centerUnobstructed": true,
+          "overlappingControls": []
+        },
+        {
+          "kind": "metadata",
+          "rect": {
+            "x": 80.1875,
+            "y": 521.375,
+            "width": 280.625,
+            "height": 22.140625,
+            "top": 521.375,
+            "right": 360.8125,
+            "bottom": 543.515625,
+            "left": 80.1875
+          },
+          "centerInViewport": true,
+          "centerUnobstructed": true,
+          "overlappingControls": []
+        },
+        {
+          "kind": "status",
+          "rect": {
+            "x": 80.1875,
+            "y": 549.8125,
+            "width": 60.40625,
+            "height": 29.328125,
+            "top": 549.8125,
+            "right": 140.59375,
+            "bottom": 579.140625,
+            "left": 80.1875
+          },
+          "centerInViewport": true,
+          "centerUnobstructed": true,
+          "overlappingControls": []
+        },
+        {
+          "kind": "action",
+          "rect": {
+            "x": 80.1875,
+            "y": 595.328125,
+            "width": 135.8125,
+            "height": 49.5,
+            "top": 595.328125,
+            "right": 216,
+            "bottom": 644.828125,
+            "left": 80.1875
+          },
+          "centerInViewport": true,
+          "centerUnobstructed": true,
+          "overlappingControls": []
+        },
+        {
+          "kind": "action",
+          "rect": {
+            "x": 225,
+            "y": 595.328125,
+            "width": 135.8125,
+            "height": 49.5,
+            "top": 595.328125,
+            "right": 360.8125,
+            "bottom": 644.828125,
+            "left": 225
+          },
+          "centerInViewport": true,
+          "centerUnobstructed": true,
+          "overlappingControls": []
+        }
+      ]
+    },
+    {
+      "cardIndex": 2,
+      "scrollY": 405,
+      "viewport": [
+        1440,
+        1000
+      ],
+      "controls": [
+        {
+          "id": "base2-scroll-ascend",
+          "rect": {
+            "x": 52,
+            "y": 876,
+            "width": 68,
+            "height": 68,
+            "top": 876,
+            "right": 120,
+            "bottom": 944,
+            "left": 52
+          }
+        },
+        {
+          "id": "base2-scroll-descend",
+          "rect": {
+            "x": 1320,
+            "y": 876,
+            "width": 68,
+            "height": 68,
+            "top": 876,
+            "right": 1388,
+            "bottom": 944,
+            "left": 1320
+          }
+        }
+      ],
+      "targets": [
+        {
+          "kind": "filename",
+          "rect": {
+            "x": 746.1875,
+            "y": 484.703125,
+            "width": 280.625,
+            "height": 30.375,
+            "top": 484.703125,
+            "right": 1026.8125,
+            "bottom": 515.078125,
+            "left": 746.1875
+          },
+          "centerInViewport": true,
+          "centerUnobstructed": true,
+          "overlappingControls": []
+        },
+        {
+          "kind": "metadata",
+          "rect": {
+            "x": 746.1875,
+            "y": 521.375,
+            "width": 280.625,
+            "height": 22.140625,
+            "top": 521.375,
+            "right": 1026.8125,
+            "bottom": 543.515625,
+            "left": 746.1875
+          },
+          "centerInViewport": true,
+          "centerUnobstructed": true,
+          "overlappingControls": []
+        },
+        {
+          "kind": "status",
+          "rect": {
+            "x": 746.1875,
+            "y": 549.8125,
+            "width": 103.390625,
+            "height": 29.328125,
+            "top": 549.8125,
+            "right": 849.578125,
+            "bottom": 579.140625,
+            "left": 746.1875
+          },
+          "centerInViewport": true,
+          "centerUnobstructed": true,
+          "overlappingControls": []
+        },
+        {
+          "kind": "action",
+          "rect": {
+            "x": 746.1875,
+            "y": 595.328125,
+            "width": 135.8125,
+            "height": 49.5,
+            "top": 595.328125,
+            "right": 882,
+            "bottom": 644.828125,
+            "left": 746.1875
+          },
+          "centerInViewport": true,
+          "centerUnobstructed": true,
+          "overlappingControls": []
+        },
+        {
+          "kind": "action",
+          "rect": {
+            "x": 891,
+            "y": 595.328125,
+            "width": 135.8125,
+            "height": 49.5,
+            "top": 595.328125,
+            "right": 1026.8125,
+            "bottom": 644.828125,
+            "left": 891
+          },
+          "centerInViewport": true,
+          "centerUnobstructed": true,
+          "overlappingControls": []
+        }
+      ]
+    },
+    {
+      "cardIndex": 4,
+      "scrollY": 797,
+      "viewport": [
+        1440,
+        1000
+      ],
+      "controls": [
+        {
+          "id": "base2-scroll-ascend",
+          "rect": {
+            "x": 52,
+            "y": 876,
+            "width": 68,
+            "height": 68,
+            "top": 876,
+            "right": 120,
+            "bottom": 944,
+            "left": 52
+          }
+        },
+        {
+          "id": "base2-scroll-descend",
+          "rect": {
+            "x": 1320,
+            "y": 876,
+            "width": 68,
+            "height": 68,
+            "top": 876,
+            "right": 1388,
+            "bottom": 944,
+            "left": 1320
+          }
+        }
+      ],
+      "targets": [
+        {
+          "kind": "filename",
+          "rect": {
+            "x": 80.1875,
+            "y": 485.203125,
+            "width": 280.625,
+            "height": 30.375,
+            "top": 485.203125,
+            "right": 360.8125,
+            "bottom": 515.578125,
+            "left": 80.1875
+          },
+          "centerInViewport": true,
+          "centerUnobstructed": true,
+          "overlappingControls": []
+        },
+        {
+          "kind": "metadata",
+          "rect": {
+            "x": 80.1875,
+            "y": 521.875,
+            "width": 280.625,
+            "height": 22.140625,
+            "top": 521.875,
+            "right": 360.8125,
+            "bottom": 544.015625,
+            "left": 80.1875
+          },
+          "centerInViewport": true,
+          "centerUnobstructed": true,
+          "overlappingControls": []
+        },
+        {
+          "kind": "status",
+          "rect": {
+            "x": 80.1875,
+            "y": 550.3125,
+            "width": 77.734375,
+            "height": 29.328125,
+            "top": 550.3125,
+            "right": 157.921875,
+            "bottom": 579.640625,
+            "left": 80.1875
+          },
+          "centerInViewport": true,
+          "centerUnobstructed": true,
+          "overlappingControls": []
+        },
+        {
+          "kind": "action",
+          "rect": {
+            "x": 80.1875,
+            "y": 595.828125,
+            "width": 135.8125,
+            "height": 49.5,
+            "top": 595.828125,
+            "right": 216,
+            "bottom": 645.328125,
+            "left": 80.1875
+          },
+          "centerInViewport": true,
+          "centerUnobstructed": true,
+          "overlappingControls": []
+        },
+        {
+          "kind": "action",
+          "rect": {
+            "x": 225,
+            "y": 595.828125,
+            "width": 135.8125,
+            "height": 49.5,
+            "top": 595.828125,
+            "right": 360.8125,
+            "bottom": 645.328125,
+            "left": 225
+          },
+          "centerInViewport": true,
+          "centerUnobstructed": true,
+          "overlappingControls": []
+        }
+      ]
+    }
+  ]
+}

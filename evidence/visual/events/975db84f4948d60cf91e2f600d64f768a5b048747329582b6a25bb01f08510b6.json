@@ -1,0 +1,94 @@
+{
+  "conclusion": "inconclusive",
+  "inspections": [
+    {
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-compact/current-scrollport-footer.png",
+      "method": "individual-pixels",
+      "role": "current",
+      "sha256": "4283d9ec9d79fef14169f5158d3c59800ea2f43662efd913021673c40dbb6cc5"
+    },
+    {
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-compact/current-scrollport-middle.png",
+      "method": "individual-pixels",
+      "role": "current",
+      "sha256": "eadfdbc27aa07c6ea3605d1bed7f94551f305ca2e60bb0661020462efb6545dd"
+    },
+    {
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-compact/current-scrollport-top.png",
+      "method": "individual-pixels",
+      "role": "current",
+      "sha256": "766a2750b3851ba867b2c64d505e85510c802220be325ad444b0ea8a8e9dd6ef"
+    },
+    {
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-compact/operations-center-chromium-compact-actual.png",
+      "method": "individual-pixels",
+      "role": "actual",
+      "sha256": "766a2750b3851ba867b2c64d505e85510c802220be325ad444b0ea8a8e9dd6ef"
+    },
+    {
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-compact/operations-center-chromium-compact-diff.png",
+      "method": "individual-pixels",
+      "role": "diff",
+      "sha256": "4222fdcac4f23ca22681c8a2fbbbb428bd72703922a0eeae570f85722e25ecc2"
+    },
+    {
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-compact/operations-center-chromium-compact-expected.png",
+      "method": "individual-pixels",
+      "role": "expected",
+      "sha256": "1907582b2709f28198d91e111eab82580202b17803192406b961524bb95b05c7"
+    },
+    {
+      "member": "operations-release-operati-84a1a-ul-empty-and-failure-states-chromium-compact/current-scrollport-footer.png",
+      "method": "individual-pixels",
+      "role": "current",
+      "sha256": "0d14e18557ca889c1085d28b5ef82583bb18f504ee337f1724b9622cd3059df3"
+    },
+    {
+      "member": "operations-release-operati-84a1a-ul-empty-and-failure-states-chromium-compact/current-scrollport-middle.png",
+      "method": "individual-pixels",
+      "role": "current",
+      "sha256": "564e0e515aa4a2e85f00df1fa811d21ac244b9f91646b1db2322b7f3634516a7"
+    },
+    {
+      "member": "operations-release-operati-84a1a-ul-empty-and-failure-states-chromium-compact/current-scrollport-top.png",
+      "method": "individual-pixels",
+      "role": "current",
+      "sha256": "c649400a5f1b28af281ede715df91b3366c256b0e91a76ea5085f2ed4eb5f8ff"
+    },
+    {
+      "member": "operations-release-operati-84a1a-ul-empty-and-failure-states-chromium-compact/operations-center-empty-actual.png",
+      "method": "individual-pixels",
+      "role": "actual",
+      "sha256": "c649400a5f1b28af281ede715df91b3366c256b0e91a76ea5085f2ed4eb5f8ff"
+    },
+    {
+      "member": "operations-release-operati-e5f8f-d-read-only-recovery-states-chromium-compact/current-scrollport-footer.png",
+      "method": "individual-pixels",
+      "role": "current",
+      "sha256": "cba6a8d0484ecade25c4729b1fbf3a22a762aeb6ebbe7e2da4354b790d78509a"
+    },
+    {
+      "member": "operations-release-operati-e5f8f-d-read-only-recovery-states-chromium-compact/current-scrollport-middle.png",
+      "method": "individual-pixels",
+      "role": "current",
+      "sha256": "f51dd483f5038f6c6b464048005e89c5aa6a263b07db3cacc81bda5b0b6ef61a"
+    },
+    {
+      "member": "operations-release-operati-e5f8f-d-read-only-recovery-states-chromium-compact/current-scrollport-top.png",
+      "method": "individual-pixels",
+      "role": "current",
+      "sha256": "744130f82ea30d16e7b53d6ee7be26316363f9cf1e9392fadc141344ace2fa69"
+    },
+    {
+      "member": "operations-release-operati-e5f8f-d-read-only-recovery-states-chromium-compact/operations-center-partial-actual.png",
+      "method": "individual-pixels",
+      "role": "actual",
+      "sha256": "744130f82ea30d16e7b53d6ee7be26316363f9cf1e9392fadc141344ace2fa69"
+    }
+  ],
+  "kind": "technical-review",
+  "manifest": "runs/41295038159-1-124813987490-13078399828.json",
+  "manifestSha256": "5fbcfcf1a9863065be9138e92e73cc4bc4a487754e9de0fd3f6cff9b35965953",
+  "notes": "Diagnostic review only; no baseline approval or whole-matrix acceptance. Original supplied pixel review retained; contact-sheet overview does not verify all fine text. Exact-byte matches refer to previously inspected images. Native1passed21failed20declaredskips. Failed comparisons do not imply all later steps executed. No current cancellation/modal screenshot or later error/reauth/read-only states captured: earlier comparison failures prevent those steps. Modal/backdrop positioning not validated here. Only bounded PNG and metadata evidence supplied; no raw trace or detailed native error report. All22main/empty/partial actual or passing captures and18supplementary scrollport images inspected; remaining references/diffs retained with explicit review status. No all-scroll hit-test receipt available in these operations bundles; visual separation is not proof of all-position safety.",
+  "schemaVersion": 2
+}

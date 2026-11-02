@@ -69,7 +69,7 @@ for (const width of [390, 1440]) {
             },
           });
         if (path === '/api/settings/notifications')
-          return route.fulfill({ json: { preferences: [] } });
+          return route.fulfill({ json: { schema_version: 1, version: 0, preferences: [] } });
         if (path === '/api/settings/security-events')
           return route.fulfill({ json: { events: [] } });
         if (path === '/api/settings/preferences')

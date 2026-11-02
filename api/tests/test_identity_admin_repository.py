@@ -213,6 +213,9 @@ def test_role_update_preserves_last_owner_and_detects_stale_writes(monkeypatch):
         expected_updated_at=expected,
     )
     assert connections[-1].committed is True
+    assert connections[-1]._cursor.calls[0] == (
+        'SELECT pg_advisory_xact_lock(hashtext(%s))', ('base2-workspace-policy-v1',)
+    )
 
 
 def test_invitation_acceptance_fails_closed_before_membership_on_mismatch(monkeypatch):

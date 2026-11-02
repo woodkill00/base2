@@ -11,6 +11,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from fastapi import APIRouter, Header, HTTPException, Path, Query, Request, Response, status
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from api.content_public_authoring import validate_public_content
 from api.middleware.tenant import require_tenant
 from api.repositories.content_workspace import PostgresContentWorkspaceRepository
 from api.security.request_auth import require_authenticated_principal
@@ -56,6 +57,8 @@ FIELD_KINDS = (
     'json_object',
 )
 IDENTIFIER = re.compile(r'^[a-z][a-z0-9_]{1,62}$')
+# Mirror the canonical common.models type contract, never field/preset identifiers.
+TYPE_KEY = re.compile(r'\A(?=.{2,63}\Z)[a-z][a-z0-9_]*(?:-[a-z0-9][a-z0-9_]*)*\Z')
 
 
 def get_artifact_store():
@@ -132,6 +135,9 @@ class FieldDefinition(ContractModel):
         }
         if len(value) > 32 or set(value) - allowed:
             raise ValueError('field_validation_key_invalid')
+        target = value.get('targetType')
+        if 'targetType' in value and (not isinstance(target, str) or not TYPE_KEY.fullmatch(target)):
+            raise ValueError('field_relationship_invalid')
         return value
 
 
@@ -142,7 +148,14 @@ class DefinitionCreate(ContractModel):
     preset_id: str = Field(default='custom', min_length=2, max_length=63)
     fields: list[FieldDefinition] = Field(default_factory=list, max_length=64)
 
-    @field_validator('type_key', 'preset_id')
+    @field_validator('type_key')
+    @classmethod
+    def safe_type_key(cls, value: str) -> str:
+        if not TYPE_KEY.fullmatch(value):
+            raise ValueError('content_identifier_invalid')
+        return value
+
+    @field_validator('preset_id')
     @classmethod
     def safe_identifier(cls, value: str) -> str:
         if not IDENTIFIER.fullmatch(value):
@@ -150,10 +163,28 @@ class DefinitionCreate(ContractModel):
         return value
 
 
+class PublicContent(ContractModel):
+    excerpt: str = Field(strict=True, max_length=2_000)
+    body: str = Field(strict=True, max_length=20_000)
+
+    @model_validator(mode='before')
+    @classmethod
+    def strict_public_text(cls, value):
+        validate_public_content(value)
+        return value
+
+
 class RecordCreate(ContractModel):
     slug: str = Field(pattern=r'^[a-z0-9]+(?:-[a-z0-9]+)*$', min_length=1, max_length=160)
     title: str = Field(min_length=1, max_length=240)
     values: dict = Field(default_factory=dict)
+    public_content: PublicContent | None = None
+
+    @field_validator("public_content", mode="before")
+    @classmethod
+    def nonnull_public_content(cls, value):
+        validate_public_content(value)
+        return value
 
     @field_validator('values')
     @classmethod
@@ -164,6 +195,14 @@ class RecordCreate(ContractModel):
 
 
 class RecordUpdate(ContractModel):
+    public_content: PublicContent | None = None
+
+    @field_validator("public_content", mode="before")
+    @classmethod
+    def nonnull_public_content(cls, value):
+        validate_public_content(value)
+        return value
+
     values: dict
     expected_version: int | None = Field(default=None, ge=1)
 
@@ -428,7 +467,7 @@ def _expected_version(if_match: str | None, body_version: int | None = None) -> 
 
 
 def _valid_type_key(type_key: str) -> None:
-    if not IDENTIFIER.fullmatch(type_key):
+    if not TYPE_KEY.fullmatch(type_key):
         raise HTTPException(status_code=422, detail='content_identifier_invalid')
 
 
@@ -654,6 +693,7 @@ def update_record(
             expected_version=expected,
             actor_ref=f'user:{principal.user_id}',
             values=payload.values,
+            public_content=payload.public_content.model_dump() if payload.public_content is not None else None,
         )
     except ValueError as exc:
         code = str(exc)
@@ -725,9 +765,11 @@ def delete_record(
 @router.get('/types/{type_key}/records/{record_id}')
 def get_record(type_key: str, record_id: UUID, request: Request):
     _valid_type_key(type_key)
-    _, tenant = _authorized_scope(request, 'content-workspace.read')
+    principal, tenant = _authorized_scope(request, 'content-workspace.read')
     try:
-        return get_repository().get_record(site_id=tenant, type_key=type_key, record_id=record_id)
+        from api.repositories.workspace_policy import review_metadata
+        record = get_repository().get_record(site_id=tenant, type_key=type_key, record_id=record_id)
+        return {**record, **review_metadata(site_id=tenant,record_id=record_id,user_id=principal.user_id)}
     except ValueError as exc:
         raise HTTPException(status_code=404, detail='content_not_found') from exc
     except Exception as exc:
@@ -1515,3 +1557,44 @@ async def read_export_content(
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     except Exception as exc:
         raise HTTPException(status_code=503, detail='content_dependency_unavailable') from exc
+
+
+class ReviewSubjectRequest(ContractModel):
+    expected_version: int = Field(ge=1, strict=True)
+    adopt_snapshot: Literal[True]
+
+    @field_validator('adopt_snapshot', mode='before')
+    @classmethod
+    def explicit_snapshot_consent(cls, value):
+        if value is not True:
+            raise ValueError('content_adoption_confirmation_required')
+        return value
+
+
+class ReviewApprovalRequest(ContractModel):
+    expected_version: int = Field(ge=1, strict=True)
+
+
+def _review_action(type_key,record_id,payload,request,*,adopt):
+    from api.repositories import workspace_policy
+    _valid_type_key(type_key)
+    principal, tenant = _authorized_scope(request, 'content-workspace.write' if adopt else 'content-workspace.publish')
+    try:
+        return workspace_policy.review_action(site_id=tenant,type_key=type_key,record_id=record_id,
+            user_id=principal.user_id,expected_version=payload.expected_version,adopt=adopt)
+    except PermissionError as exc:
+        raise HTTPException(status_code=404,detail='content_not_found') from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=404 if str(exc)=='content_not_found' else 409 if str(exc)=='content_version_conflict' else 422,detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=503,detail='content_dependency_unavailable') from exc
+
+
+@router.post('/types/{type_key}/records/{record_id}/review-subject')
+def adopt_review_subject(type_key:str,record_id:UUID,payload:ReviewSubjectRequest,request:Request):
+    return _review_action(type_key,record_id,payload,request,adopt=True)
+
+
+@router.post('/types/{type_key}/records/{record_id}/review-approval')
+def approve_review_subject(type_key:str,record_id:UUID,payload:ReviewApprovalRequest,request:Request):
+    return _review_action(type_key,record_id,payload,request,adopt=False)

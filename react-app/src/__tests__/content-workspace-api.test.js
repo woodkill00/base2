@@ -256,3 +256,39 @@ describe('content workspace API client', () => {
     });
   });
 });
+
+test('review approval and explicit snapshot adoption use bounded versioned requests', async () => {
+  apiClient.post.mockResolvedValue({ data: { record_id: 'record/id', version: 4 } });
+  await contentWorkspaceAPI.approveReview('article/type', 'record/id', 3);
+  expect(apiClient.post).toHaveBeenCalledWith(
+    '/content/v1/types/article%2Ftype/records/record%2Fid/review-approval',
+    { expected_version: 3 },
+    { timeout: 10000 }
+  );
+  await contentWorkspaceAPI.adoptReviewSubject('article/type', 'record/id', 3);
+  expect(apiClient.post).toHaveBeenCalledWith(
+    '/content/v1/types/article%2Ftype/records/record%2Fid/review-subject',
+    { expected_version: 3, adopt_snapshot: true },
+    { timeout: 10000 }
+  );
+});
+
+test('record CAS keeps omitted public copy absent and sends explicit clear or text atomically', async () => {
+  apiClient.patch.mockClear();
+  apiClient.patch.mockResolvedValue({ data: { data: {} } });
+  const values = { private_note: 'not public' };
+  await contentWorkspaceAPI.updateRecord('article', 'one', 4, values);
+  expect(apiClient.patch.mock.calls[0][1]).toEqual({ values });
+  for (const publicContent of [
+    { excerpt: '', body: '' },
+    { excerpt: 'Public', body: '  Plain <b>text</b>  ' },
+  ]) {
+    const signal = new AbortController().signal;
+    await contentWorkspaceAPI.updateRecord('article', 'one', 4, values, { publicContent, signal });
+    expect(apiClient.patch.mock.calls.at(-1)).toEqual([
+      '/content/v1/types/article/records/one',
+      { values, publicContent },
+      { headers: { 'If-Match': '"4"' }, signal },
+    ]);
+  }
+});

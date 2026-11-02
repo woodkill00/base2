@@ -3,6 +3,20 @@ import pytest
 from api import tasks
 
 
+@pytest.fixture(autouse=True)
+def enabled_deployment(monkeypatch):
+    from api.services import media_library_runtime as runtime
+
+    manifest = {
+        'siteId': 'site-a',
+        'modules': [
+            {'id': name, 'enabled': True} for name in ('accounts', 'media', 'content-workspace')
+        ],
+    }
+    monkeypatch.setattr(runtime, 'SITE_MANIFEST', manifest)
+    monkeypatch.setattr(tasks, 'SITE_MANIFEST', manifest)
+
+
 def test_media_scan_schedule_is_bounded_and_responsive():
     entry = tasks.app.conf.beat_schedule['workspace-scan-quarantined-media']
     assert entry == {
@@ -62,13 +76,15 @@ def test_workspace_mutation_tasks_have_bounded_dependency_retries():
 
 
 def test_workspace_media_scan_replay_dispatches_only_discovered_ids(monkeypatch):
-    discovered = [(
-        'site-a',
-        '00000000-0000-0000-0000-000000007104',
-        '00000000-0000-0000-0000-000000007105',
-        2,
-        '2026-09-07T12:02:00+00:00',
-    )]
+    discovered = [
+        (
+            'site-a',
+            '00000000-0000-0000-0000-000000007104',
+            '00000000-0000-0000-0000-000000007105',
+            2,
+            '2026-09-07T12:02:00+00:00',
+        )
+    ]
     delivered = []
     monkeypatch.setattr(tasks, 'due_media_scans', lambda *, limit: discovered)
     monkeypatch.setattr(
@@ -81,9 +97,7 @@ def test_workspace_media_scan_replay_dispatches_only_discovered_ids(monkeypatch)
 
 
 @pytest.mark.parametrize('worker_result', ['ready', 'rejected', 'not_ready'])
-def test_workspace_media_scan_task_completes_clean_and_infected_results(
-    monkeypatch, worker_result
-):
+def test_workspace_media_scan_task_completes_clean_and_infected_results(monkeypatch, worker_result):
     store = object()
     calls = []
     monkeypatch.setattr(tasks, '_workspace_artifact_store', lambda: store)
@@ -108,7 +122,14 @@ def test_workspace_media_scan_task_completes_clean_and_infected_results(
     token = '2026-09-07T12:02:00+00:00'
     assert tasks.scan_workspace_asset_task('site-a', asset_id, job_id, 2, token) == worker_result
     assert calls == [
-        {'site_id': 'site-a', 'asset_id': tasks.UUID(asset_id), 'artifact_store': store}
+        {
+            'site_id': 'site-a',
+            'asset_id': tasks.UUID(asset_id),
+            'artifact_store': store,
+            'job_id': tasks.UUID(job_id),
+            'attempt': 2,
+            'lease_token': tasks.datetime.fromisoformat(token),
+        }
     ]
     assert lifecycle[0][0] == 'begin' and lifecycle[1][0] == 'finish'
     assert lifecycle[0][1]['attempt'] == 2
@@ -122,13 +143,16 @@ def test_workspace_media_scan_duplicate_token_is_noop(monkeypatch):
         'scan_workspace_asset',
         lambda **_kwargs: (_ for _ in ()).throw(AssertionError('duplicate processed')),
     )
-    assert tasks.scan_workspace_asset_task(
-        'site-a',
-        '00000000-0000-0000-0000-000000007104',
-        '00000000-0000-0000-0000-000000007105',
-        2,
-        '2026-09-07T12:02:00+00:00',
-    ) == 'stale_attempt'
+    assert (
+        tasks.scan_workspace_asset_task(
+            'site-a',
+            '00000000-0000-0000-0000-000000007104',
+            '00000000-0000-0000-0000-000000007105',
+            2,
+            '2026-09-07T12:02:00+00:00',
+        )
+        == 'stale_attempt'
+    )
 
 
 def test_workspace_media_scan_unexpected_exception_is_durably_recovered(monkeypatch):
@@ -231,7 +255,8 @@ def test_expire_export_task_calls_bounded_worker(monkeypatch):
     store = object()
     monkeypatch.setattr(tasks, '_workspace_artifact_store', lambda: store)
     monkeypatch.setattr(
-        tasks, 'expire_workspace_export_jobs',
+        tasks,
+        'expire_workspace_export_jobs',
         lambda *, artifact_store, limit: limit if artifact_store is store else 0,
     )
     assert tasks.expire_workspace_exports(limit=100) == 100
@@ -241,9 +266,11 @@ def test_retention_task_uses_exact_private_store(monkeypatch):
     store = object()
     monkeypatch.setattr(tasks, '_workspace_artifact_store', lambda: store)
     monkeypatch.setattr(
-        tasks, 'purge_workspace_retention',
+        tasks,
+        'purge_workspace_retention',
         lambda *, artifact_store, limit: {'assets': 1, 'records': limit}
-        if artifact_store is store else {},
+        if artifact_store is store
+        else {},
     )
     assert tasks.purge_workspace_retained_data(limit=7) == {'assets': 1, 'records': 7}
     assert tasks.app.conf.beat_schedule['workspace-retention-cleanup']['schedule'] == 86400.0

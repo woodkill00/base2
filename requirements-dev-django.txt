@@ -3,3 +3,6 @@
 
 -r django/requirements.txt
 mypy==1.11.2
+
+# Match the existing API lint tool for the Django CI matrix.
+ruff==0.6.9

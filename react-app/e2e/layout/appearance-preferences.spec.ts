@@ -1,3 +1,4 @@
+import { scrollPageTo, pageScrollTop } from '../scroll-target';
 import { expect, test } from './fixtures';
 import axe from 'axe-core';
 import { fulfillSessionFixture, setSessionFixture } from '../session-fixture';
@@ -39,6 +40,10 @@ for (const width of [390, 1440]) {
       const url = new URL(route.request().url());
       if (!['127.0.0.1', 'localhost'].includes(url.hostname)) return route.abort();
       if (!url.pathname.startsWith('/api/')) return route.continue();
+      if (url.pathname === '/api/auth/logout') {
+        expect(route.request().method()).toBe('POST');
+        return route.fulfill({ status: 204 });
+      }
       if (url.pathname === '/api/settings/capabilities')
         return route.fulfill({
           json: {
@@ -61,7 +66,7 @@ for (const width of [390, 1440]) {
         return route.fulfill({ json: preferences });
       }
       if (url.pathname === '/api/settings/notifications')
-        return route.fulfill({ json: { preferences: [] } });
+        return route.fulfill({ json: { schema_version: 1, version: 0, preferences: [] } });
       if (url.pathname === '/api/settings/security-events')
         return route.fulfill({ json: { events: [] } });
       if (url.pathname === '/api/privacy/operations')
@@ -73,8 +78,8 @@ for (const width of [390, 1440]) {
       // Save/select interactions scroll focused controls into view. A full-page
       // capture must start at the top so sticky headers are not composited over
       // controls in the middle of the resulting image.
-      await page.evaluate(() => window.scrollTo({ top: 0, left: 0, behavior: 'instant' }));
-      await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
+      await scrollPageTo(page, 0);
+      await expect.poll(() => pageScrollTop(page)).toBe(0);
       await page.screenshot({
         path: info.outputPath(name),
         fullPage: true,
@@ -334,7 +339,14 @@ for (const width of [390, 1440]) {
     await expect(theme).toHaveValue('light');
 
     const signOut = page.getByRole('button', { name: /^(Sign out|Logout)$/ });
+    const logoutResponse = page.waitForResponse(
+      (response) =>
+        new URL(response.url()).pathname === '/api/auth/logout' &&
+        response.request().method() === 'POST'
+    );
     await signOut.click();
+    expect((await logoutResponse).status()).toBe(204);
+    await expect(page.getByText('You are signed out.', { exact: true })).toBeVisible();
     await expect(page).toHaveURL(/\/login/);
     await expect(root).toHaveAttribute('data-color-mode', 'light');
     await expect(root).toHaveAttribute('data-density', 'comfortable');

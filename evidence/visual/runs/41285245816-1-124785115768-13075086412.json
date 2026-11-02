@@ -1,0 +1,273 @@
+{
+  "archiveSha256": "6e38e2de68a0a3ff103224f473d1ae86cf51767f420d25e5368dcc0851fcb7b6",
+  "artifactId": 13075086412,
+  "attempt": 1,
+  "captures": [
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "chromium-compact.zip",
+          "sha256": "d6b1bcb09387ed3cd96151acad5e1ae1c78a6caa76f3e1f04f4f0a5c7e8cda0c"
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-compact/current-operations-center-chromium-compact.png",
+          "sha256": "1907582b2709f28198d91e111eab82580202b17803192406b961524bb95b05c7"
+        }
+      ],
+      "bytes": 351424,
+      "dimensions": [
+        320,
+        4005
+      ],
+      "identityBasis": "native-report",
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-compact/current-operations-center-chromium-compact.png",
+      "originalOutcome": "passed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "passed"
+        ],
+        "basis": "retained-native-report",
+        "project": "chromium-compact",
+        "title": "operations center is accessible responsive and visually stable"
+      },
+      "project": "chromium-compact",
+      "role": "current",
+      "sha256": "1907582b2709f28198d91e111eab82580202b17803192406b961524bb95b05c7",
+      "storage": "objects/1907582b2709f28198d91e111eab82580202b17803192406b961524bb95b05c7.png",
+      "test": "operations center is accessible responsive and visually stable",
+      "viewport": [
+        320,
+        568
+      ],
+      "viewportBasis": "native-project-config"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "chromium-compact.zip",
+          "sha256": "d6b1bcb09387ed3cd96151acad5e1ae1c78a6caa76f3e1f04f4f0a5c7e8cda0c"
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "operations-release-operati-84a1a-ul-empty-and-failure-states-chromium-compact/current-operations-center-empty.png",
+          "sha256": "b093c818214843eef98cf80709a27e726d54eb7b0607b77cb1f03d3004322230"
+        }
+      ],
+      "bytes": 277434,
+      "dimensions": [
+        320,
+        2890
+      ],
+      "identityBasis": "native-report",
+      "member": "operations-release-operati-84a1a-ul-empty-and-failure-states-chromium-compact/current-operations-center-empty.png",
+      "originalOutcome": "passed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "passed"
+        ],
+        "basis": "retained-native-report",
+        "project": "chromium-compact",
+        "title": "operations center shows truthful empty and failure states"
+      },
+      "project": "chromium-compact",
+      "role": "current",
+      "sha256": "b093c818214843eef98cf80709a27e726d54eb7b0607b77cb1f03d3004322230",
+      "storage": "objects/b093c818214843eef98cf80709a27e726d54eb7b0607b77cb1f03d3004322230.png",
+      "test": "operations center shows truthful empty and failure states",
+      "viewport": [
+        320,
+        568
+      ],
+      "viewportBasis": "native-project-config"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "chromium-compact.zip",
+          "sha256": "d6b1bcb09387ed3cd96151acad5e1ae1c78a6caa76f3e1f04f4f0a5c7e8cda0c"
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "operations-release-operati-84a1a-ul-empty-and-failure-states-chromium-compact/current-operations-center-error.png",
+          "sha256": "f91a0981f38aec19242204d0930c32ad6755870200e3449781348fb2376825ee"
+        }
+      ],
+      "bytes": 260921,
+      "dimensions": [
+        320,
+        2269
+      ],
+      "identityBasis": "native-report",
+      "member": "operations-release-operati-84a1a-ul-empty-and-failure-states-chromium-compact/current-operations-center-error.png",
+      "originalOutcome": "passed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "passed"
+        ],
+        "basis": "retained-native-report",
+        "project": "chromium-compact",
+        "title": "operations center shows truthful empty and failure states"
+      },
+      "project": "chromium-compact",
+      "role": "current",
+      "sha256": "f91a0981f38aec19242204d0930c32ad6755870200e3449781348fb2376825ee",
+      "storage": "objects/f91a0981f38aec19242204d0930c32ad6755870200e3449781348fb2376825ee.png",
+      "test": "operations center shows truthful empty and failure states",
+      "viewport": [
+        320,
+        568
+      ],
+      "viewportBasis": "native-project-config"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "chromium-compact.zip",
+          "sha256": "d6b1bcb09387ed3cd96151acad5e1ae1c78a6caa76f3e1f04f4f0a5c7e8cda0c"
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "operations-release-operati-e5f8f-d-read-only-recovery-states-chromium-compact/current-operations-center-partial.png",
+          "sha256": "91280a65894d2655557886be20c5a6e861f23b22fac48d0d17e5ab7dbd1d1e63"
+        }
+      ],
+      "bytes": 376479,
+      "dimensions": [
+        320,
+        4164
+      ],
+      "identityBasis": "native-report",
+      "member": "operations-release-operati-e5f8f-d-read-only-recovery-states-chromium-compact/current-operations-center-partial.png",
+      "originalOutcome": "passed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "passed"
+        ],
+        "basis": "retained-native-report",
+        "project": "chromium-compact",
+        "title": "operations center exposes stale, reauthentication, and read-only recovery states"
+      },
+      "project": "chromium-compact",
+      "role": "current",
+      "sha256": "91280a65894d2655557886be20c5a6e861f23b22fac48d0d17e5ab7dbd1d1e63",
+      "storage": "objects/91280a65894d2655557886be20c5a6e861f23b22fac48d0d17e5ab7dbd1d1e63.png",
+      "test": "operations center exposes stale, reauthentication, and read-only recovery states",
+      "viewport": [
+        320,
+        568
+      ],
+      "viewportBasis": "native-project-config"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "chromium-compact.zip",
+          "sha256": "d6b1bcb09387ed3cd96151acad5e1ae1c78a6caa76f3e1f04f4f0a5c7e8cda0c"
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "operations-release-operati-e5f8f-d-read-only-recovery-states-chromium-compact/current-operations-center-read-only.png",
+          "sha256": "180e80cda06ffc00d5040a89fb9ecd7b9ec71b5cf2c10688afa0e14cd8bc5691"
+        }
+      ],
+      "bytes": 337992,
+      "dimensions": [
+        320,
+        3787
+      ],
+      "identityBasis": "native-report",
+      "member": "operations-release-operati-e5f8f-d-read-only-recovery-states-chromium-compact/current-operations-center-read-only.png",
+      "originalOutcome": "passed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "passed"
+        ],
+        "basis": "retained-native-report",
+        "project": "chromium-compact",
+        "title": "operations center exposes stale, reauthentication, and read-only recovery states"
+      },
+      "project": "chromium-compact",
+      "role": "current",
+      "sha256": "180e80cda06ffc00d5040a89fb9ecd7b9ec71b5cf2c10688afa0e14cd8bc5691",
+      "storage": "objects/180e80cda06ffc00d5040a89fb9ecd7b9ec71b5cf2c10688afa0e14cd8bc5691.png",
+      "test": "operations center exposes stale, reauthentication, and read-only recovery states",
+      "viewport": [
+        320,
+        568
+      ],
+      "viewportBasis": "native-project-config"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "chromium-compact.zip",
+          "sha256": "d6b1bcb09387ed3cd96151acad5e1ae1c78a6caa76f3e1f04f4f0a5c7e8cda0c"
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "operations-release-operati-e5f8f-d-read-only-recovery-states-chromium-compact/current-operations-center-reauth.png",
+          "sha256": "bc09194320aa9c53ec490a811dc0ba2f3b9855bb386f462c420ea193ca77879c"
+        }
+      ],
+      "bytes": 376015,
+      "dimensions": [
+        320,
+        4164
+      ],
+      "identityBasis": "native-report",
+      "member": "operations-release-operati-e5f8f-d-read-only-recovery-states-chromium-compact/current-operations-center-reauth.png",
+      "originalOutcome": "passed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "passed"
+        ],
+        "basis": "retained-native-report",
+        "project": "chromium-compact",
+        "title": "operations center exposes stale, reauthentication, and read-only recovery states"
+      },
+      "project": "chromium-compact",
+      "role": "current",
+      "sha256": "bc09194320aa9c53ec490a811dc0ba2f3b9855bb386f462c420ea193ca77879c",
+      "storage": "objects/bc09194320aa9c53ec490a811dc0ba2f3b9855bb386f462c420ea193ca77879c.png",
+      "test": "operations center exposes stale, reauthentication, and read-only recovery states",
+      "viewport": [
+        320,
+        568
+      ],
+      "viewportBasis": "native-project-config"
+    }
+  ],
+  "fixtureScope": "synthetic-project-tests",
+  "jobId": 124785115768,
+  "laterValidation": "pending",
+  "observations": [],
+  "originalOutcome": "passed",
+  "repository": "woodkill00/base2",
+  "requestedHead": "4e591455b1eb7491b81b53b01c8648a8ef2d2489",
+  "runId": 41285245816,
+  "schemaVersion": 2,
+  "sourceCommit": "4e591455b1eb7491b81b53b01c8648a8ef2d2489",
+  "sourceTree": "a04738b7d35e16a130a1fadb1d0440bdd411fefc",
+  "technicalReview": "pending",
+  "transfer": {
+    "blobs": {
+      "180e80cda06ffc00d5040a89fb9ecd7b9ec71b5cf2c10688afa0e14cd8bc5691": "c72f2eb2f67fa10c03eaddd28905c41f48e253f8",
+      "1907582b2709f28198d91e111eab82580202b17803192406b961524bb95b05c7": "8030c4f7e4a6e4fa886e3032d2ab092bb13ea50a",
+      "91280a65894d2655557886be20c5a6e861f23b22fac48d0d17e5ab7dbd1d1e63": "8bc914a31acbba9091edce547bb7e6c2157c80cb",
+      "b093c818214843eef98cf80709a27e726d54eb7b0607b77cb1f03d3004322230": "58cccc7212baedfcba5435b2e67261f7ff3ea761",
+      "bc09194320aa9c53ec490a811dc0ba2f3b9855bb386f462c420ea193ca77879c": "dc385b010c0f81398177590b86c76b014fe9d6a1",
+      "f91a0981f38aec19242204d0930c32ad6755870200e3449781348fb2376825ee": "7c74437f3896fc61f8a0863d44ff8e8be25c10f3"
+    },
+    "commit": "cfd7012fc6e77f4567135cade3a349d26aae6dc4",
+    "localVerification": "git-blob-sha256-size-dimensions-full-decode",
+    "originalArchiveVerification": "externally-verified-zip-and-members",
+    "tree": "d3ab244c2c8dd0c696bbea2451297a21de7bb82c"
+  }
+}

@@ -316,7 +316,8 @@ def test_history_restore_and_saved_views_remain_scoped_and_closed():
     assert unsafe.status_code == 422
 
 
-def test_record_detail_and_saved_view_lifecycle_are_owner_and_version_bound():
+def test_record_detail_and_saved_view_lifecycle_are_owner_and_version_bound(monkeypatch):
+    monkeypatch.setattr('api.repositories.workspace_policy.review_metadata',lambda **kwargs: {'allowedActions':[], 'review':{'status':'not_requested'}})
     client = TestClient(app)
     headers = {'Authorization': 'Bearer synthetic', 'X-Tenant-ID': 'site-a'}
     record_id = '00000000-0000-0000-0000-000000003104'

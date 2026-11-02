@@ -1,0 +1,443 @@
+{
+  "archiveSha256": "665788bed7b28f1c88a3ef1812de2905b2d8546b24bc7f09333a45dae69239c3",
+  "artifactId": 13086134664,
+  "attempt": 1,
+  "captures": [
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "chromium-tablet.zip",
+          "sha256": "3562594118420878559bb2995bf140fee4c1ea1bfb60bd3caded1a6fd549d72c"
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-tablet/current-operations-center-chromium-tablet.png",
+          "sha256": "183ba7a93eadfea8005bc7c1f7095210092a9fb40a7b970039c66bc75a0e4426"
+        }
+      ],
+      "bytes": 313797,
+      "dimensions": [
+        1024,
+        768
+      ],
+      "identityBasis": "native-report",
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-tablet/current-operations-center-chromium-tablet.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-report",
+        "project": "chromium-tablet",
+        "title": "operations center is accessible responsive and visually stable"
+      },
+      "project": "chromium-tablet",
+      "role": "current",
+      "sha256": "183ba7a93eadfea8005bc7c1f7095210092a9fb40a7b970039c66bc75a0e4426",
+      "storage": "objects/183ba7a93eadfea8005bc7c1f7095210092a9fb40a7b970039c66bc75a0e4426.png",
+      "test": "operations center is accessible responsive and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "chromium-tablet.zip",
+          "sha256": "3562594118420878559bb2995bf140fee4c1ea1bfb60bd3caded1a6fd549d72c"
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-tablet/current-scrollport-footer.png",
+          "sha256": "623e34e8304f10a3b082583a14e972279434f558d55f4ef27b2dfe253f766c47"
+        }
+      ],
+      "bytes": 168326,
+      "dimensions": [
+        1024,
+        768
+      ],
+      "identityBasis": "native-report",
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-tablet/current-scrollport-footer.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-report",
+        "project": "chromium-tablet",
+        "title": "operations center is accessible responsive and visually stable"
+      },
+      "project": "chromium-tablet",
+      "role": "current",
+      "sha256": "623e34e8304f10a3b082583a14e972279434f558d55f4ef27b2dfe253f766c47",
+      "storage": "objects/623e34e8304f10a3b082583a14e972279434f558d55f4ef27b2dfe253f766c47.png",
+      "test": "operations center is accessible responsive and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "chromium-tablet.zip",
+          "sha256": "3562594118420878559bb2995bf140fee4c1ea1bfb60bd3caded1a6fd549d72c"
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-tablet/current-scrollport-middle.png",
+          "sha256": "dede06968d9042b5a8db833839257fcd461d5db3a17fdcc404bf08a3cd5a32c2"
+        }
+      ],
+      "bytes": 219552,
+      "dimensions": [
+        1024,
+        768
+      ],
+      "identityBasis": "native-report",
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-tablet/current-scrollport-middle.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-report",
+        "project": "chromium-tablet",
+        "title": "operations center is accessible responsive and visually stable"
+      },
+      "project": "chromium-tablet",
+      "role": "current",
+      "sha256": "dede06968d9042b5a8db833839257fcd461d5db3a17fdcc404bf08a3cd5a32c2",
+      "storage": "objects/dede06968d9042b5a8db833839257fcd461d5db3a17fdcc404bf08a3cd5a32c2.png",
+      "test": "operations center is accessible responsive and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "chromium-tablet.zip",
+          "sha256": "3562594118420878559bb2995bf140fee4c1ea1bfb60bd3caded1a6fd549d72c"
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-tablet/current-scrollport-operations-center-chromium-tablet-footer.png",
+          "sha256": "0b24581ffde96e85b62f4d87950333c101c4e720bf2e053caf61a4559026d969"
+        }
+      ],
+      "bytes": 169004,
+      "dimensions": [
+        1024,
+        768
+      ],
+      "identityBasis": "native-report",
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-tablet/current-scrollport-operations-center-chromium-tablet-footer.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-report",
+        "project": "chromium-tablet",
+        "title": "operations center is accessible responsive and visually stable"
+      },
+      "project": "chromium-tablet",
+      "role": "current",
+      "sha256": "0b24581ffde96e85b62f4d87950333c101c4e720bf2e053caf61a4559026d969",
+      "storage": "objects/0b24581ffde96e85b62f4d87950333c101c4e720bf2e053caf61a4559026d969.png",
+      "test": "operations center is accessible responsive and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "chromium-tablet.zip",
+          "sha256": "3562594118420878559bb2995bf140fee4c1ea1bfb60bd3caded1a6fd549d72c"
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-tablet/current-scrollport-operations-center-chromium-tablet-middle.png",
+          "sha256": "6914e767020e429e88357af6d8485514c377ba1c96899ea26f9eca6875395903"
+        }
+      ],
+      "bytes": 206930,
+      "dimensions": [
+        1024,
+        768
+      ],
+      "identityBasis": "native-report",
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-tablet/current-scrollport-operations-center-chromium-tablet-middle.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-report",
+        "project": "chromium-tablet",
+        "title": "operations center is accessible responsive and visually stable"
+      },
+      "project": "chromium-tablet",
+      "role": "current",
+      "sha256": "6914e767020e429e88357af6d8485514c377ba1c96899ea26f9eca6875395903",
+      "storage": "objects/6914e767020e429e88357af6d8485514c377ba1c96899ea26f9eca6875395903.png",
+      "test": "operations center is accessible responsive and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "chromium-tablet.zip",
+          "sha256": "3562594118420878559bb2995bf140fee4c1ea1bfb60bd3caded1a6fd549d72c"
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-tablet/current-scrollport-operations-center-chromium-tablet-top.png",
+          "sha256": "183ba7a93eadfea8005bc7c1f7095210092a9fb40a7b970039c66bc75a0e4426"
+        }
+      ],
+      "bytes": 313797,
+      "dimensions": [
+        1024,
+        768
+      ],
+      "identityBasis": "native-report",
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-tablet/current-scrollport-operations-center-chromium-tablet-top.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-report",
+        "project": "chromium-tablet",
+        "title": "operations center is accessible responsive and visually stable"
+      },
+      "project": "chromium-tablet",
+      "role": "current",
+      "sha256": "183ba7a93eadfea8005bc7c1f7095210092a9fb40a7b970039c66bc75a0e4426",
+      "storage": "objects/183ba7a93eadfea8005bc7c1f7095210092a9fb40a7b970039c66bc75a0e4426.png",
+      "test": "operations center is accessible responsive and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "chromium-tablet.zip",
+          "sha256": "3562594118420878559bb2995bf140fee4c1ea1bfb60bd3caded1a6fd549d72c"
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-tablet/current-scrollport-top.png",
+          "sha256": "550e5e1a2ac04465b7b631b7996688ad64150ec5becd7ba79efc8879c08f09b3"
+        }
+      ],
+      "bytes": 321377,
+      "dimensions": [
+        1024,
+        768
+      ],
+      "identityBasis": "native-report",
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-tablet/current-scrollport-top.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-report",
+        "project": "chromium-tablet",
+        "title": "operations center is accessible responsive and visually stable"
+      },
+      "project": "chromium-tablet",
+      "role": "current",
+      "sha256": "550e5e1a2ac04465b7b631b7996688ad64150ec5becd7ba79efc8879c08f09b3",
+      "storage": "objects/550e5e1a2ac04465b7b631b7996688ad64150ec5becd7ba79efc8879c08f09b3.png",
+      "test": "operations center is accessible responsive and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "chromium-tablet.zip",
+          "sha256": "3562594118420878559bb2995bf140fee4c1ea1bfb60bd3caded1a6fd549d72c"
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-tablet/operations-center-chromium-tablet-actual.png",
+          "sha256": "183ba7a93eadfea8005bc7c1f7095210092a9fb40a7b970039c66bc75a0e4426"
+        }
+      ],
+      "bytes": 313797,
+      "dimensions": [
+        1024,
+        768
+      ],
+      "identityBasis": "native-report",
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-tablet/operations-center-chromium-tablet-actual.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-report",
+        "project": "chromium-tablet",
+        "title": "operations center is accessible responsive and visually stable"
+      },
+      "project": "chromium-tablet",
+      "role": "actual",
+      "sha256": "183ba7a93eadfea8005bc7c1f7095210092a9fb40a7b970039c66bc75a0e4426",
+      "storage": "objects/183ba7a93eadfea8005bc7c1f7095210092a9fb40a7b970039c66bc75a0e4426.png",
+      "test": "operations center is accessible responsive and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "chromium-tablet.zip",
+          "sha256": "3562594118420878559bb2995bf140fee4c1ea1bfb60bd3caded1a6fd549d72c"
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-tablet/operations-center-chromium-tablet-diff.png",
+          "sha256": "7a4ba7231c9103f80956d264524a2b3bd234e460caf93008bb87765d188e141c"
+        }
+      ],
+      "bytes": 165802,
+      "dimensions": [
+        1024,
+        3116
+      ],
+      "identityBasis": "native-report",
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-tablet/operations-center-chromium-tablet-diff.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-report",
+        "project": "chromium-tablet",
+        "title": "operations center is accessible responsive and visually stable"
+      },
+      "project": "chromium-tablet",
+      "role": "diff",
+      "sha256": "7a4ba7231c9103f80956d264524a2b3bd234e460caf93008bb87765d188e141c",
+      "storage": "objects/7a4ba7231c9103f80956d264524a2b3bd234e460caf93008bb87765d188e141c.png",
+      "test": "operations center is accessible responsive and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "chromium-tablet.zip",
+          "sha256": "3562594118420878559bb2995bf140fee4c1ea1bfb60bd3caded1a6fd549d72c"
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-tablet/operations-center-chromium-tablet-expected.png",
+          "sha256": "5a789f501af5626cf1edf97b3f9a2885a080bca4594220df934ae964c28b383e"
+        }
+      ],
+      "bytes": 621708,
+      "dimensions": [
+        1024,
+        3116
+      ],
+      "identityBasis": "native-report",
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-tablet/operations-center-chromium-tablet-expected.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-report",
+        "project": "chromium-tablet",
+        "title": "operations center is accessible responsive and visually stable"
+      },
+      "project": "chromium-tablet",
+      "role": "expected",
+      "sha256": "5a789f501af5626cf1edf97b3f9a2885a080bca4594220df934ae964c28b383e",
+      "storage": "objects/5a789f501af5626cf1edf97b3f9a2885a080bca4594220df934ae964c28b383e.png",
+      "test": "operations center is accessible responsive and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    },
+    {
+      "archiveChain": [
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "chromium-tablet.zip",
+          "sha256": "3562594118420878559bb2995bf140fee4c1ea1bfb60bd3caded1a6fd549d72c"
+        },
+        {
+          "hashBasis": "externally-verified-original-member",
+          "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-tablet/test-failed-1.png",
+          "sha256": "9fab301d9831a813b5b739e074fbf4c93cf9aaeb9689c4b6c37e626787987785"
+        }
+      ],
+      "bytes": 199285,
+      "dimensions": [
+        1024,
+        768
+      ],
+      "identityBasis": "native-report",
+      "member": "operations-release-operati-5407b-ponsive-and-visually-stable-chromium-tablet/test-failed-1.png",
+      "originalOutcome": "failed",
+      "outcomeEvidence": {
+        "attemptStatuses": [
+          "failed"
+        ],
+        "basis": "retained-native-report",
+        "project": "chromium-tablet",
+        "title": "operations center is accessible responsive and visually stable"
+      },
+      "project": "chromium-tablet",
+      "role": "failure",
+      "sha256": "9fab301d9831a813b5b739e074fbf4c93cf9aaeb9689c4b6c37e626787987785",
+      "storage": "objects/9fab301d9831a813b5b739e074fbf4c93cf9aaeb9689c4b6c37e626787987785.png",
+      "test": "operations center is accessible responsive and visually stable",
+      "viewport": null,
+      "viewportBasis": "unavailable"
+    }
+  ],
+  "fixtureScope": "synthetic-project-tests",
+  "jobId": 124872282068,
+  "laterValidation": "pending",
+  "observations": [],
+  "originalOutcome": "failed",
+  "repository": "woodkill00/base2",
+  "requestedHead": "696f710633d81cec46e872901f21a024bf735c5f",
+  "runId": 41314740935,
+  "schemaVersion": 2,
+  "sourceCommit": "696f710633d81cec46e872901f21a024bf735c5f",
+  "sourceTree": "b395ca42a261de3c2710034787f5410ff5599501",
+  "technicalReview": "pending",
+  "transfer": {
+    "blobs": {
+      "0b24581ffde96e85b62f4d87950333c101c4e720bf2e053caf61a4559026d969": "515e51c107953507c3c6a65cc5077e53bfe04b06",
+      "183ba7a93eadfea8005bc7c1f7095210092a9fb40a7b970039c66bc75a0e4426": "b9c9f2c0af02b79b66ae901fdbd481a7c30ab14d",
+      "550e5e1a2ac04465b7b631b7996688ad64150ec5becd7ba79efc8879c08f09b3": "1752d209deec5b314e89dd3293f12448953ab55d",
+      "5a789f501af5626cf1edf97b3f9a2885a080bca4594220df934ae964c28b383e": "a64ac687a9896c53fca0eb421b2b261ed7b8943e",
+      "623e34e8304f10a3b082583a14e972279434f558d55f4ef27b2dfe253f766c47": "f56b6932b7ff937f18938ce399d4ea37ab7aab98",
+      "6914e767020e429e88357af6d8485514c377ba1c96899ea26f9eca6875395903": "05bac51de5767b6495c2d7f324a5bbc1a8ed75c3",
+      "7a4ba7231c9103f80956d264524a2b3bd234e460caf93008bb87765d188e141c": "fcc4ab47b64e60a8ad37781e04403b2740c36edf",
+      "9fab301d9831a813b5b739e074fbf4c93cf9aaeb9689c4b6c37e626787987785": "edd0d6129f4aa90da6ada77e78f7f71f5ca22b74",
+      "dede06968d9042b5a8db833839257fcd461d5db3a17fdcc404bf08a3cd5a32c2": "0764d59ccda1d7d377ab43fc7353c097786d9438"
+    },
+    "commit": "9cd69137e688113750cdc225ad4c7fce2eebc157",
+    "localVerification": "git-blob-sha256-size-dimensions-full-decode",
+    "originalArchiveVerification": "externally-verified-zip-and-members",
+    "tree": "6806be178646ad75161a0a142b2c935608c30b46"
+  }
+}
