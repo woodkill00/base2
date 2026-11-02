@@ -13,6 +13,7 @@ from scripts.python import (
     confirmation_evidence,
     continuous_evidence,
     sequence_evidence,
+    visual_matrix_artifacts,
     workspace_checkpoints,
     workspace_ownership,
 )
@@ -23,7 +24,7 @@ MAX_FILES = 65536
 MAX_METADATA = 512 * 1024
 TOTAL_BYTES = 6 * 1024 * 1024 * 1024
 MAX_PATH_BYTES = 300
-SUITES = ('layout', 'volcano', 'settings', 'workspace', 'journeys')
+SUITES = ('layout', 'volcano', 'settings', 'workspace', 'journeys', 'media_hc', 'operations_hc')
 LAYOUT_CASES = ('appearance-preferences', 'interaction-contract', 'representative',
                 'route-families', 'settings-interruption', 'workspace-policy-settings',
                 'workspace-review', 'volcano-preservation', 'accessible-layout',
@@ -88,6 +89,66 @@ JOURNEY_CAPTURES = {
 }
 
 
+# Standard forced-color invocations are distinct from optional full matrices.
+# Exact producer directories bind the pinned titles and chromium-high-contrast project.
+HC_PROJECT = 'chromium-high-contrast'
+FORCED_PRODUCERS = {
+    'media_hc': {
+        'media-release-media-detail-fa505-age-and-consequence-context-' + HC_PROJECT: (
+            'media detail preserves safe preview usage and consequence context',
+            frozenset({'media-detail-ready', 'media-detail-pending', 'media-detail-deleted', 'media-detail-restored'}),
+            frozenset({'current-media-detail-top.png', 'current-media-detail.png',
+                       'current-media-detail-completed.png', 'current-media-detail-restored.png'}),
+            frozenset({'media-detail-' + HC_PROJECT})),
+        'media-release-media-picker-72bf8-ontained-in-a-real-workflow-' + HC_PROJECT: (
+            'media picker is visually and keyboard contained in a real workflow',
+            frozenset({'media-picker'}),
+            frozenset({'current-media-picker.png', 'current-media-picker-bottom.png'}),
+            frozenset({'media-picker-' + HC_PROJECT})),
+        'media-release-media-librar-1b4ce-nsive-and-visually-reviewed-' + HC_PROJECT: (
+            'media library is accessible responsive and visually reviewed',
+            frozenset({'media-library'}),
+            frozenset({'current-media-library.png', *(f'current-media-library-viewport-{i}.png' for i in (0, 2, 4))}),
+            frozenset({'media-library-' + HC_PROJECT})),
+    },
+    'operations_hc': {
+        'operations-release-operati-5407b-ponsive-and-visually-stable-' + HC_PROJECT: (
+            'operations center is accessible responsive and visually stable',
+            frozenset({'operations-center-' + HC_PROJECT, 'operations-cancel'}),
+            frozenset({'current-operations-center-' + HC_PROJECT + '.png'}),
+            frozenset({'operations-center-' + HC_PROJECT})),
+    },
+}
+
+
+def registered_sequence(suite: str, case: str, state: str) -> bool:
+    if suite in FORCED_PRODUCERS:
+        producer = FORCED_PRODUCERS[suite].get(case)
+        return producer is not None and state in producer[1]
+    return sequence_evidence.registered(suite, case, state)
+
+
+def forced_allowed(suite: str, relative: Path) -> bool:
+    producer = FORCED_PRODUCERS[suite].get(relative.parts[0])
+    if producer is None:
+        return False
+    name = relative.name
+    if name in producer[2] or re.fullmatch(r'test-failed-[0-9]+\.png', name):
+        return True
+    comparison = re.fullmatch(r'(.+)-(actual|expected|diff)\.png', name)
+    if comparison and comparison[1] in producer[3]:
+        return True
+    if name in {'current-scrollport-top.png', 'current-scrollport-middle.png', 'current-scrollport-footer.png'}:
+        return True
+    frame = continuous_evidence.FRAME.fullmatch(name)
+    if frame:
+        state = re.fullmatch(r'current-continuous-(.+)-(?:[0-9]{3}|focus)\.png', name)[1]
+        return state == 'current' or state in producer[1]
+    sample = re.fullmatch(r'current-scrollport-(.+)-(?:top|middle|footer)\.png', name)
+    comparison = sequence_evidence.IMAGE.fullmatch(name)
+    return bool((sample and sample[1] in producer[1]) or (comparison and comparison[1] in producer[1]))
+
+
 def safe(path: Path) -> None:
     if '..' in path.parts or any(p.is_symlink() for p in (path, *path.parents)):
         raise ValueError('traversal or symlink rejected')
@@ -97,6 +158,8 @@ def allowed(suite: str, relative: Path) -> bool:
     if len(relative.parts) != 2 or not re.fullmatch(r'[a-zA-Z0-9_-]+', relative.parts[0]):
         return False
     case = relative.parts[0]
+    if suite in FORCED_PRODUCERS:
+        return forced_allowed(suite, relative)
     transition = re.fullmatch(r'movement-transition-(compact|landscape|desktop|rtl|rtl-large-text|forced|zoom)-(before-disable|after-disable|after-enable-before-close|after-close)\.png', relative.name)
     if transition:
         return suite in ('layout', 'volcano') and case == f'volcano-preservation-reserved-movement-space-{transition[1]}-chromium'
@@ -135,6 +198,8 @@ def allowed(suite: str, relative: Path) -> bool:
 
 
 def image_role(name: str) -> str:
+    if name == visual_matrix_artifacts.OBSERVATION_NAME:
+        return 'media-viewport-diagnostic'
     if confirmation_evidence.NAME.fullmatch(name):
         return 'confirmation-endpoint-diagnostic'
     if name == workspace_ownership.NAME:
@@ -236,12 +301,14 @@ def stage(sources: dict[str, Path], output: Path, provenance: dict) -> None:
                 comparison_receipt = sequence_evidence.NAME.fullmatch(path.name)
                 if comparison_receipt:
                     rel = path.relative_to(source)
-                    if len(rel.parts) != 2 or not sequence_evidence.registered(suite,rel.parts[0],comparison_receipt[1]):
+                    if len(rel.parts) != 2 or not registered_sequence(suite,rel.parts[0],comparison_receipt[1]):
                         continue
                     if not path.is_file() or path.stat().st_size > sequence_evidence.BUDGET:
                         raise ValueError('oversized sequence receipt')
                     raw = path.read_bytes()
-                    data = sequence_evidence.validate(raw,path,provenance['sourceCommit'],provenance['sourceTree'],run=str(provenance['runId']),attempt=str(provenance['attempt']))
+                    data = sequence_evidence.validate(raw,path,provenance['sourceCommit'],provenance['sourceTree'],project=HC_PROJECT if suite in FORCED_PRODUCERS else None,run=str(provenance['runId']),attempt=str(provenance['attempt']))
+                    if suite in FORCED_PRODUCERS and data['binding']['test'] != FORCED_PRODUCERS[suite][relative.parts[0]][0]:
+                        raise ValueError('forced-color sequence title mismatch')
                     for row in sequence_evidence.images(data):
                         target = path.parent/row['file']
                         if target in bound_comparisons:
@@ -259,16 +326,37 @@ def stage(sources: dict[str, Path], output: Path, provenance: dict) -> None:
                         raise ValueError('oversized continuous receipt')
                     if suite == 'workspace' and not workspace_ownership.state_registered(relative.parts[0], continuous_match[1]):
                         raise ValueError('workspace continuous state mismatch')
+                    if suite in FORCED_PRODUCERS and continuous_match[1] not in FORCED_PRODUCERS[suite][relative.parts[0]][1] | {'current'}:
+                        raise ValueError('forced-color continuous state mismatch')
                     raw = path.read_bytes()
-                    data = continuous_evidence.validate(raw, path, provenance['sourceCommit'], provenance['sourceTree'], project=workspace_ownership.project_for_case(relative.parts[0]) if suite == 'workspace' else None, run=str(provenance['runId']), attempt=str(provenance['attempt']))
+                    data = continuous_evidence.validate(raw, path, provenance['sourceCommit'], provenance['sourceTree'], project=workspace_ownership.project_for_case(relative.parts[0]) if suite == 'workspace' else HC_PROJECT if suite in FORCED_PRODUCERS else None, run=str(provenance['runId']), attempt=str(provenance['attempt']))
                     if suite == 'workspace' and data['test'] != workspace_ownership.TITLES[workspace_ownership.scenario_for_case(relative.parts[0])]:
                         raise ValueError('workspace continuous title mismatch')
+                    if suite in FORCED_PRODUCERS and data['test'] != FORCED_PRODUCERS[suite][relative.parts[0]][0]:
+                        raise ValueError('forced-color continuous title mismatch')
                     for row in continuous_evidence.capture_rows(data):
                         frame = path.parent / row['file']
                         if frame in bound_frames:
                             raise ValueError('duplicate continuous frame binding')
                         bound_frames.add(frame)
                     members.append((path, f'{suite}/{path.relative_to(source).as_posix()}', len(raw), hashlib.sha256(raw).hexdigest()))
+                    continue
+                if path.name == visual_matrix_artifacts.OBSERVATION_NAME:
+                    if (suite != 'media_hc' or len(relative.parts) != 2
+                            or relative.parts[0] != visual_matrix_artifacts.MEDIA_CASE + HC_PROJECT):
+                        continue
+                    if not path.is_file() or path.stat().st_size > visual_matrix_artifacts.OBSERVATION_BUDGET:
+                        raise ValueError('oversized media observation')
+                    raw = path.read_bytes()
+                    if not isinstance(sequence_evidence.strict_json(raw), dict):
+                        raise ValueError('invalid media observation root')
+                    observation = visual_matrix_artifacts.observations(raw, HC_PROJECT)
+                    validated_pngs = {member[0] for member in members if member[0].suffix == '.png'}
+                    for row in observation['viewportObservations']:
+                        capture = path.parent / f"current-media-library-viewport-{row['cardIndex']}.png"
+                        if capture not in validated_pngs:
+                            raise ValueError('observation missing corresponding validated viewport PNG')
+                    members.append((path, f'{suite}/{relative.as_posix()}', len(raw), hashlib.sha256(raw).hexdigest()))
                     continue
                 if not allowed(suite, path.relative_to(source)):
                     if path.suffix == '.png' and path.is_file():
@@ -306,6 +394,13 @@ def stage(sources: dict[str, Path], output: Path, provenance: dict) -> None:
     for unbound_producer in unbound:
         errors[unbound_producer[0]] = errors.get(unbound_producer[0], 0) + 1
         members = [item for item in members if tuple(Path(item[1]).parts[:2]) != unbound_producer]
+    for suite, producers in FORCED_PRODUCERS.items():
+        if provenance['outcomes'][suite] != 'skipped':
+            retained = {Path(name).parts[1] for path, name, *_ in members
+                        if name.split('/')[0] == suite and path.suffix == '.png'}
+            missing = len(set(producers) - retained)
+            if missing:
+                errors[suite + '-missing-producer'] = missing
     # Budget rejection is producer-atomic: never retain a receipt after dropping
     # some of its frames. Names/content of rejected producers are not disclosed.
     def reject_last_producer():
@@ -440,7 +535,9 @@ def main() -> None:
                'volcano': Path(f'.artifacts/layout-109/ci-{run}-{attempt}-volcano'),
                'settings': Path('.artifacts/settings-121/release'),
                'workspace': Path('.artifacts/workspace-124'),
-               'journeys': Path(f'.artifacts/journeys-ci-{run}-{attempt}-journeys')}
+               'journeys': Path(f'.artifacts/journeys-ci-{run}-{attempt}-journeys'),
+               'media_hc': Path(f'.artifacts/forced-colors-ci-{run}-{attempt}-media'),
+               'operations_hc': Path(f'.artifacts/forced-colors-ci-{run}-{attempt}-operations')}
     failure = None
     try:
         stage(sources, Path('.artifacts/shell-png'), {

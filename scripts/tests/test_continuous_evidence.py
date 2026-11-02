@@ -110,7 +110,7 @@ def test_shell_roundtrip_binds_exact_frames_and_original_receipt(receipt, tmp_pa
     if extra:
         (case / 'current-continuous-media-003.png').write_bytes((case / data['segments'][0]['file']).read_bytes())
     provenance = dict(sourceCommit='a' * 40, sourceTree='b' * 40, requestedHead='c' * 40,
-                      runId='1', attempt='1', outcomes={s: 'failure' for s in sources})
+                      runId='1', attempt='1', outcomes={s: 'skipped' if s in shell.FORCED_PRODUCERS else 'failure' for s in sources})
     output = tmp_path / 'bounded'
     if extra:
         with pytest.raises(shell.PackagingIncomplete, match='incomplete'):
@@ -252,7 +252,7 @@ def test_focus_context_shell_roundtrip_has_explicit_role_and_exact_binding(recei
         (path.parent / row['file']).rename(case / row['file'])
     (case / path.name).write_text(json.dumps(data))
     provenance = dict(sourceCommit='a' * 40, sourceTree='b' * 40, requestedHead='c' * 40,
-                      runId='1', attempt='1', outcomes={s: 'failure' for s in sources})
+                      runId='1', attempt='1', outcomes={s: 'skipped' if s in shell.FORCED_PRODUCERS else 'failure' for s in sources})
     output = tmp_path / 'bounded'
     shell.stage(sources, output, provenance)
     rows = [item for p in output.rglob('provenance.json') for item in json.loads(p.read_text())['captures']]

@@ -85,7 +85,7 @@ def setup(tmp_path):
         path.mkdir()
     provenance = {'sourceCommit': 'a' * 40, 'sourceTree': 'b' * 40,
                   'requestedHead': 'c' * 40, 'runId': '123', 'attempt': '1',
-                  'outcomes': {suite: 'failure' for suite in collector.SUITES}}
+                  'outcomes': {suite: 'skipped' if suite in collector.FORCED_PRODUCERS else 'failure' for suite in collector.SUITES}}
     return sources, tmp_path / 'output', provenance
 
 
@@ -259,7 +259,7 @@ def test_workflow_preserves_original_suites_artifacts_and_failure_status():
     stage = next(s for s in steps if s.get('id') == 'shell_png')
     assert stage['if'].startswith('always()')
     assert stage['run'] == 'python3 -m scripts.python.shell_png_evidence'
-    assert len(stage['env']) == 6
+    assert set(stage['env']) == {'SHELL_REQUESTED_HEAD', *(f'SHELL_{suite.upper()}_OUTCOME' for suite in collector.SUITES)}
     upload = next(s for s in steps if s.get('name') == 'Retain bounded shell PNG parts')
     assert upload['if'] == "always() && steps.scope.outputs.mode == 'full' && steps.shell_png.outputs.upload_ready == 'true'"
     assert upload['uses'] == './.artifacts/shell-upload-action'
