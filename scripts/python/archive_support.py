@@ -334,9 +334,23 @@ def validate_support(repo: Path) -> None:
         raw = a.safe_path(root, str(path.relative_to(root))).read_bytes()
         a.require(path.stem == a.digest(raw), "support registry hash mismatch")
         registered.add(str(path.relative_to(root)))
-        data = json.loads(raw)
-        registered.update(validate_registry(repo, data, catalog))
-        covered_runs.update(run["runId"] for run in data["runs"])
+        from scripts.python.typed_archive_support import strict
+        from scripts.python.typed_archive_support import validate_registry as validate_typed
+
+        data = strict(raw)
+        if data.get("schemaVersion") == 5:
+            from scripts.python.typed_archive_support import validate_external_registry
+
+            registered.update(validate_external_registry(repo, data))
+        elif data.get("schemaVersion") == 3:
+            from scripts.python.typed_archive_support import validate_quarantine_registry
+
+            registered.update(validate_quarantine_registry(repo, data))
+        elif data.get("schemaVersion") == 2:
+            registered.update(validate_typed(repo, data))
+        else:
+            registered.update(validate_registry(repo, data, catalog))
+            covered_runs.update(run["runId"] for run in data["runs"])
     a.require(required_runs <= covered_runs, "missing required support run")
     found = set()
     for path in root.rglob("*"):

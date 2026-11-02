@@ -83,6 +83,29 @@ def storage_bytes(repo: Path, storage: str) -> bytes:
     return safe_path(repo / "evidence/visual", storage).read_bytes()
 
 
+def validate_capture_manifest(data: dict, *, profile: str) -> None:
+    """Explicit dispatch; local proof never substitutes for failed Git validation."""
+    if profile == "git":
+        validate_manifest(data)
+    elif profile == "local-zip":
+        from scripts.python.local_capture_proof import validate_manifest as validate_local
+
+        validate_local(data)
+    else:
+        raise ValueError("unknown capture storage profile")
+
+
+def capture_storage_bytes(repo, manifest, capture, *, profile, local_context=None):
+    validate_capture_manifest(manifest, profile=profile)
+    if profile == "git":
+        require(local_context is None, "Git proof cannot use local context")
+        return storage_bytes(repo, capture["storage"])
+    from scripts.python.local_capture_proof import capture_bytes
+
+    require(local_context is not None, "local proof requires original ZIP context")
+    return capture_bytes(repo, manifest, capture, local_context)
+
+
 def validate_chain(item: dict) -> None:
     chain = item["archiveChain"]
     require(isinstance(chain, list) and 1 <= len(chain) <= 3, "invalid archive chain")

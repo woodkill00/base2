@@ -156,8 +156,18 @@ def test_incomplete_receipt_does_not_claim_whole_sequence(comparison):
         ("media", "media-release-unit-chromium", "media-library", True),
         ("media", "private-unit", "media-library", False),
         ("workspace", "workspace-release-unit", "workspace-records", False),
-        ("workspace", "workspace-release-workspac-92e7c-ponsive-and-visually-stable-chromium-compact", "workspace-records", True),
-        ("workspace", "workspace-release-workspac-92e7c-ponsive-and-visually-stable-chromium-compact", "workspace-exports", False),
+        (
+            "workspace",
+            "workspace-release-workspac-92e7c-ponsive-and-visually-stable-chromium-compact",
+            "workspace-records",
+            True,
+        ),
+        (
+            "workspace",
+            "workspace-release-workspac-92e7c-ponsive-and-visually-stable-chromium-compact",
+            "workspace-exports",
+            False,
+        ),
         ("journeys", "public-journeys-public-jou-unit", "journey-contact-received", True),
         ("journeys", "other-unit", "journey-contact-received", False),
         ("volcano", "volcano-preservation-unit", "named-route", True),
@@ -275,11 +285,17 @@ def test_picker_legacy_mismatch_does_not_abort_ready_sequence_or_reuse():
 def test_operations_legacy_header_override_is_removed_before_genuine_sequences():
     from pathlib import Path
 
-    source = (Path(__file__).parents[2] / "react-app/e2e/operations/operations-release.spec.ts").read_text()
+    source = (
+        Path(__file__).parents[2] / "react-app/e2e/operations/operations-release.spec.ts"
+    ).read_text()
     helper = source.split("async function captureCurrentRun", 1)[1].split("test.afterEach", 1)[0]
     assert "finally {" in helper
     assert "node.parentNode?.removeChild(node)" in helper
-    assert helper.index("finally {") < helper.index("toHaveCSS('position', 'sticky')") < helper.index("captureScrollportExtent")
+    assert (
+        helper.index("finally {")
+        < helper.index("toHaveCSS('position', 'sticky')")
+        < helper.index("captureScrollportExtent")
+    )
     assert source.count("position: static !important") == 1
     assert "expect.soft(page).toHaveScreenshot" in helper
 
@@ -293,9 +309,90 @@ def test_attempted_applicability_failure_is_captured_before_rethrow():
     assert "Preserve the original applicability failure" in block
 
 
-@pytest.mark.parametrize('raw', [b'null', b'[]', b'1', b'"private"'])
+@pytest.mark.parametrize("raw", [b"null", b"[]", b"1", b'"private"'])
 def test_invalid_root_shapes_are_validation_errors(tmp_path, raw):
     with pytest.raises(ValueError):
-        sequence.validate(raw, tmp_path/'sequence-journey-contact-received.json', 'a'*40, 'b'*40)
+        sequence.validate(
+            raw, tmp_path / "sequence-journey-contact-received.json", "a" * 40, "b" * 40
+        )
     with pytest.raises(ValueError):
-        sequence.continuous_evidence.validate(raw, tmp_path/'continuous-journey-contact-received.json', 'a'*40, 'b'*40)
+        sequence.continuous_evidence.validate(
+            raw, tmp_path / "continuous-journey-contact-received.json", "a" * 40, "b" * 40
+        )
+
+
+def test_historical_review_reads_exact_git_objects_not_checkout(tmp_path):
+    import subprocess
+
+    def git(*args):
+        return subprocess.check_output(["git", *args], cwd=tmp_path, text=True).strip()
+
+    def commit():
+        git("add", ".")
+        git(
+            "-c",
+            "user.name=Fixture",
+            "-c",
+            "user.email=fixture@example.invalid",
+            "-c",
+            "commit.gpgsign=false",
+            "-c",
+            "core.hooksPath=/dev/null",
+            "commit",
+            "-qm",
+            "fixture",
+        )
+        return git("rev-parse", "HEAD")
+
+    git("init", "-q")
+    (tmp_path / "seed").write_text("fixture")
+    ancestor = commit()
+    tree = git("rev-parse", "HEAD^{tree}")
+    binding = dict(state="media-picker", schedule=[])
+    images = [dict(name="sequence-media-picker-overview.png", sha256="c" * 64)]
+    record = dict(
+        schemaVersion=1,
+        decision="approved-sequence",
+        sourceCommit=ancestor,
+        sourceTree=tree,
+        bindingSha256=sequence.canonical_hash(binding),
+        imagesSha256=sequence.canonical_hash(images),
+        limitations="captured neutral state only; unrelated overlays and states excluded",
+    )
+    raw_review = json.dumps(record).encode()
+    manifest = dict(
+        schemaVersion=1,
+        binding=binding,
+        images=images,
+        review=dict(
+            sourceCommit=ancestor,
+            sourceTree=tree,
+            recordSha256=hashlib.sha256(raw_review).hexdigest(),
+        ),
+    )
+    raw = json.dumps(manifest).encode()
+    relative = "e2e/media/media-release.spec.ts-snapshots/sequence-media-picker.json"
+    path = tmp_path / "react-app" / relative
+    path.parent.mkdir(parents=True)
+    path.write_bytes(raw)
+    path.with_suffix(".review.json").write_bytes(raw_review)
+    source = commit()
+    data = dict(
+        sourceCommit=source,
+        referenceManifest=relative,
+        referenceManifestSha256=hashlib.sha256(raw).hexdigest(),
+        binding=binding,
+    )
+    path.write_text("{}")
+    path.with_suffix(".review.json").write_text("{}")
+    assert sequence.approved_images(data, source, tmp_path) == images
+    with pytest.raises(ValueError, match="manifest changed"):
+        sequence.approved_images(data, repository=tmp_path)
+    with pytest.raises(ValueError, match="historical reference source"):
+        sequence.approved_images(data, ancestor, tmp_path)
+    path.unlink()
+    path.symlink_to("not-a-regular-reference")
+    link_source = commit()
+    data["sourceCommit"] = link_source
+    with pytest.raises(ValueError, match="historical reference object"):
+        sequence.approved_images(data, link_source, tmp_path)

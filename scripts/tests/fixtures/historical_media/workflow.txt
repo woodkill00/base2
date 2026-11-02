@@ -1,0 +1,311 @@
+name: CI (opt-in native visual review)
+
+on:
+  pull_request:
+    types: [labeled]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: visual-review-${{ github.event.pull_request.number }}-${{ github.event.label.name }}
+  cancel-in-progress: false
+
+jobs:
+  visual-review:
+    if: github.event.pull_request.head.repo.full_name == github.repository && (github.event.label.name == 'run-operations-review' || github.event.label.name == 'run-media-review')
+    runs-on: ubuntu-24.04
+    # Operations: 42 declared cases x 60s; media: 36 x 60s, plus setup/build.
+    timeout-minutes: 90
+    defaults:
+      run:
+        shell: bash
+    env:
+      CI: '1'
+      HUSKY: '0'
+      STORYBOOK_DISABLE_TELEMETRY: '1'
+      REVIEW_LABEL: ${{ github.event.label.name }}
+      EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
+      VISUAL_OUTPUT: .artifacts/visual-matrix/${{ github.run_id }}-${{ github.run_attempt }}
+      PLAYWRIGHT_JSON_OUTPUT_NAME: ${{ github.workspace }}/.artifacts/visual-matrix/${{ github.run_id }}-${{ github.run_attempt }}/playwright.json
+    steps:
+      - name: Checkout exact same-repository candidate
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Verify initial immutable source
+        id: source
+        run: |
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"
+
+      - name: Set up repository-compatible Node
+        id: node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24.20.0'
+
+      - name: Install locked frontend dependencies
+        id: install
+        run: npm ci --prefix react-app --legacy-peer-deps
+
+      - name: Install native matrix browsers
+        id: browsers
+        run: npm --prefix react-app exec -- playwright install --with-deps chromium firefox webkit
+
+      - name: Install approved-reference fonts
+        id: fonts
+        run: |
+          sudo apt-get install --no-install-recommends -y fonts-ubuntu=0.869+git20240321-0ubuntu1
+          fc-cache -f
+          test "$(fc-match -f '%{family}' Ubuntu)" = Ubuntu
+          dpkg-query -W fonts-ubuntu
+
+      - name: Bind clean pre-run source and existing reporter output identity
+        id: before
+        run: |
+          python3 - <<'PYTHON'
+          import hashlib
+          import json
+          import os
+          import re
+          import subprocess
+          from pathlib import Path
+
+          def git(*args):
+              return subprocess.run(['git', *args], check=True, capture_output=True, text=True, timeout=30).stdout.strip()
+
+          if git('rev-parse', 'HEAD') != os.environ['EXPECTED_SHA'] or git('status', '--porcelain=v1', '--untracked-files=all'):
+              raise SystemExit('visual_source_not_clean_or_exact')
+          labels = {'run-operations-review': 'operations', 'run-media-review': 'media'}
+          mode = labels[os.environ['REVIEW_LABEL']]
+          config = Path(f'react-app/playwright.{mode}-release.config.mjs').read_text()
+          spec = Path(f'react-app/e2e/{mode}/{mode}-release.spec.ts').read_text()
+          projects = re.findall(r"(?:chromium\(\s*|name:\s*)'([^']+)'", config)
+          titles = re.findall(r"^test\('([^']+)'", spec, re.MULTILINE)
+          primary = {'operations': 'operations center is accessible responsive and visually stable',
+                     'media': 'media library is accessible responsive and visually reviewed'}[mode]
+          if mode == 'operations':
+              subsets = re.findall(r"test\.skip\(\s*!\[([^]]+)\]\.includes", spec)
+              if len(subsets) != 2 or subsets[0] != subsets[1]:
+                  raise SystemExit('operations_declared_skip_contract_changed')
+              bounded = re.findall(r"'([^']+)'", subsets[0])
+          else:
+              subset = re.search(r'modalProofProjects = new Set\(\[([^]]+)\]\)', spec)
+              if subset is None or spec.count('test.skip(!modalProofProjects.has(testInfo.project.name)') != 2:
+                  raise SystemExit('media_declared_skip_contract_changed')
+              bounded = re.findall(r"'([^']+)'", subset.group(1))
+          if (len(projects) != {'operations': 14, 'media': 12}[mode]
+              or len(set(projects)) != len(projects) or len(titles) != 3 or primary not in titles
+              or not set(bounded) <= set(projects) or len(bounded) != {'operations': 4, 'media': 6}[mode]):
+              raise SystemExit('visual_matrix_inventory_contract_changed')
+          expected = [{'project': project, 'title': title,
+                       'expectedStatus': 'passed' if title == primary or project in bounded else 'skipped'}
+                      for project in projects for title in titles]
+          output = Path(os.environ['VISUAL_OUTPUT'])
+          output.mkdir(parents=True, mode=0o700)
+          receipt = Path('specs/106-production-readiness-program/operations-visual-runner.json')
+          signature = None
+          if mode == 'operations':
+              if receipt.is_symlink() or not receipt.is_file():
+                  raise SystemExit('unsafe_original_reporter_output')
+              signature = {'sha256': hashlib.sha256(receipt.read_bytes()).hexdigest(), 'mtimeNs': receipt.stat().st_mtime_ns}
+          metadata = {'schemaVersion': 1, 'sourceCommit': git('rev-parse', 'HEAD'),
+                      'sourceTree': git('rev-parse', 'HEAD^{tree}'), 'matrix': mode,
+                      'runId': os.environ['GITHUB_RUN_ID'], 'attempt': os.environ['GITHUB_RUN_ATTEMPT'],
+                      'originalReporterOutput': signature, 'snapshotUpdates': 'none', 'expectedTests': expected}
+          (output / 'source-before.json').write_text(json.dumps(metadata, indent=2) + '\n')
+          if mode == 'operations':
+              # Only this declared generated OUTPUT is cleared after pristine preflight.
+              # Its committed original remains in Git; inputs/baselines are never restored.
+              receipt.unlink()
+          PYTHON
+
+      - name: Run selected full native matrix without changing references
+        id: matrix
+        working-directory: react-app
+        run: |
+          case "$REVIEW_LABEL" in
+            run-operations-review)
+              npm run test:operations-release -- --update-snapshots=none --reporter=line,json,./e2e/operations/visual-receipt-reporter.mjs --output="../$VISUAL_OUTPUT/test-results"
+              ;;
+            run-media-review)
+              npm run test:media-release -- --update-snapshots=none --reporter=line,json --output="../$VISUAL_OUTPUT/test-results"
+              ;;
+            *) exit 2 ;;
+          esac
+
+      - name: Verify inputs unchanged and retain only fresh native reporter evidence
+        id: after
+        if: always() && steps.before.outcome == 'success'
+        env:
+          MATRIX_OUTCOME: ${{ steps.matrix.outcome }}
+        run: |
+          python3 - <<'PYTHON'
+          import base64
+          import collections
+          import hashlib
+          import json
+          import os
+          import subprocess
+          from pathlib import Path
+
+          root = Path.cwd()
+          output = Path(os.environ['VISUAL_OUTPUT'])
+          before = json.loads((output / 'source-before.json').read_text())
+          mode = before['matrix']
+          receipt_name = 'specs/106-production-readiness-program/operations-visual-runner.json'
+          errors = []
+          sha = subprocess.run(['git', 'rev-parse', 'HEAD'], check=True, capture_output=True, text=True, timeout=30).stdout.strip()
+          if sha != before['sourceCommit'] or sha != os.environ['EXPECTED_SHA']:
+              errors.append('visual_source_changed')
+          status = subprocess.run(['git', 'status', '--porcelain=v1', '-z', '--untracked-files=all'], check=True, capture_output=True, timeout=30).stdout
+          # Only the declared generated output may change or remain absent after preparation.
+          # Missing fresh output fails below; staged changes, baselines and all other paths fail.
+          changes = [entry for entry in status.split(b'\0') if entry]
+          allowed = {(' M ' + receipt_name).encode(), (' D ' + receipt_name).encode()}
+          unexpected = [entry for entry in changes if not (mode == 'operations' and entry in allowed)]
+          if unexpected:
+              errors.append('visual_inputs_or_baselines_changed')
+          observed = []
+          report = output / 'playwright.json'
+          stats = None
+          if report.is_file() and not report.is_symlink():
+              payload = json.loads(report.read_text())
+              stats = {key: payload.get('stats', {}).get(key) for key in ('expected', 'unexpected', 'skipped', 'flaky', 'duration')}
+              def visit(suite):
+                  for spec in suite.get('specs', []):
+                      for test in spec.get('tests', []):
+                          observed.append({'project': test.get('projectName'), 'title': spec.get('title'),
+                                           'status': test.get('status'),
+                                           'attemptStatuses': [result.get('status') for result in test.get('results', [])],
+                                           'receiptCaptures': sorted([
+                                               {'name': attachment['name'][7:], 'sha256': hashlib.sha256(base64.b64decode(attachment['body'], validate=True)).hexdigest()}
+                                               for result in test.get('results', []) for attachment in result.get('attachments', [])
+                                               if attachment.get('name', '').startswith('visual:') and attachment.get('body')
+                                           ], key=lambda item: item['name'])})
+                  for child in suite.get('suites', []):
+                      visit(child)
+              for suite in payload.get('suites', []):
+                  visit(suite)
+          expected = {(item['project'], item['title']): item['expectedStatus'] for item in before['expectedTests']}
+          if os.environ['MATRIX_OUTCOME'] == 'success':
+              identities = [(item['project'], item['title']) for item in observed]
+              if len(identities) != len(expected) or set(identities) != set(expected):
+                  errors.append('successful_matrix_missing_full_inventory')
+              if not any(item['attemptStatuses'] == ['passed'] for item in observed):
+                  errors.append('successful_matrix_zero_supported_execution')
+              for item in observed:
+                  wanted = expected.get((item['project'], item['title']))
+                  reported = 'expected' if wanted == 'passed' else 'skipped'
+                  if item['status'] != reported or item['attemptStatuses'] != [wanted]:
+                      errors.append('successful_matrix_supported_or_skip_status_mismatch')
+                      break
+          captures = []
+          for capture in sorted((output / 'test-results').rglob('current-*.png')):
+              if capture.is_symlink() or not capture.is_file():
+                  errors.append('unsafe_current_capture')
+                  continue
+              captures.append({'path': str(capture.relative_to(output)),
+                               'sha256': hashlib.sha256(capture.read_bytes()).hexdigest()})
+          supported_count = sum(status == 'passed' for status in expected.values())
+          if os.environ['MATRIX_OUTCOME'] == 'success' and len(captures) < supported_count:
+              errors.append('successful_matrix_missing_current_captures')
+          fresh_receipt = False
+          if mode == 'operations':
+              receipt = root / receipt_name
+              if receipt.is_file() and not receipt.is_symlink():
+                  raw = receipt.read_bytes()
+                  native = json.loads(raw)
+                  digest = native.pop('digest', None)
+                  calculated = hashlib.sha256(json.dumps(native, separators=(',', ':'), ensure_ascii=False).encode()).hexdigest()
+                  if digest != calculated:
+                      errors.append('native_reporter_digest_invalid')
+                  else:
+                      if os.environ['MATRIX_OUTCOME'] == 'success':
+                          native_tests = native.get('tests', [])
+                          observed_captures = {(item['project'], item['title']): item['receiptCaptures'] for item in observed}
+                          if (native.get('status') != 'passed' or len(native_tests) != len(expected)
+                              or {(item.get('project'), item.get('title')) for item in native_tests} != set(expected)
+                              or any(item.get('status') != expected.get((item.get('project'), item.get('title'))) for item in native_tests)):
+                              errors.append('successful_operations_reporter_inventory_mismatch')
+                          if any(item.get('captures') != observed_captures.get((item.get('project'), item.get('title'))) for item in native_tests):
+                              errors.append('operations_reporter_attachment_mismatch')
+                      # Copy exact emitted bytes; identical fresh output is legitimate.
+                      (output / 'operations-visual-runner.json').write_bytes(raw)
+                      fresh_receipt = True
+              if not fresh_receipt:
+                  errors.append('operations_reporter_not_produced_or_invalid')
+              if os.environ['MATRIX_OUTCOME'] == 'success' and not fresh_receipt:
+                  errors.append('successful_operations_missing_fresh_reporter')
+          result = {'schemaVersion': 1, 'sourceCommit': before['sourceCommit'], 'matrix': mode,
+                    'runId': before['runId'], 'attempt': before['attempt'],
+                    'nativeOutcome': os.environ['MATRIX_OUTCOME'], 'stats': stats,
+                    'declaredTests': len(observed), 'statusCounts': dict(collections.Counter(item['status'] for item in observed)),
+                    'tests': observed, 'currentCaptures': captures, 'freshOperationsReceipt': fresh_receipt,
+                    'sourceGuardErrors': errors, 'unexpectedChangedPaths': [ascii(entry[:240]) for entry in unexpected[:20]],
+                    'scope': 'Native visual matrix evidence only; declared skips are not executions or whole-project acceptance.'}
+          (output / 'source-after.json').write_text(json.dumps(result, indent=2) + '\n')
+          if errors:
+              raise SystemExit(';'.join(errors))
+          PYTHON
+
+      - name: Record stage outcomes without secrets or automatic approval
+        id: summary
+        if: always()
+        env:
+          SOURCE: ${{ steps.source.outcome }}
+          INSTALL: ${{ steps.install.outcome }}
+          BROWSERS: ${{ steps.browsers.outcome }}
+          FONTS: ${{ steps.fonts.outcome }}
+          BEFORE: ${{ steps.before.outcome }}
+          MATRIX: ${{ steps.matrix.outcome }}
+          AFTER: ${{ steps.after.outcome }}
+        run: |
+          mkdir -p "$VISUAL_OUTPUT"
+          summary="$VISUAL_OUTPUT/stages.md"
+          printf '| Stage | Outcome |\n| --- | --- |\n' > "$summary"
+          for stage in SOURCE INSTALL BROWSERS FONTS BEFORE MATRIX AFTER; do
+            printf '| %s | %s |\n' "$stage" "${!stage:-not-run}" >> "$summary"
+          done
+          printf '\nFresh native captures require independent visual review. Declared skips are not executed checks. No whole-project or release acceptance is granted.\n' >> "$summary"
+          cat "$summary" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Retain only this run's actual visual evidence
+        id: evidence
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: visual-${{ github.event.label.name }}-${{ github.event.pull_request.head.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ env.VISUAL_OUTPUT }}/test-results/
+            ${{ env.VISUAL_OUTPUT }}/playwright.json
+            ${{ env.VISUAL_OUTPUT }}/source-before.json
+            ${{ env.VISUAL_OUTPUT }}/source-after.json
+            ${{ env.VISUAL_OUTPUT }}/operations-visual-runner.json
+            ${{ env.VISUAL_OUTPUT }}/stages.md
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Package bounded native diagnostics
+        id: bounded
+        if: always() && steps.before.outcome == 'success'
+        run: python3 -m scripts.python.visual_matrix_artifacts --source "$VISUAL_OUTPUT" --output "$VISUAL_OUTPUT/bounded" --upload-action
+
+      - name: Retain bounded source and reporter inventory
+        if: always() && steps.before.outcome == 'success'
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: visual-metadata-${{ github.event.label.name }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ env.VISUAL_OUTPUT }}/bounded/metadata.zip
+          if-no-files-found: error
+          retention-days: 7
+
+      # Generated steps contain only pinned uploads of individually bounded ZIPs.
+      # Every part is a separate GitHub artifact, never one recombined large upload.
+      - name: Retain bounded project PNG parts
+        if: always() && steps.bounded.outputs.upload_ready == 'true'
+        uses: ./.artifacts/visual-upload-action

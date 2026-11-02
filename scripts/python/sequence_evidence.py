@@ -56,11 +56,40 @@ def canonical_hash(value):
     ).hexdigest()
 
 
-def approved_images(data):
+def approved_images(data, reference_source=None, repository=None):
     """Bind transport expected bytes to the repository's exact reviewed set."""
-    path = REPOSITORY / "react-app" / data["referenceManifest"]
+    repo = repository or REPOSITORY
+    path = repo / "react-app" / data["referenceManifest"]
 
     def read(member):
+        if reference_source is not None:
+            if reference_source != data["sourceCommit"] or not re.fullmatch(
+                "[0-9a-f]{40}", reference_source
+            ):
+                raise ValueError("invalid historical reference source")
+            relative = member.relative_to(repo).as_posix()
+            if ".." in member.parts:
+                raise ValueError("unsafe historical reference path")
+            entries = (
+                subprocess.check_output(
+                    ["git", "ls-tree", reference_source, "--", relative], cwd=repo, timeout=10
+                )
+                .decode()
+                .splitlines()
+            )
+            if (
+                len(entries) != 1
+                or not entries[0].startswith("100644 blob ")
+                or entries[0].split("\t", 1)[1] != relative
+            ):
+                raise ValueError("unsafe historical reference object")
+            oid = entries[0].split()[2]
+            size = int(
+                subprocess.check_output(["git", "cat-file", "-s", oid], cwd=repo, timeout=10)
+            )
+            if not 0 < size <= BUDGET:
+                raise ValueError("historical reference size bound")
+            return subprocess.check_output(["git", "cat-file", "blob", oid], cwd=repo, timeout=10)
         if (
             any(p.is_symlink() for p in (member, *member.parents))
             or not member.is_file()
@@ -101,15 +130,15 @@ def approved_images(data):
         raise ValueError("unapproved sequence review")
     tree = subprocess.check_output(
         ["git", "rev-parse", review["sourceCommit"] + "^{tree}"],
-        cwd=REPOSITORY,
+        cwd=repo,
         text=True,
         timeout=10,
     ).strip()
     if tree != review["sourceTree"]:
         raise ValueError("review tree mismatch")
     subprocess.run(
-        ["git", "merge-base", "--is-ancestor", review["sourceCommit"], "HEAD"],
-        cwd=REPOSITORY,
+        ["git", "merge-base", "--is-ancestor", review["sourceCommit"], reference_source or "HEAD"],
+        cwd=repo,
         check=True,
         timeout=10,
     )
@@ -136,6 +165,8 @@ def _validate(
     project: str | None = None,
     run: str | None = None,
     attempt: str | None = None,
+    reference_source: str | None = None,
+    repository: Path | None = None,
 ) -> dict:
     def need(ok):
         if not ok:
@@ -205,13 +236,17 @@ def _validate(
     matched_name = NAME.fullmatch(path.name)
     assert matched_name is not None
     state = matched_name[1]
-    if state.startswith('workspace-'):
+    if state.startswith("workspace-"):
         scenario = workspace_ownership.scenario_for_case(path.parent.name)
         need(scenario is not None and workspace_ownership.state_registered(path.parent.name, state))
-        need(binding['test'] == workspace_ownership.TITLES[scenario])
-        need(binding['project'] == workspace_ownership.project_for_case(path.parent.name))
+        need(binding["test"] == workspace_ownership.TITLES[scenario])
+        need(binding["project"] == workspace_ownership.project_for_case(path.parent.name))
     if state.startswith("named-route-"):
-        need(state == "named-route-" + hashlib.sha256((binding["route"] + "\0" + binding["test"]).encode()).hexdigest()[:20])
+        need(
+            state
+            == "named-route-"
+            + hashlib.sha256((binding["route"] + "\0" + binding["test"]).encode()).hexdigest()[:20]
+        )
     need(
         binding["state"] == state
         and binding["geometryVersion"] == 1
@@ -276,7 +311,11 @@ def _validate(
     results = data["results"]
     need(isinstance(results, list) and len(results) <= len(labels))
     need(not data["complete"] or len(results) == len(labels))
-    references = approved_images(data) if data["manifestError"] is None else None
+    references = (
+        approved_images(data, reference_source, repository)
+        if data["manifestError"] is None
+        else None
+    )
     for i, result in enumerate(results):
         need(set(result) == {"index", "label", "status", "actual", "expected", "diff"})
         need(result["index"] == i and result["label"] == labels[i] and result["status"] in STATUSES)
@@ -354,9 +393,12 @@ def registered(suite: str, case: str, state: str) -> bool:
             )
         )
     if suite == "workspace":
-        return workspace_ownership.state_registered(case, state) and state != 'current'
+        return workspace_ownership.state_registered(case, state) and state != "current"
     if suite == "volcano":
-        return case.startswith("volcano-preservation-") and (state in {"named-route", "volcano-home"} or bool(re.fullmatch(r"named-route-[a-f0-9]{20}", state)))
+        return case.startswith("volcano-preservation-") and (
+            state in {"named-route", "volcano-home"}
+            or bool(re.fullmatch(r"named-route-[a-f0-9]{20}", state))
+        )
     if suite == "journeys":
         return (
             case.startswith("public-journeys-public-jou-") and state == "journey-contact-received"
@@ -364,10 +406,21 @@ def registered(suite: str, case: str, state: str) -> bool:
     return False
 
 
-def validate(raw: bytes, path: Path, commit: str, tree: str, project: str | None = None,
-             run: str | None = None, attempt: str | None = None) -> dict:
+def validate(
+    raw: bytes,
+    path: Path,
+    commit: str,
+    tree: str,
+    project: str | None = None,
+    run: str | None = None,
+    attempt: str | None = None,
+    reference_source: str | None = None,
+    repository: Path | None = None,
+) -> dict:
     """Normalize malformed JSON shapes without swallowing IO or programming failures."""
     try:
-        return _validate(raw, path, commit, tree, project, run, attempt)
+        return _validate(
+            raw, path, commit, tree, project, run, attempt, reference_source, repository
+        )
     except (TypeError, KeyError, AttributeError, IndexError, OverflowError) as exc:
         raise ValueError("invalid sequence comparison evidence shape") from exc
