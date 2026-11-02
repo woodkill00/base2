@@ -2,6 +2,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createHash } from 'node:crypto';
 import {
   CaptureOwner,
+  workspaceScenario,
+  workspaceStateAllowed,
   CaptureRevoked,
   CaptureNotQuiescent,
   CaptureCoverageIncomplete,
@@ -264,4 +266,59 @@ it('binds paired corpus obligations and rejects unknown titles/states', async ()
   expect(workspaceStateAllowed(first, 'workspace-exports')).toBe(false);
   expect(workspaceStateAllowed(second, 'workspace-records')).toBe(false);
   expect(() => workspaceScenario('unregistered corpus')).toThrow('unregistered');
+});
+
+it('confirmation coverage requires all four states and the generic hook without borrowing selected coverage', async () => {
+  const owner = new CaptureOwner('confirmations');
+  const states = ['submit-review', 'publish', 'delete', 'restore'].map(
+    (state) => `workspace-confirm-${state}`
+  );
+  expect(Object.keys(owner.coverage)).toEqual([...states, 'current']);
+  await owner.body(async () => {
+    for (const state of states)
+      await ownershipCoverage(state, async () => {
+        owner.retain(`${state}-attempt.png`, Buffer.from('completed synthetic screenshot bytes'));
+      });
+  });
+  await owner.afterEach(() => ownershipCoverage('current', async () => {}), 1000, false, false);
+  expect(owner.snapshot().incomplete).toBe(false);
+  expect(owner.snapshot().frames).toHaveLength(4);
+  expect(owner.snapshot().coverage.current).toBe('complete');
+});
+
+it('confirmation failure keeps its original error and marks later obligations incomplete', async () => {
+  const owner = new CaptureOwner('confirmations');
+  const original = new Error('safe dismissal not focused');
+  await expect(
+    owner.body(() =>
+      ownershipCoverage('workspace-confirm-submit-review', async () => {
+        owner.retain(
+          'workspace-confirm-submit-review-attempt.png',
+          Buffer.from('attempted original')
+        );
+        throw original;
+      })
+    )
+  ).rejects.toBe(original);
+  await expect(
+    owner.afterEach(() => ownershipCoverage('current', async () => {}), 1000, false, false)
+  ).rejects.toBeInstanceOf(CaptureCoverageIncomplete);
+  expect(owner.snapshot().frames).toHaveLength(1);
+  expect(owner.snapshot().coverage['workspace-confirm-submit-review']).toBe('incomplete');
+  expect(owner.snapshot().coverage['workspace-confirm-delete']).toBe('incomplete');
+  expect(owner.snapshot().coverage.current).toBe('complete');
+});
+
+it('confirmation scenario/title and state identities cannot alias ordinary selected evidence', () => {
+  const title = 'workspace workflow confirmations cancel without mutation';
+  expect(workspaceScenario(title)).toBe('confirmations');
+  expect(workspaceStateAllowed(title, 'workspace-confirm-restore')).toBe(true);
+  expect(workspaceStateAllowed(title, 'workspace-records-selected-saved')).toBe(false);
+  expect(
+    workspaceStateAllowed(
+      'selected record editing stays contained and saves or discards explicitly',
+      'workspace-confirm-delete'
+    )
+  ).toBe(false);
+  expect(() => workspaceScenario(title + ' private')).toThrow('unregistered workspace scenario');
 });

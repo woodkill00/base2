@@ -31,11 +31,15 @@ const obligations = [
   'workspace-exports',
   'workspace-records-selected-edit',
   'workspace-records-selected-saved',
+  'workspace-confirm-submit-review',
+  'workspace-confirm-publish',
+  'workspace-confirm-delete',
+  'workspace-confirm-restore',
   'current',
 ] as const;
 type Obligation = (typeof obligations)[number];
 const filePattern =
-  /^(?:current-continuous-(?:current|workspace-(?:records|schema|imports|exports|records-selected-edit|records-selected-saved))-(?:\d{3}|focus)|current-scrollport-(?:(?:workspace-(?:records|schema|imports|exports|records-selected-edit|records-selected-saved))-)?(?:top|middle|footer)|workspace-(?:records|schema|imports|exports|records-selected-edit|records-selected-saved)-post-assert)\.png$/;
+  /^(?:workspace-confirm-(?:submit-review|publish|delete|restore)-attempt|current-continuous-(?:current|workspace-(?:records|schema|imports|exports|records-selected-edit|records-selected-saved))-(?:\d{3}|focus)|current-scrollport-(?:(?:workspace-(?:records|schema|imports|exports|records-selected-edit|records-selected-saved))-)?(?:top|middle|footer)|workspace-(?:records|schema|imports|exports|records-selected-edit|records-selected-saved)-post-assert)\.png$/;
 
 export const workspaceScenarios = {
   'workspace release corpus is accessible, responsive, and visually stable': 'corpus',
@@ -43,6 +47,7 @@ export const workspaceScenarios = {
   'workspace imports and exports are accessible, responsive, and visually stable':
     'imports-exports',
   'selected record editing stays contained and saves or discards explicitly': 'selected',
+  'workspace workflow confirmations cancel without mutation': 'confirmations',
   'synthetic workspace fixture vocabulary is complete and explicit': 'vocabulary',
 } as const;
 export function workspaceScenario(title: string) {
@@ -66,7 +71,15 @@ export function workspaceStateAllowed(title: string, state: string) {
           ? ['workspace-imports', 'workspace-exports', 'current']
           : scenario === 'selected'
             ? ['workspace-records-selected-edit', 'workspace-records-selected-saved', 'current']
-            : [];
+            : scenario === 'confirmations'
+              ? [
+                  'workspace-confirm-submit-review',
+                  'workspace-confirm-publish',
+                  'workspace-confirm-delete',
+                  'workspace-confirm-restore',
+                  'current',
+                ]
+              : [];
   return states.includes(state);
 }
 export class CaptureOwner {
@@ -79,7 +92,13 @@ export class CaptureOwner {
   readonly errors: string[] = [];
   readonly frames: { file: string; sha256: string; bytes: number }[] = [];
   constructor(
-    readonly scenario: 'corpus' | 'records-schema' | 'imports-exports' | 'selected' | 'vocabulary',
+    readonly scenario:
+      | 'corpus'
+      | 'records-schema'
+      | 'imports-exports'
+      | 'selected'
+      | 'confirmations'
+      | 'vocabulary',
     private save: () => void = () => {}
   ) {
     this.coverage = Object.fromEntries(
@@ -97,7 +116,15 @@ export class CaptureOwner {
             ? ['workspace-imports', 'workspace-exports', 'current']
             : scenario === 'selected'
               ? ['workspace-records-selected-edit', 'workspace-records-selected-saved', 'current']
-              : []
+              : scenario === 'confirmations'
+                ? [
+                    'workspace-confirm-submit-review',
+                    'workspace-confirm-publish',
+                    'workspace-confirm-delete',
+                    'workspace-confirm-restore',
+                    'current',
+                  ]
+                : []
       ).map((state) => [state, 'pending'])
     );
   }

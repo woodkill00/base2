@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import ts from 'typescript';
 
 const source = (name: string) => readFileSync(`e2e/${name}`, 'utf8');
-test('the whole setup and all three async workspace bodies enter ownership before any body work', () => {
+test('the whole setup and all four async workspace bodies enter ownership before any body work', () => {
   const text = source('workspace/workspace-release.spec.ts');
   const ast = ts.createSourceFile('workspace.ts', text, ts.ScriptTarget.Latest, true);
   let bodies = 0;
@@ -21,7 +21,11 @@ test('the whole setup and all three async workspace bodies enter ownership befor
     expect(ts.isBlock(callback.body)).toBe(true);
     const statements = (callback.body as ts.Block).statements;
     const first = statements[0];
-    const selected = call.arguments[0]?.getText(ast).includes('selected record editing');
+    const title = ts.isStringLiteral(call.arguments[0]) ? call.arguments[0].text : '';
+    const selected = [
+      'selected record editing stays contained and saves or discards explicitly',
+      'workspace workflow confirmations cancel without mutation',
+    ].includes(title);
     if (selected) {
       expect(
         ts.isExpressionStatement(first) &&
@@ -35,7 +39,7 @@ test('the whole setup and all three async workspace bodies enter ownership befor
     );
     bodies++;
   }
-  expect(bodies).toBe(4);
+  expect(bodies).toBe(5);
 });
 
 test('workspace and nested capture awaits cannot introduce unguarded body continuations', () => {

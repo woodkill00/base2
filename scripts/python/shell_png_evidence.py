@@ -106,6 +106,9 @@ def allowed(suite: str, relative: Path) -> bool:
         named = re.fullmatch(rf'workspace-(records-selected-edit|records-selected-saved|records|schema|imports|exports)-(?:post-assert|{project}-(?:actual|expected|diff))\.png', relative.name)
         if named:
             return workspace_ownership.state_registered(case, 'workspace-' + named[1])
+        confirmation = re.fullmatch(r'(workspace-confirm-(?:submit-review|publish|delete|restore))-attempt\.png', relative.name)
+        if confirmation:
+            return workspace_ownership.scenario_for_case(case) == 'confirmations' and workspace_ownership.state_registered(case, confirmation[1])
         if relative.name.startswith('workspace-'):
             return False
     sample = re.fullmatch(r'current-scrollport-([a-z0-9-]{1,90})-(?:top|middle|footer)\.png', relative.name)

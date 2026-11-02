@@ -115,3 +115,38 @@ def test_pair_receipts_bind_exact_case_states_and_reject_other_pair(tmp_path, sc
     data['coverage'][other] = 'complete'
     with pytest.raises(ValueError):
         module.validate(json.dumps(data).encode(), path, provenance)
+
+
+def test_confirmation_attempts_are_exact_scoped_originals(tmp_path):
+    case = module.CASES['confirmations'] + '-chromium-compact'
+    directory = tmp_path / case
+    directory.mkdir()
+    provenance = dict(sourceCommit='a'*40, sourceTree='b'*40, runId='123', attempt='1')
+    frames = []
+    for state in sorted(module.STATES['confirmations'] - {'current'}):
+        name = state + '-attempt.png'
+        (directory / name).write_bytes(PNG)
+        frames.append(dict(file=name, sha256=hashlib.sha256(PNG).hexdigest(), bytes=len(PNG)))
+        assert collector.allowed('workspace', Path(case) / name)
+        assert not collector.allowed('workspace', Path(module.CASES['selected'] + '-chromium-compact') / name)
+    data = dict(schemaVersion=1, scope='synthetic-workspace-ownership', scenario='confirmations', **provenance,
+                revoked=True, bodySettled=True, hookStarted=True, incomplete=False,
+                coverage={k: 'complete' for k in module.STATES['confirmations']}, errors=[], frames=frames)
+    path = directory / module.NAME
+    raw = json.dumps(data).encode()
+    assert module.validate(raw, path, provenance) == data
+    missing = copy.deepcopy(data)
+    missing['frames'].pop()
+    with pytest.raises(ValueError):
+        module.validate(json.dumps(missing).encode(), path, provenance)
+    for state in ['workspace-confirm-private', 'workspace-records-selected-saved']:
+        invalid = copy.deepcopy(data)
+        invalid['coverage'][state] = 'complete'
+        with pytest.raises(ValueError):
+            module.validate(json.dumps(invalid).encode(), path, provenance)
+    invalid = copy.deepcopy(data)
+    invalid['frames'][0]['file'] = 'workspace-confirm-delete-private-attempt.png'
+    with pytest.raises(ValueError):
+        module.validate(json.dumps(invalid).encode(), path, provenance)
+    assert not collector.allowed('workspace', Path(case) / 'workspace-confirm-delete-private-attempt.png')
+    assert not collector.allowed('workspace', Path(case) / 'workspace-confirm-delete-expected.png')

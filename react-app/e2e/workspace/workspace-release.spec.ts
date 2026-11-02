@@ -1,5 +1,7 @@
 import {
   ownershipStep,
+  ownershipCleanup,
+  ownershipCoverage,
   ownedScreenshot,
   ownedWorkspaceBody,
   ownedWorkspaceHook,
@@ -126,6 +128,7 @@ const recordFixtures = new WeakMap<
   import('@playwright/test').Page,
   ReturnType<typeof createRecordFixture>
 >();
+const confirmationRequests = new WeakMap<Page, { mutations: number }>();
 const selectedEvidenceComplete = new WeakSet<import('@playwright/test').Page>();
 
 test('synthetic workspace fixture vocabulary is complete and explicit', () => {
@@ -148,7 +151,15 @@ test.beforeEach(async ({ page }, testInfo) => {
     page,
     testInfo,
     async () => {
-      const recordFixture = createRecordFixture(records);
+      const confirmation =
+        testInfo.title === 'workspace workflow confirmations cancel without mutation';
+      const recordFixture = confirmation
+        ? createRecordFixture(
+            records.map((record, index) => (index === 0 ? { ...record, version: 2 } : record))
+          )
+        : createRecordFixture(records);
+      const mutationCounter = { mutations: 0 };
+      confirmationRequests.set(page, mutationCounter);
       recordFixtures.set(page, recordFixture);
       // Exercise an explicit owner preference, not merely the OS hint: Obsidian defaults dark.
       if (testInfo.project.name === 'chromium-light') {
@@ -166,6 +177,18 @@ test.beforeEach(async ({ page }, testInfo) => {
           if (!['127.0.0.1', 'localhost'].includes(url.hostname))
             return route.abort('blockedbyclient');
           if (!url.pathname.startsWith('/api/')) return route.continue();
+          if (
+            confirmation &&
+            !['GET', 'HEAD'].includes(route.request().method()) &&
+            url.pathname.startsWith('/api/content/v1/')
+          ) {
+            mutationCounter.mutations += 1;
+            return route.fulfill({
+              status: 405,
+              contentType: 'application/json',
+              body: '{"detail":"Synthetic confirmation writes forbidden"}',
+            });
+          }
           const send = (body: unknown, status = 200) =>
             route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
           if (url.pathname === '/api/content/v1/capabilities')
@@ -222,6 +245,20 @@ test.beforeEach(async ({ page }, testInfo) => {
               return send({ detail: 'Synthetic method not supported' }, 405);
             return send(record);
           }
+          if (
+            confirmation &&
+            url.pathname === `/api/content/v1/types/article/records/${records[0].id}/versions`
+          )
+            return send({
+              items: [
+                {
+                  version: 1,
+                  action: 'create',
+                  schemaVersion: 1,
+                  publicContentRestoreMode: 'preserve_current',
+                },
+              ],
+            });
           if (url.pathname.includes('/versions')) return send({ items: [] });
           if (url.pathname.includes('/relationships')) return send({ items: [] });
           return send({});
@@ -790,6 +827,199 @@ test('selected record editing stays contained and saves or discards explicitly',
         `Saved ${label.label} must expose its full label: ${JSON.stringify(label)}`
       ).toBe(true);
     selectedEvidenceComplete.add(page);
+  });
+});
+
+test('workspace workflow confirmations cancel without mutation', async ({ page }, testInfo) => {
+  test.skip(
+    !['chromium-compact', 'chromium-desktop', 'chromium-large-text'].includes(
+      testInfo.project.name
+    ),
+    'Confirmation coverage is explicitly scoped to compact, desktop and large text.'
+  );
+  return ownedWorkspaceBody(page, testInfo, async () => {
+    await ownershipStep(() => page.goto('/workspace'));
+    if (testInfo.project.name === 'chromium-large-text') {
+      await ownershipStep(() =>
+        page.addStyleTag({ content: 'html { font-size: 200% !important; }' })
+      );
+      await ownershipStep(() => expect(page.locator('html')).toHaveCSS('font-size', '32px'));
+    }
+    const fixture = recordFixtures.get(page)!;
+    const original = fixture.read(records[0].id)!;
+    await ownershipStep(() =>
+      page.getByRole('button', { name: 'Open draft record', exact: true }).click()
+    );
+    const inspector = page.getByRole('region', { name: 'Record details', exact: true });
+    for (const [state, label, dismiss, confirm] of [
+      ['submit-review', 'Submit for review', 'Keep unchanged', 'Confirm action'],
+      ['publish', 'Publish', 'Keep unchanged', 'Confirm action'],
+      ['delete', 'Delete record', 'Keep unchanged', 'Confirm action'],
+      ['restore', 'Restore', 'Keep current', 'Confirm restore'],
+    ] as const) {
+      await ownershipStep(() =>
+        ownershipCoverage(`workspace-confirm-${state}`, async () => {
+          const trigger = inspector.getByRole('button', { name: label, exact: true });
+          const dialog = inspector.getByRole('alertdialog');
+          let failed = false,
+            failure: unknown,
+            captureAttempted = false;
+          const capture = async () => {
+            captureAttempted = true;
+            await ownershipStep(() =>
+              ownedScreenshot(page, testInfo, {
+                path: testInfo.outputPath(`workspace-confirm-${state}-attempt.png`),
+                animations: 'disabled',
+                caret: 'hide',
+              })
+            );
+          };
+          try {
+            await ownershipStep(() => trigger.focus());
+            await ownershipStep(() => expect(trigger).toBeFocused());
+            await ownershipStep(() => page.keyboard.press('Enter'));
+            await ownershipStep(() =>
+              dialog.evaluate((node) =>
+                node.scrollIntoView({ block: 'center', behavior: 'instant' })
+              )
+            );
+            await ownershipStep(capture); // Retain the attempted viewport before hard focus/layout checks.
+            await ownershipStep(() => expect(dialog).toHaveCount(1));
+            await ownershipStep(() => expect(dialog).toBeInViewport({ ratio: 1 }));
+            await ownershipStep(() =>
+              expect(dialog.getByRole('button', { name: dismiss, exact: true })).toBeFocused()
+            );
+            await ownershipStep(() =>
+              expect(dialog.getByRole('button', { name: confirm, exact: true })).toBeEnabled()
+            );
+            const metrics = await ownershipStep(() =>
+              dialog.evaluate((node) => {
+                const rect = node.getBoundingClientRect();
+                const enclosing = node.closest('[role="region"]')!.getBoundingClientRect();
+                const port = document
+                  .querySelector(
+                    '.volcano-layout[data-movement-layout="bottom"] .volcano-content-scrollport'
+                  )
+                  ?.getBoundingClientRect();
+                const header = document.querySelector('.volcano-header-frame');
+                const sticky =
+                  header && ['sticky', 'fixed'].includes(getComputedStyle(header).position);
+                const top = Math.max(
+                  0,
+                  port?.top ?? 0,
+                  sticky ? header!.getBoundingClientRect().bottom : 0
+                );
+                const bottom = Math.min(innerHeight, port?.bottom ?? innerHeight);
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d')!;
+                return {
+                  enclosed:
+                    rect.left >= enclosing.left &&
+                    rect.right <= enclosing.right &&
+                    node.scrollWidth <= node.clientWidth + 1,
+                  visible: rect.top >= top && rect.bottom <= bottom,
+                  buttons: Array.from(node.querySelectorAll('button')).map((button) => {
+                    const style = getComputedStyle(button);
+                    const pixels = (value: string) => Number.parseFloat(value) || 0;
+                    const range = document.createRange();
+                    range.selectNodeContents(button);
+                    const box = button.getBoundingClientRect(),
+                      text = range.getBoundingClientRect();
+                    context.font = style.font;
+                    const label = button.textContent!.trim();
+                    const width = Number.parseFloat(style.width);
+                    const available =
+                      style.boxSizing === 'border-box'
+                        ? width -
+                          pixels(style.paddingLeft) -
+                          pixels(style.paddingRight) -
+                          pixels(style.borderLeftWidth) -
+                          pixels(style.borderRightWidth)
+                        : width;
+                    const required =
+                      context.measureText(label).width +
+                      Math.max(0, [...label].length - 1) * pixels(style.letterSpacing);
+                    const fragments = Array.from(range.getClientRects());
+                    return {
+                      available,
+                      required,
+                      oneLine:
+                        fragments.length > 0 &&
+                        fragments.every(
+                          (fragment) =>
+                            fragment.top < text.top + pixels(style.lineHeight) &&
+                            fragment.bottom <= text.top + pixels(style.lineHeight)
+                        ),
+                      contained:
+                        text.left >= box.left &&
+                        text.right <= box.right &&
+                        box.left >= rect.left &&
+                        box.right <= rect.right,
+                    };
+                  }),
+                };
+              })
+            );
+            expect(metrics.enclosed).toBe(true);
+            expect(metrics.visible).toBe(true);
+            expect(metrics.buttons).toHaveLength(2);
+            for (const metric of metrics.buttons) {
+              expect(
+                Number.isFinite(metric.available) &&
+                  Number.isFinite(metric.required) &&
+                  metric.required > 0 &&
+                  metric.available >= metric.required,
+                JSON.stringify(metric)
+              ).toBe(true);
+              expect(metric.oneLine).toBe(true);
+              expect(metric.contained).toBe(true);
+            }
+            await ownershipStep(() => page.keyboard.press('Escape'));
+            await ownershipStep(() => expect(dialog).toHaveCount(0));
+            await ownershipStep(() => expect(trigger).toBeFocused());
+            await ownershipStep(() => trigger.click());
+            await ownershipStep(() =>
+              expect(dialog.getByRole('button', { name: dismiss, exact: true })).toBeFocused()
+            );
+            await ownershipStep(() =>
+              dialog.getByRole('button', { name: dismiss, exact: true }).click()
+            );
+            await ownershipStep(() => expect(dialog).toHaveCount(0));
+            await ownershipStep(() => expect(trigger).toBeFocused());
+            expect(confirmationRequests.get(page)!.mutations).toBe(0);
+            expect(fixture.updates).toBe(0);
+            expect(fixture.read(original.id)).toEqual(original);
+          } catch (error) {
+            failed = true;
+            failure = error;
+          }
+          await ownershipCleanup(async () => {
+            if (!captureAttempted) {
+              try {
+                await ownershipStep(capture);
+              } catch (error) {
+                if (!failed) {
+                  failed = true;
+                  failure = error;
+                }
+              }
+            }
+            try {
+              if (await ownershipStep(() => dialog.count()))
+                await ownershipStep(() =>
+                  dialog.getByRole('button', { name: dismiss, exact: true }).click()
+                );
+            } catch (error) {
+              if (!failed) {
+                failed = true;
+                failure = error;
+              }
+            }
+          });
+          if (failed) throw failure;
+        })
+      );
+    }
   });
 });
 

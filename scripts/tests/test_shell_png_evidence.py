@@ -492,3 +492,31 @@ def test_workspace_continuous_rejects_wrong_project_with_same_title_and_state(tm
     (folder / 'continuous-current.json').write_text(json.dumps(data))
     collector.stage(sources, tmp_path / 'corrected-output', provenance)
     assert len(list((tmp_path / 'corrected-output').rglob('continuous-current.json'))) == 1
+
+
+def test_exact_confirmation_attempt_producers_do_not_broaden_collection():
+    case = 'workspace-release-workspac-c3eae-ons-cancel-without-mutation-chromium-compact'
+    for state in ('submit-review', 'publish', 'delete', 'restore'):
+        name = f'workspace-confirm-{state}-attempt.png'
+        assert collector.allowed('workspace', Path(case) / name)
+        assert collector.image_role(name) == 'current-diagnostic'
+        assert not collector.allowed('workspace', Path('workspace-release-selected-9c572-aves-or-discards-explicitly-chromium-compact') / name)
+    for name in ('workspace-confirm-arbitrary-attempt.png', 'workspace-confirm-delete-expected.png', 'private.png'):
+        assert not collector.allowed('workspace', Path(case) / name)
+
+
+def test_confirmation_native_coverage_retains_attempt_before_focus_and_never_confirms():
+    source = (Path(__file__).resolve().parents[2] / 'react-app/e2e/workspace/workspace-release.spec.ts').read_text()
+    case = source.split("test('workspace workflow confirmations cancel without mutation'", 1)[1].split('declare global', 1)[0]
+    assert "['submit-review', 'Submit for review', 'Keep unchanged', 'Confirm action']" in case
+    assert "['restore', 'Restore', 'Keep current', 'Confirm restore']" in case
+    assert case.index('captureAttempted = true') < case.index('ownedScreenshot(page')
+    assert case.index('await ownershipStep(capture);') < case.index('expect(dialog.getByRole')
+    assert "toBeInViewport({ ratio: 1 })" in case
+    assert "page.keyboard.press('Escape')" in case
+    assert 'metric.available >= metric.required' in case
+    assert 'expect(trigger).toBeFocused()' in case
+    assert 'expect(confirmationRequests.get(page)!.mutations).toBe(0)' in case
+    assert "name: confirm, exact: true })).toBeEnabled()" in case
+    assert "name: confirm, exact: true }).click()" not in case
+    assert 'await ownershipCleanup' in case and 'if (!failed)' in case and 'if (failed) throw failure' in case

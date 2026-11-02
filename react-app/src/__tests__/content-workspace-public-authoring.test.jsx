@@ -438,3 +438,168 @@ test.each([
   );
   await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument());
 });
+
+test.each([
+  ['Submit for review', 'Confirm action', 'Keep unchanged'],
+  ['Publish', 'Confirm action', 'Keep unchanged'],
+  ['Delete record', 'Confirm action', 'Keep unchanged'],
+  ['Restore', 'Confirm restore', 'Keep current'],
+])(
+  'inline %s confirmation focuses safe dismissal and restores on Escape/cancel without writes',
+  async (label, confirm, dismiss) => {
+    const user = userEvent.setup();
+    setup({ allowedActions: ['submit_review', 'publish', 'delete'] });
+    const trigger = screen.getByRole('button', { name: label, exact: true });
+    await user.click(trigger);
+    expect(screen.getByRole('button', { name: dismiss, exact: true })).toHaveFocus();
+    expect(screen.getByRole('button', { name: confirm, exact: true })).toBeEnabled();
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+    expect(trigger).toHaveFocus();
+    await user.click(trigger);
+    await user.click(screen.getByRole('button', { name: dismiss, exact: true }));
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+    expect(trigger).toHaveFocus();
+    expect(contentWorkspaceAPI.transition).not.toHaveBeenCalled();
+    expect(contentWorkspaceAPI.restore).not.toHaveBeenCalled();
+    expect(contentWorkspaceAPI.updateRecord).not.toHaveBeenCalled();
+  }
+);
+
+const interruptedPanels = [
+  ['Publish', 'Keep unchanged', 'Confirm action'],
+  ['Restore', 'Keep current', 'Confirm restore'],
+];
+for (const method of ['Escape', 'button']) {
+  test.each(interruptedPanels)(
+    `dirty %s dismissal by ${method} uses same-record fallback on repeated opens`,
+    async (label, dismiss, confirm) => {
+      const user = userEvent.setup();
+      setup();
+      for (let iteration = 0; iteration < 2; iteration++) {
+        await user.click(screen.getByRole('button', { name: 'Edit fields', exact: true }));
+        const trigger = screen.getByRole('button', { name: label, exact: true });
+        await user.click(trigger);
+        await user.type(screen.getByLabelText('Private summary'), ' changed');
+        expect(trigger).toBeDisabled();
+        expect(screen.getByRole('button', { name: confirm, exact: true })).toBeDisabled();
+        const cancel = screen.getByRole('button', { name: dismiss, exact: true });
+        cancel.focus();
+        if (method === 'Escape') await user.keyboard('{Escape}');
+        else await user.click(cancel);
+        expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: record.title, exact: true })).toHaveFocus();
+        expect(screen.getByLabelText('Private summary')).toHaveValue(
+          record.values.summary + ' changed'
+        );
+        await user.click(screen.getByRole('button', { name: 'Discard changes', exact: true }));
+      }
+      expect(contentWorkspaceAPI.transition).not.toHaveBeenCalled();
+      expect(contentWorkspaceAPI.restore).not.toHaveBeenCalled();
+      expect(contentWorkspaceAPI.updateRecord).not.toHaveBeenCalled();
+    }
+  );
+
+  test.each(interruptedPanels)(
+    `hidden %s trigger is not restored by ${method}`,
+    async (label, dismiss) => {
+      const user = userEvent.setup();
+      setup();
+      const trigger = screen.getByRole('button', { name: label, exact: true });
+      await user.click(trigger);
+      trigger.style.visibility = 'hidden';
+      const cancel = screen.getByRole('button', { name: dismiss, exact: true });
+      cancel.focus();
+      if (method === 'Escape') await user.keyboard('{Escape}');
+      else await user.click(cancel);
+      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: record.title, exact: true })).toHaveFocus();
+    }
+  );
+}
+
+test.each(interruptedPanels)(
+  'authoritative version refresh restores only removed-panel focus for %s',
+  async (label, dismiss) => {
+    const user = userEvent.setup();
+    const { props, rerender } = setup();
+    await user.click(screen.getByRole('button', { name: label, exact: true }));
+    expect(screen.getByRole('button', { name: dismiss, exact: true })).toHaveFocus();
+    rerender(
+      <RecordInspector
+        {...props}
+        record={{
+          ...props.record,
+          version: 3,
+          title: 'Authoritative title',
+          allowedActions: [],
+          history: [],
+        }}
+      />
+    );
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Authoritative title', exact: true })).toHaveFocus();
+  }
+);
+
+test.each(interruptedPanels)(
+  'authoritative version refresh does not steal outside focus for %s',
+  async (label) => {
+    const user = userEvent.setup();
+    const { props, rerender } = setup();
+    await user.click(screen.getByRole('button', { name: label, exact: true }));
+    const outside = document.createElement('button');
+    outside.textContent = 'Other workspace control';
+    document.body.append(outside);
+    try {
+      outside.focus();
+      rerender(
+        <RecordInspector
+          {...props}
+          record={{ ...props.record, version: 3, allowedActions: [], history: [] }}
+        />
+      );
+      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+      expect(outside).toHaveFocus();
+    } finally {
+      outside.remove();
+    }
+  }
+);
+
+test.each(interruptedPanels)(
+  'authoritative version refresh prefers the still-enabled same-record %s trigger',
+  async (label) => {
+    const user = userEvent.setup();
+    const { props, rerender } = setup();
+    const trigger = screen.getByRole('button', { name: label, exact: true });
+    await user.click(trigger);
+    rerender(<RecordInspector {...props} record={{ ...props.record, version: 3 }} />);
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+    expect(trigger).toBeEnabled();
+    expect(trigger).toHaveFocus();
+  }
+);
+
+test.each([
+  ['Publish', 'Confirm action', 'Keep unchanged', 'transition'],
+  ['Restore', 'Confirm restore', 'Keep current', 'restore'],
+])(
+  'blocked %s confirmation cannot dismiss or mutate through Escape/cancel',
+  async (label, confirm, dismiss, method) => {
+    const user = userEvent.setup();
+    const error = { response: { status: 409 } };
+    contentWorkspaceAPI[method].mockRejectedValue(error);
+    const { props } = setup();
+    await user.click(screen.getByRole('button', { name: label, exact: true }));
+    await user.click(screen.getByRole('button', { name: confirm, exact: true }));
+    await waitFor(() => expect(props.onError).toHaveBeenLastCalledWith(error));
+    const cancel = screen.getByRole('button', { name: dismiss, exact: true });
+    expect(cancel).toBeDisabled();
+    expect(screen.getByRole('button', { name: confirm, exact: true })).toBeDisabled();
+    fireEvent.keyDown(cancel, { key: 'Escape' });
+    fireEvent.click(cancel);
+    expect(screen.getByRole('alertdialog')).toBeInTheDocument();
+    expect(contentWorkspaceAPI[method]).toHaveBeenCalledTimes(1);
+  }
+);

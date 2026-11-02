@@ -10,13 +10,15 @@ CASES = {'records-schema': 'workspace-release-workspac-92e7c-ponsive-and-visuall
          'imports-exports': 'workspace-release-workspac-a27fb-ponsive-and-visually-stable',
          'corpus': 'workspace-release-workspac-d0657-ponsive-and-visually-stable',
          'selected': 'workspace-release-selected-9c572-aves-or-discards-explicitly',
+         'confirmations': 'workspace-release-workspac-c3eae-ons-cancel-without-mutation',
          'vocabulary': 'workspace-release-synthet-'}
 STATES = {'records-schema': {'workspace-records', 'workspace-schema', 'current'},
           'imports-exports': {'workspace-imports', 'workspace-exports', 'current'},
           'corpus': {'workspace-records', 'workspace-schema', 'workspace-imports', 'workspace-exports', 'current'},
           'selected': {'workspace-records-selected-edit', 'workspace-records-selected-saved', 'current'},
-          'vocabulary': set()}
-FRAME = re.compile(r'(?:current-continuous-(?:current|workspace-(?:records|schema|imports|exports|records-selected-edit|records-selected-saved))-(?:[0-9]{3}|focus)|current-scrollport-(?:(?:workspace-(?:records|schema|imports|exports|records-selected-edit|records-selected-saved))-)?(?:top|middle|footer)|workspace-(?:records|schema|imports|exports|records-selected-edit|records-selected-saved)-post-assert)\.png')
+          'confirmations': {'workspace-confirm-submit-review', 'workspace-confirm-publish', 'workspace-confirm-delete', 'workspace-confirm-restore', 'current'},
+         'vocabulary': set()}
+FRAME = re.compile(r'(?:workspace-confirm-(?:submit-review|publish|delete|restore)-attempt|current-continuous-(?:current|workspace-(?:records|schema|imports|exports|records-selected-edit|records-selected-saved))-(?:[0-9]{3}|focus)|current-scrollport-(?:(?:workspace-(?:records|schema|imports|exports|records-selected-edit|records-selected-saved))-)?(?:top|middle|footer)|workspace-(?:records|schema|imports|exports|records-selected-edit|records-selected-saved)-post-assert)\.png')
 
 
 TITLES = {
@@ -24,6 +26,7 @@ TITLES = {
     'records-schema': 'workspace records and schema are accessible, responsive, and visually stable',
     'imports-exports': 'workspace imports and exports are accessible, responsive, and visually stable',
     'selected': 'selected record editing stays contained and saves or discards explicitly',
+    'confirmations': 'workspace workflow confirmations cancel without mutation',
 }
 
 
@@ -66,7 +69,7 @@ def validate(raw, path, provenance):
     require(type(data) is dict and set(data) == {'schemaVersion', 'scope', 'scenario', 'sourceCommit', 'sourceTree', 'runId', 'attempt', 'revoked', 'bodySettled', 'hookStarted', 'incomplete', 'coverage', 'errors', 'frames'})
     require(type(data['schemaVersion']) is int and data['schemaVersion'] == 1)
     require(data['scope'] == 'synthetic-workspace-ownership')
-    require(type(data['scenario']) is str and data['scenario'] in {'corpus', 'records-schema', 'imports-exports', 'selected'})
+    require(type(data['scenario']) is str and data['scenario'] in {'corpus', 'records-schema', 'imports-exports', 'selected', 'confirmations'})
     require(re.fullmatch(re.escape(CASES[data['scenario']]) + '-' + PROJECTS, path.parent.name) is not None)
     for key in ('sourceCommit', 'sourceTree', 'runId', 'attempt'):
         require(type(data[key]) is str and data[key] == str(provenance[key]))
@@ -89,7 +92,7 @@ def validate(raw, path, provenance):
         name = frame['file']
         require(type(name) is str and FRAME.fullmatch(name) is not None and name not in names)
         state = re.sub(r'-(?:[0-9]{3}|focus)\.png$', '', name.removeprefix('current-continuous-')) if name.startswith('current-continuous-') else (
-            name.removesuffix('-post-assert.png') if name.startswith('workspace-') else
+            name.removesuffix('-attempt.png').removesuffix('-post-assert.png') if name.startswith('workspace-') else
             re.sub(r'-(?:top|middle|footer)\.png$', '', name.removeprefix('current-scrollport-')))
         if name in {'current-scrollport-top.png', 'current-scrollport-middle.png', 'current-scrollport-footer.png'}:
             state = 'current'
@@ -100,4 +103,8 @@ def validate(raw, path, provenance):
         target = path.parent / name
         require(not target.is_symlink() and target.is_file() and target.stat().st_size == frame['bytes'])
         require(hashlib.sha256(target.read_bytes()).hexdigest() == frame['sha256'])
+    if data['scenario'] == 'confirmations':
+        for state, status in data['coverage'].items():
+            if state != 'current' and status == 'complete':
+                require(state + '-attempt.png' in names)
     return data

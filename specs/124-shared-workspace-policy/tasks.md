@@ -1380,3 +1380,40 @@ captures prove their observed fallback states, not populated content readiness.
       Validate all three workflow cancel/confirm transitions and narrow container
       scoping. Fresh native compact/desktop/large-text pixels and complete saved
       guards remain required; no tolerance, reference or acceptance changes.
+
+- [ ] T102 Retain native inline workflow and restore confirmation attempts in a
+      separate compact/desktop/large-text synthetic case. Ordinary Saved and
+      operations cancellation captures do not prove these panels. First unit
+      reproduction found missing entry focus on all four panels (4 failed,
+      35 passed). Add safe-dismissal entry focus, local Escape dismissal and
+      explicit trigger restoration only; preserve inline non-modal presentation,
+      disabled/dirty guards and all actual transition handlers. Native coverage
+      opens Submit/Publish/Delete/Restore, captures before assertions, checks
+      strict full-label width/containment and viewport visibility, dismisses by
+      Escape and button, and forbids every content mutation request. A per-case
+      cloned version-2 record and existing version-1 history contract expose
+      Restore without performing it. Register four exact attempt states plus
+      required generic current coverage; retain primary errors and partial frames.
+      60 configured cases = 24 corpus + 12 vocabulary + 3 selected + 3 confirmation
+      + 18 declared skips. No existing obligation is removed. New case maximum
+      is 4 attempt PNGs + generic 64 segments + focus context + 3 samples = 72
+      ownership frames, below unchanged 512 ceiling; byte/transport bounds remain
+      fail-closed, not guaranteed fit: simultaneous maximum 72 x 32MiB x three
+      projects alone exceeds 6GiB. Do not raise caps to make this maximum fit.
+      WebKit confirmation is declared skipped;
+      existing 192-event checkpoint cap and all per-test timeouts unchanged.
+      Native confirmation fit/focus and independent pixels remain pending; no
+      reference approval. Full logs and original focus regression must be retained.
+
+- [ ] T103 Preserve same-record focus when confirmation flows are interrupted.
+      Retain the 10-fail/41-pass reproduction: dirty or hidden triggers cannot
+      safely receive return focus, and authoritative version changes can remove
+      an entry-focused panel. Observe focused-panel detachment with stable refs,
+      then restore after commit only if focus has not moved elsewhere. Prefer
+      the connected, enabled, visible same-record trigger; otherwise use that
+      record's programmatically focusable heading without adding a Tab stop.
+      Never restore across account/type/record identity boundaries. Cover both
+      panels, Escape and button dismissal, repeated dirty opens, hidden triggers,
+      retained/removed triggers on version refresh, outside-focus intent and
+      blocked mutation guards. Keep all cleared transport paths/obligations/caps
+      byte-identical. Native confirmation evidence remains pending review/run.

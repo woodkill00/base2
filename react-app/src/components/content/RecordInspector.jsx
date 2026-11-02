@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import GlassButton from '../glass/GlassButton';
 import { contentWorkspaceAPI } from '../../services/contentWorkspace';
@@ -114,6 +114,30 @@ const FieldInput = ({ field, value, onChange, disabled }) => {
   );
 };
 
+// Programmatic return targets may be disabled or hidden after an interrupted edit.
+// Check the current same-record DOM, then verify that focus actually moved.
+function focusInsideRecord(node, root) {
+  if (
+    !node?.isConnected ||
+    !root?.contains(node) ||
+    node.matches(':disabled, [aria-disabled="true"]') ||
+    node.closest('[hidden], [inert], [aria-hidden="true"]')
+  )
+    return false;
+  for (let ancestor = node; ancestor; ancestor = ancestor.parentElement) {
+    const style = getComputedStyle(ancestor);
+    if (
+      style.display === 'none' ||
+      ['hidden', 'collapse'].includes(style.visibility) ||
+      style.contentVisibility === 'hidden' ||
+      Number.parseFloat(style.opacity) === 0
+    )
+      return false;
+  }
+  node.focus();
+  return node.ownerDocument.activeElement === node;
+}
+
 export default function RecordInspector({
   typeKey,
   schema,
@@ -183,6 +207,74 @@ export default function RecordInspector({
   const [busy, setBusy] = useState(false);
   const [pendingAction, setPendingAction] = useState('');
   const [pendingRestore, setPendingRestore] = useState(null);
+  const recordRoot = useRef(null);
+  const recordHeading = useRef(null);
+  const focusRecordKey = JSON.stringify([scopeKey, typeKey, record.id]);
+  const actionPanel = useRef(null);
+  const restorePanel = useRef(null);
+  const actionTrigger = useRef(null);
+  const restoreTrigger = useRef(null);
+  const returnFocus = useRef(null);
+  const attachActionPanel = useCallback((node) => {
+    const previous = actionPanel.current;
+    if (!node && previous?.contains(previous.ownerDocument.activeElement))
+      returnFocus.current = { ...actionTrigger.current, panel: previous };
+    actionPanel.current = node;
+  }, []);
+  const attachRestorePanel = useCallback((node) => {
+    const previous = restorePanel.current;
+    if (!node && previous?.contains(previous.ownerDocument.activeElement))
+      returnFocus.current = { ...restoreTrigger.current, panel: previous };
+    restorePanel.current = node;
+  }, []);
+  // Stable detach callbacks observe focus before removal, including batched
+  // authoritative version refreshes. Never override focus moved elsewhere.
+  useLayoutEffect(() => {
+    const request = returnFocus.current;
+    returnFocus.current = null;
+    if (!request || request.recordKey !== focusRecordKey) return;
+    const document = recordRoot.current?.ownerDocument;
+    if (!document) return;
+    const active = document.activeElement;
+    if (
+      active &&
+      active !== document.body &&
+      active !== document.documentElement &&
+      !request.panel.contains(active)
+    )
+      return;
+    if (!focusInsideRecord(request.node, recordRoot.current))
+      focusInsideRecord(recordHeading.current, recordRoot.current);
+  });
+  useEffect(() => {
+    if (pendingAction)
+      focusInsideRecord(
+        actionPanel.current?.querySelector('[data-confirmation-cancel]'),
+        recordRoot.current
+      );
+  }, [pendingAction]);
+  useEffect(() => {
+    if (pendingRestore)
+      focusInsideRecord(
+        restorePanel.current?.querySelector('[data-confirmation-cancel]'),
+        recordRoot.current
+      );
+  }, [pendingRestore]);
+  const dismissAction = () => {
+    if (busy || blocked) return;
+    setPendingAction('');
+  };
+  const dismissRestore = () => {
+    if (busy || blocked) return;
+    setPendingRestore(null);
+  };
+  const dismissOnEscape = (event, dismiss) => {
+    if (event.key !== 'Escape' || busy || blocked) return;
+    event.preventDefault();
+    event.stopPropagation();
+    dismiss();
+  };
+
   const dirty = useMemo(
     () =>
       editing &&
@@ -336,12 +428,14 @@ export default function RecordInspector({
   };
 
   return (
-    <div className="space-y-5">
+    <div ref={recordRoot} className="space-y-5">
       <div>
         <p className="text-xs font-semibold uppercase tracking-wider text-violet-300">
           {record.state} · version {record.version}
         </p>
-        <h3 className="mt-1 text-2xl font-semibold">{record.title}</h3>
+        <h3 ref={recordHeading} tabIndex={-1} className="mt-1 text-2xl font-semibold">
+          {record.title}
+        </h3>
         <p className="text-sm opacity-65">/{record.slug}</p>
       </div>
 
@@ -508,7 +602,10 @@ export default function RecordInspector({
               type="button"
               variant={action === 'delete' ? 'ghost' : 'primary'}
               disabled={busy || blocked || dirty}
-              onClick={() => setPendingAction(action)}
+              onClick={(event) => {
+                actionTrigger.current = { node: event.currentTarget, recordKey: focusRecordKey };
+                setPendingAction(action);
+              }}
             >
               {labels[action]}
             </GlassButton>
@@ -518,6 +615,8 @@ export default function RecordInspector({
           <div
             role="alertdialog"
             aria-labelledby="record-action-confirm"
+            ref={attachActionPanel}
+            onKeyDown={(event) => dismissOnEscape(event, dismissAction)}
             className="mt-4 rounded-xl border border-amber-300/30 bg-amber-950/20 p-4"
           >
             <p id="record-action-confirm">
@@ -538,7 +637,8 @@ export default function RecordInspector({
               <GlassButton
                 type="button"
                 variant="ghost"
-                onClick={() => setPendingAction('')}
+                data-confirmation-cancel
+                onClick={dismissAction}
                 disabled={busy || blocked}
               >
                 Keep unchanged
@@ -576,7 +676,13 @@ export default function RecordInspector({
                     type="button"
                     variant="ghost"
                     disabled={busy || blocked || dirty || !restoreSupported(version)}
-                    onClick={() => setPendingRestore(version)}
+                    onClick={(event) => {
+                      restoreTrigger.current = {
+                        node: event.currentTarget,
+                        recordKey: focusRecordKey,
+                      };
+                      setPendingRestore(version);
+                    }}
                   >
                     Restore
                   </GlassButton>
@@ -591,6 +697,8 @@ export default function RecordInspector({
           <div
             role="alertdialog"
             aria-labelledby="record-restore-confirm"
+            ref={attachRestorePanel}
+            onKeyDown={(event) => dismissOnEscape(event, dismissRestore)}
             className="mt-4 rounded-xl border border-amber-300/30 bg-amber-950/20 p-4"
           >
             <p id="record-restore-confirm">
@@ -614,7 +722,8 @@ export default function RecordInspector({
               <GlassButton
                 type="button"
                 variant="ghost"
-                onClick={() => setPendingRestore(null)}
+                data-confirmation-cancel
+                onClick={dismissRestore}
                 disabled={busy || blocked}
               >
                 Keep current
