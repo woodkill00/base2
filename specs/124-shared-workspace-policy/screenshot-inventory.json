@@ -108,7 +108,7 @@
     },
     {
       "path": "react-app/e2e/workspace-capture-ownership.ts",
-      "sha256": "5b307b56b39c34cb34baf91273f644bafa499a5b335cd55c93a065d21d9c08af",
+      "sha256": "cf4efb366a4ae77b25823d72d9bba40954855eafe7cc5aff8e9dccc565805806",
       "collection": "bounded-owned-screenshots-and-partial-frame-receipts-pending-native-workspace-validation"
     },
     {

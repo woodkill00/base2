@@ -91,3 +91,18 @@ it('honors measured sticky inset for document anchors', () => {
   createScrollTarget(null, () => 80).align({ getBoundingClientRect: () => ({ top: 500 }) });
   expect(scroll).toHaveBeenCalledWith({ top: 420, behavior: 'auto' });
 });
+
+it('keeps explicitly instant alignment instant under reduced motion while defaults remain auto', () => {
+  const prior = window.matchMedia;
+  window.matchMedia = () => ({ matches: true });
+  const scroll = vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+  try {
+    const node = document.createElement('div');
+    node.getBoundingClientRect = () => ({ top: 100 });
+    const target = createScrollTarget();
+    target.align(node, 'instant');
+    expect(scroll.mock.calls.at(-1)[0].behavior).toBe('instant');
+    target.align(node);
+    expect(scroll.mock.calls.at(-1)[0].behavior).toBe('auto');
+  } finally { scroll.mockRestore(); window.matchMedia = prior; }
+});

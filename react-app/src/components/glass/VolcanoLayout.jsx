@@ -6,8 +6,20 @@ import GlassHeader from './GlassHeader';
 import GlassButton from './GlassButton';
 import HomeFooter from '../home/HomeFooter';
 import HomeObsidianNavigation from '../home/HomeObsidianNavigation';
-import { createScrollTarget, ScrollTargetContext, useScrollTargetHistory } from '../../lib/scrollTarget';
+import {
+  createScrollTarget,
+  ScrollTargetContext,
+  useScrollTargetHistory,
+} from '../../lib/scrollTarget';
 import './volcano-layout.css';
+import {
+  captureMovementAnchor,
+  applyMovementAnchor,
+  verifyMovementAnchor,
+  createMovementBookmark,
+  reusableMovementBookmark,
+  watchMovementBookmark,
+} from '../../lib/movementMigration';
 
 // Composition only: use the owner-approved components, not approximated rails.
 export default function VolcanoLayout({ children, headerTitle, contextSlot, footerSlot }) {
@@ -25,6 +37,18 @@ export default function VolcanoLayout({ children, headerTitle, contextSlot, foot
   const [movementEnabled, setMovementEnabled] = useState(true);
   const [compact, setCompact] = useState(() => window.matchMedia('(max-width: 64rem)').matches);
   const pendingAnchor = useRef(null);
+  const migrationSerial = useRef(0);
+  const migrationEntry = useRef('');
+  const migrated = useRef(null);
+  const bookmark = useRef(null);
+  const entry = `${locationKey}:${pathname}:${search}:${hash}`;
+  if (migrationEntry.current !== entry) {
+    migrationEntry.current = entry;
+    migrationSerial.current += 1;
+    pendingAnchor.current = null;
+    migrated.current = null;
+    bookmark.current = null;
+  }
   const compactRef = useRef(compact);
   compactRef.current = compact;
   const scrollTarget = useMemo(
@@ -37,45 +61,121 @@ export default function VolcanoLayout({ children, headerTitle, contextSlot, foot
   );
   const targetRef = useRef(scrollTarget);
   targetRef.current = scrollTarget;
-  const captureAnchor = () => {
+  const captureAnchor = (toMode = null) => {
     const current = targetRef.current;
-    const origin = current.element?.getBoundingClientRect().top || 0;
-    const headerBottom = header.current?.getBoundingClientRect().bottom || origin;
-    const anchor = [
-      ...(root.current?.querySelectorAll(
-        'main h1, main h2, main p, main label, .media-asset-card, .volcano-footer-frame p, .volcano-footer-frame a'
-      ) || []),
-    ].find((node) => node.getBoundingClientRect().bottom > headerBottom);
-    pendingAnchor.current = {
-      anchor,
-      y: anchor?.getBoundingClientRect().top,
-      top: current.metrics().top,
-      focus: document.activeElement,
+    let saved = captureMovementAnchor(root.current, header.current, current);
+    const transition = {
+      kind: toMode === null ? 'resize' : 'toggle',
+      fromMode: root.current?.dataset.movementLayout,
+      toMode,
+      previousSerial: migrationSerial.current,
+      entry: migrationEntry.current,
     };
+    const prior = bookmark.current;
+    bookmark.current = null; // One inverse transaction only; never a reusable position cache.
+    if (reusableMovementBookmark(prior, transition, root.current, header.current, current))
+      saved = { ...prior.saved, focus: document.activeElement };
+    const serial = ++migrationSerial.current;
+    pendingAnchor.current = saved
+      ? {
+          ...transition,
+          saved,
+          serial,
+          entry: migrationEntry.current,
+          historyKey: window.history.state?.key || 'default',
+        }
+      : null;
+    migrated.current = null;
+    if (root.current) root.current.dataset.movementMigration = saved ? 'pending' : 'invalid';
   };
   const changeMovement = (enabled) => {
-    captureAnchor();
+    captureAnchor(enabled ? (compactRef.current ? 'bottom' : 'sides') : 'off');
     setMovementEnabled(enabled);
   };
   useLayoutEffect(() => {
-    const saved = pendingAnchor.current;
-    if (!saved) return;
+    const token = pendingAnchor.current;
+    if (!token) return;
     pendingAnchor.current = null;
-    if (scrollTarget.element) window.scrollTo({ top: 0, behavior: 'auto' });
-    scrollTarget.scrollTo(saved.top);
-    if (saved.anchor?.isConnected) {
-      // Rectangle deltas use viewport CSS pixels. Only an element scrollTop
-      // needs conversion back to its unscaled layout units; window scrollY does not.
-      const destination = scrollTarget.element;
-      const scale = destination
-        ? destination.getBoundingClientRect().height / destination.offsetHeight || 1
-        : 1;
-      scrollTarget.scrollTo(
-        scrollTarget.metrics().top + (saved.anchor.getBoundingClientRect().top - saved.y) / scale
-      );
+    const current = () =>
+      token.serial === migrationSerial.current &&
+      token.entry === migrationEntry.current &&
+      token.historyKey === (window.history.state?.key || 'default');
+    const applied = applyMovementAnchor(
+      token.saved,
+      root.current,
+      header.current,
+      scrollTarget,
+      current
+    );
+    if (!applied || !current()) {
+      if (current()) root.current.dataset.movementMigration = 'invalid';
+      return;
     }
-    if (saved.focus?.isConnected) saved.focus.focus?.({ preventScroll: true });
+    migrated.current = { ...token, applied };
+    bookmark.current = createMovementBookmark(token, applied, header.current, scrollTarget);
+    root.current.dataset.movementMigration = 'settling';
   }, [scrollTarget]);
+  useEffect(() => {
+    if (!bookmark.current) return;
+    return watchMovementBookmark(
+      root.current,
+      header.current,
+      scrollTarget,
+      () => bookmark.current,
+      () => {
+        bookmark.current = null;
+      }
+    );
+  }, [scrollTarget, entry]);
+  // Child passive effects hand off the drawer's overflow lock before these
+  // animation-frame observations. Verification never scrolls or refocuses.
+  useEffect(() => {
+    const token = migrated.current;
+    if (!token) return;
+    let frame,
+      stopped = false,
+      previous = null,
+      probes = 0;
+    const started = performance.now();
+    const current = () =>
+      !stopped &&
+      token.serial === migrationSerial.current &&
+      token.entry === migrationEntry.current &&
+      token.historyKey === (window.history.state?.key || 'default');
+    const inspect = () => {
+      if (!current()) return;
+      const proof = verifyMovementAnchor(
+        token.saved,
+        token.applied,
+        root.current,
+        header.current,
+        scrollTarget
+      );
+      const snapshot = JSON.stringify(proof);
+      probes += 1;
+      if (previous === snapshot) {
+        root.current.dataset.movementMigration = proof.valid
+          ? token.applied.fallback
+            ? 'fallback'
+            : token.applied.clamp
+              ? 'clamped'
+              : 'preserved'
+          : 'failed';
+        return;
+      }
+      if (probes >= 32 || performance.now() - started >= 1000) {
+        root.current.dataset.movementMigration = 'unsettled';
+        return;
+      }
+      previous = snapshot;
+      frame = requestAnimationFrame(inspect);
+    };
+    frame = requestAnimationFrame(inspect);
+    return () => {
+      stopped = true;
+      cancelAnimationFrame(frame);
+    };
+  }, [scrollTarget, entry]);
   useEffect(() => {
     const measure = () => {
       const shell = root.current;
@@ -102,11 +202,17 @@ export default function VolcanoLayout({ children, headerTitle, contextSlot, foot
     [locationKey]
   );
   const restoredHistory = useScrollTargetHistory(
-    locationKey, navigationType, scrollTarget,
-    !(movementEnabled && compact) || Boolean(scrollTarget.element), ownsHistoryEntry
+    locationKey,
+    navigationType,
+    scrollTarget,
+    !(movementEnabled && compact) || Boolean(scrollTarget.element),
+    ownsHistoryEntry
   );
   const fragmentState = useRef(null);
-  fragmentState.current = { restoredHistory, ready: !(movementEnabled && compact) || Boolean(scrollTarget.element) };
+  fragmentState.current = {
+    restoredHistory,
+    ready: !(movementEnabled && compact) || Boolean(scrollTarget.element),
+  };
   useEffect(() => {
     const jumpToHash = (event) => {
       const fragment = event ? window.location.hash : hash;

@@ -67,7 +67,8 @@ def validate(raw, path, provenance):
     except (ValueError, UnicodeError) as error:
         raise ValueError('invalid workspace ownership receipt') from error
     require(type(data) is dict and set(data) == {'schemaVersion', 'scope', 'scenario', 'sourceCommit', 'sourceTree', 'runId', 'attempt', 'revoked', 'bodySettled', 'hookStarted', 'incomplete', 'coverage', 'errors', 'frames'})
-    require(type(data['schemaVersion']) is int and data['schemaVersion'] == 1)
+    require(type(data['schemaVersion']) is int and data['schemaVersion'] in (1, 2))
+    require(data['schemaVersion'] == 1 or data['scenario'] == 'confirmations')
     require(data['scope'] == 'synthetic-workspace-ownership')
     require(type(data['scenario']) is str and data['scenario'] in {'corpus', 'records-schema', 'imports-exports', 'selected', 'confirmations'})
     require(re.fullmatch(re.escape(CASES[data['scenario']]) + '-' + PROJECTS, path.parent.name) is not None)
@@ -107,4 +108,40 @@ def validate(raw, path, provenance):
         for state, status in data['coverage'].items():
             if state != 'current' and status == 'complete':
                 require(state + '-attempt.png' in names)
+    if data['schemaVersion'] == 2:
+        from scripts.python import confirmation_evidence
+        project = project_for_case(path.parent.name)
+        if project in confirmation_evidence.PROJECTS:
+            require(all(status != 'not-required' for status in data['coverage'].values()))
+        expected = {f'workspace-confirm-{state}-capture.json' for state in confirmation_evidence.STATES}
+        receipts = list(path.parent.glob('workspace-confirm-*-capture.json'))
+        require(all(receipt.name in expected for receipt in receipts))
+        bound = {}
+        frame_map = {frame['file']: frame for frame in data['frames']}
+        for receipt in receipts:
+            require(not receipt.is_symlink() and receipt.is_file() and receipt.stat().st_size <= confirmation_evidence.BUDGET)
+            endpoint = confirmation_evidence.validate(receipt.read_bytes(), receipt, provenance)
+            state = 'workspace-confirm-' + endpoint['state']
+            require(state not in bound)
+            bound[state] = endpoint
+            if endpoint['image'] is not None:
+                image = endpoint['image']
+                require(image['file'] in frame_map)
+                require(all(image[k] == frame_map[image['file']][k] for k in ('file', 'bytes', 'sha256')))
+        for state in STATES['confirmations'] - {'current'}:
+            if state + '-attempt.png' in names or data['coverage'][state] == 'complete':
+                require(state in bound)
+            if data['coverage'][state] == 'complete':
+                require(bound[state]['complete'])
+        if project == 'chromium-compact' and data['coverage']['current'] == 'complete':
+            from scripts.python import continuous_evidence
+            current_path = path.parent / 'continuous-current.json'
+            require(not current_path.is_symlink() and current_path.is_file() and current_path.stat().st_size <= continuous_evidence.BUDGET)
+            current = continuous_evidence.validate(current_path.read_bytes(), current_path,
+                provenance['sourceCommit'], provenance['sourceTree'], project=project,
+                run=str(provenance['runId']), attempt=str(provenance['attempt']))
+            require(current['complete'])
+            for segment in current['segments']:
+                require(segment['file'] in frame_map)
+                require(all(segment[k] == frame_map[segment['file']][k] for k in ('file', 'bytes', 'sha256')))
     return data

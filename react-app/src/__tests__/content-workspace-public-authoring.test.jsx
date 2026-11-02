@@ -631,6 +631,7 @@ test.each([
     await user.click(trigger);
     expect(screen.getByRole('alertdialog')).toHaveClass('workspace-record-confirmation');
     expect(align).toHaveBeenCalledTimes(1);
+    expect(align.mock.calls[0][1]).toBe('instant');
     await user.keyboard('{Escape}');
     expect(trigger).toHaveFocus();
     expect(align).toHaveBeenCalledTimes(1);

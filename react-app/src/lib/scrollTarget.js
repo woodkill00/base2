@@ -37,9 +37,10 @@ export function createScrollTarget(element = null, headerInset = () => 0) {
   };
   const scrollTo = (top, behavior = 'auto') => {
     const bounded = Math.max(0, Math.min(top, metrics().max));
-    const motion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
-      ? 'auto'
-      : behavior;
+    const motion =
+      behavior !== 'instant' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+        ? 'auto'
+        : behavior;
     (element || window).scrollTo({ top: bounded, behavior: motion });
   };
   return {
@@ -48,7 +49,7 @@ export function createScrollTarget(element = null, headerInset = () => 0) {
     scrollTo,
     move: (direction) => scrollTo(metrics().top + direction * metrics().height * 0.8, 'smooth'),
     edge: (start) => scrollTo(start ? 0 : metrics().max),
-    align: (node) => {
+    align: (node, behavior = 'auto') => {
       const origin = element?.getBoundingClientRect().top || 0;
       const scale = element
         ? element.getBoundingClientRect().height / element.offsetHeight || 1
@@ -57,7 +58,10 @@ export function createScrollTarget(element = null, headerInset = () => 0) {
         parseFloat(getComputedStyle(root()).scrollPaddingTop) || 0,
         headerInset()
       );
-      scrollTo(metrics().top + (node.getBoundingClientRect().top - origin) / scale - padding);
+      scrollTo(
+        metrics().top + (node.getBoundingClientRect().top - origin) / scale - padding,
+        behavior
+      );
     },
     subscribe: (callback) => {
       const target = element || window;

@@ -12,7 +12,7 @@ export interface ScrollTarget {
   scrollTo(_top: number, _behavior?: 'auto' | 'smooth' | 'instant'): void;
   move(_direction: number): void;
   edge(_start: boolean): void;
-  align(_node: Element): void;
+  align(_node: Element, _behavior?: 'auto' | 'smooth' | 'instant'): void;
   subscribe(_callback: () => void): () => void;
   lock(): () => void;
 }
@@ -25,6 +25,9 @@ export function useScrollTargetLock(_active: boolean, _lockDocument?: boolean): 
 export function ScrollTargetLock(_props: { active: boolean }): null;
 
 export function useScrollTargetHistory(
-  _key: string, _navigationType: string, _target: ScrollTarget, _ready: boolean,
+  _key: string,
+  _navigationType: string,
+  _target: ScrollTarget,
+  _ready: boolean,
   _ownsEntry?: () => boolean
 ): boolean;

@@ -264,7 +264,7 @@ export default function RecordInspector({
       pendingAction &&
       focusInsideRecord(panel?.querySelector('[data-confirmation-cancel]'), recordRoot.current)
     )
-      entryScrollTarget.current?.align(panel);
+      entryScrollTarget.current?.align(panel, 'instant');
   }, [pendingAction]);
   useEffect(() => {
     const panel = restorePanel.current;
@@ -272,7 +272,7 @@ export default function RecordInspector({
       pendingRestore &&
       focusInsideRecord(panel?.querySelector('[data-confirmation-cancel]'), recordRoot.current)
     )
-      entryScrollTarget.current?.align(panel);
+      entryScrollTarget.current?.align(panel, 'instant');
   }, [pendingRestore]);
   const dismissAction = () => {
     if (busy || blocked) return;
@@ -629,6 +629,7 @@ export default function RecordInspector({
           <div
             role="alertdialog"
             aria-labelledby="record-action-confirm"
+            data-confirmation-state={pendingAction}
             ref={attachActionPanel}
             onKeyDown={(event) => dismissOnEscape(event, dismissAction)}
             className="workspace-record-confirmation mt-4 rounded-xl border border-amber-300/30 bg-amber-950/20 p-4"
@@ -711,6 +712,7 @@ export default function RecordInspector({
           <div
             role="alertdialog"
             aria-labelledby="record-restore-confirm"
+            data-confirmation-state="restore"
             ref={attachRestorePanel}
             onKeyDown={(event) => dismissOnEscape(event, dismissRestore)}
             className="workspace-record-confirmation mt-4 rounded-xl border border-amber-300/30 bg-amber-950/20 p-4"

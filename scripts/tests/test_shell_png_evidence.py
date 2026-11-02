@@ -510,7 +510,12 @@ def test_confirmation_native_coverage_retains_attempt_before_focus_and_never_con
     case = source.split("test('workspace workflow confirmations cancel without mutation'", 1)[1].split('declare global', 1)[0]
     assert "['submit-review', 'Submit for review', 'Keep unchanged', 'Confirm action']" in case
     assert "['restore', 'Restore', 'Keep current', 'Confirm restore']" in case
-    assert case.index('captureAttempted = true') < case.index('ownedScreenshot(page')
+    assert case.index('captureAttempted = true') < case.index('await ownershipStep(() => captureConfirmation(page, testInfo, state))')
+    helper = (Path(__file__).resolve().parents[2] / 'react-app/e2e/workspace/confirmation-capture.ts').read_text()
+    assert helper.index('settlement = await settleConfirmation') < helper.index('const raw = await ownedScreenshot')
+    assert helper.index('const raw = await ownedScreenshot') < helper.index("fail('capture-state-invalid'")
+    assert 'sha256: createHash' in helper and 'post = await measure(page)' in helper
+    assert 'if (failed) throw failure' in helper
     assert case.index('await ownershipStep(capture);') < case.index('expect(dialog.getByRole')
     assert "toBeInViewport({ ratio: 1 })" in case
     assert "page.keyboard.press('Escape')" in case
@@ -520,3 +525,15 @@ def test_confirmation_native_coverage_retains_attempt_before_focus_and_never_con
     assert "name: confirm, exact: true })).toBeEnabled()" in case
     assert "name: confirm, exact: true }).click()" not in case
     assert 'await ownershipCleanup' in case and 'if (!failed)' in case and 'if (failed) throw failure' in case
+
+
+def test_movement_transition_capture_exact_producer_and_state():
+    from scripts.python.shell_png_evidence import allowed
+    for scenario in ('compact','landscape','desktop','rtl','rtl-large-text','forced','zoom'):
+        case = f'volcano-preservation-reserved-movement-space-{scenario}-chromium'
+        for state in ('before-disable','after-disable','after-enable-before-close','after-close'):
+            name = f'movement-transition-{scenario}-{state}.png'
+            assert allowed('volcano', Path(case)/name)
+            assert not allowed('workspace', Path(case)/name)
+            assert not allowed('volcano', Path('private')/name)
+        assert not allowed('volcano', Path(case)/f'movement-transition-{scenario}-private.png')

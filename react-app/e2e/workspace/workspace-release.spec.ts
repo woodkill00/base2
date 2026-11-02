@@ -1,3 +1,4 @@
+import { captureConfirmation } from './confirmation-capture';
 import {
   ownershipStep,
   ownershipCleanup,
@@ -866,13 +867,7 @@ test('workspace workflow confirmations cancel without mutation', async ({ page }
             captureAttempted = false;
           const capture = async () => {
             captureAttempted = true;
-            await ownershipStep(() =>
-              ownedScreenshot(page, testInfo, {
-                path: testInfo.outputPath(`workspace-confirm-${state}-attempt.png`),
-                animations: 'disabled',
-                caret: 'hide',
-              })
-            );
+            await ownershipStep(() => captureConfirmation(page, testInfo, state));
           };
           try {
             await ownershipStep(() => trigger.focus());

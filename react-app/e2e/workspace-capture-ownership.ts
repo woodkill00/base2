@@ -309,6 +309,11 @@ export class CaptureOwner {
   }
 }
 
+// Capture the current lease for validation after retained cleanup work.
+export function ownershipGuard() {
+  const lease = context.getStore();
+  return () => lease?.owner.check(false);
+}
 export async function ownershipStep<T>(fn: () => T | Promise<T>): Promise<T> {
   const lease = context.getStore();
   lease?.owner.check(lease.cleanup);
@@ -348,7 +353,7 @@ function ownerFor(page: Page, info: TestInfo) {
     const save = () => {
       if (scenario === 'vocabulary') return;
       const raw = JSON.stringify({
-        schemaVersion: 1,
+        schemaVersion: scenario === 'confirmations' ? 2 : 1,
         scope: 'synthetic-workspace-ownership',
         scenario,
         sourceCommit,

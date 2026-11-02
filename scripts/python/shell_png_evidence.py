@@ -10,6 +10,7 @@ import subprocess
 from pathlib import Path
 
 from scripts.python import (
+    confirmation_evidence,
     continuous_evidence,
     sequence_evidence,
     workspace_checkpoints,
@@ -96,6 +97,9 @@ def allowed(suite: str, relative: Path) -> bool:
     if len(relative.parts) != 2 or not re.fullmatch(r'[a-zA-Z0-9_-]+', relative.parts[0]):
         return False
     case = relative.parts[0]
+    transition = re.fullmatch(r'movement-transition-(compact|landscape|desktop|rtl|rtl-large-text|forced|zoom)-(before-disable|after-disable|after-enable-before-close|after-close)\.png', relative.name)
+    if transition:
+        return suite in ('layout', 'volcano') and case == f'volcano-preservation-reserved-movement-space-{transition[1]}-chromium'
     if suite == 'workspace':
         if workspace_ownership.scenario_for_case(case) is None:
             return False
@@ -131,6 +135,8 @@ def allowed(suite: str, relative: Path) -> bool:
 
 
 def image_role(name: str) -> str:
+    if confirmation_evidence.NAME.fullmatch(name):
+        return 'confirmation-endpoint-diagnostic'
     if name == workspace_ownership.NAME:
         return "workspace-ownership-diagnostic"
     if name == workspace_checkpoints.NAME:
@@ -192,6 +198,22 @@ def stage(sources: dict[str, Path], output: Path, provenance: dict) -> None:
                 continue
             try:
                 safe(path)
+                if confirmation_evidence.NAME.fullmatch(path.name):
+                    if not confirmation_evidence.registered(suite, relative):
+                        continue
+                    if not path.is_file() or path.stat().st_size > confirmation_evidence.BUDGET:
+                        raise ValueError('oversized confirmation capture receipt')
+                    raw = path.read_bytes()
+                    confirmation_evidence.validate(raw, path, provenance)
+                    owner_path = path.parent / workspace_ownership.NAME
+                    safe(owner_path)
+                    if not owner_path.is_file() or owner_path.stat().st_size > workspace_ownership.BUDGET:
+                        raise ValueError('missing confirmation ownership binding')
+                    owner = workspace_ownership.validate(owner_path.read_bytes(), owner_path, provenance)
+                    if owner['schemaVersion'] != 2:
+                        raise ValueError('confirmation capture proof requires ownership schema 2')
+                    members.append((path, f'{suite}/{relative.as_posix()}', len(raw), hashlib.sha256(raw).hexdigest()))
+                    continue
                 if path.name == workspace_ownership.NAME:
                     if not workspace_ownership.registered(suite, relative):
                         continue
@@ -299,7 +321,7 @@ def stage(sources: dict[str, Path], output: Path, provenance: dict) -> None:
                     'packagingErrors': [{'scope': key, 'rejectedProducerCount': count} for key, count in sorted(errors.items())], 'shard': index, 'shards': shards,
                     'suites': states, 'captureCount': sum(p.suffix == '.png' for p, *_ in members),
                     'diagnosticReceiptCount': sum(p.suffix == '.json' for p, *_ in members),
-                    'scope': 'Synthetic diagnostic PNG copies; not approved references or visual acceptance. PNG bytes hashed, not decoded by packager.',
+                    'scope': 'Synthetic diagnostic PNG copies; not approved references or visual acceptance. PNG bytes hashed; confirmation schema 2 images additionally decoded and endpoint-bound. Historical ownership schema 1 is not endpoint proof.',
                     'captures': [{'path': name, 'bytes': count, 'sha256': digest,
                                   'sourceRoot': name.split('/')[0],
                                   'role': image_role(Path(name).name)}

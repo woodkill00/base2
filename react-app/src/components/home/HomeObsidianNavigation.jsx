@@ -1276,7 +1276,7 @@ const HomeObsidianNavigation = ({
               tabIndex={isLeftOpen ? 0 : -1}
             />
           </label>
-          <label>
+          <label data-movement-toggle="">
             <span>
               <LockKeyhole aria-hidden="true" /> {copy.navButtons}
             </span>
@@ -1384,6 +1384,7 @@ const HomeObsidianNavigation = ({
                   setNavButtonsEnabled(!navButtonsEnabled);
                   onMovementEnabledChange?.(!navButtonsEnabled);
                 }}
+                data-movement-toggle=""
                 aria-label={copy.toggleMovement}
                 aria-pressed={navButtonsEnabled}
               >

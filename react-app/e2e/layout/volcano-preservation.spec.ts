@@ -1,3 +1,4 @@
+import { retainMovementTransition } from './movement-transition';
 import { namedRouteSequenceState } from '../sequence-reference';
 import {
   captureScrollportExtent,
@@ -510,34 +511,135 @@ for (const scenario of [
     await expect(page.locator('.volcano-footer-frame')).toBeInViewport();
     // The retained skip-link hash must not replay on target/toggle changes.
     await expect.poll(() => pageScrollTop(page)).toBeGreaterThan(0);
+    const trackedAnchor = await page.evaluate(() => {
+      const port = document.querySelector<HTMLElement>(
+        '.volcano-layout[data-movement-layout="bottom"] .volcano-content-scrollport'
+      );
+      const box = port?.getBoundingClientRect();
+      const top = Math.max(
+        0,
+        box?.top || 0,
+        document.querySelector('.volcano-header-frame')!.getBoundingClientRect().bottom
+      );
+      const bottom = Math.min(innerHeight, box?.bottom ?? innerHeight);
+      const nodes = Array.from(
+        document.querySelectorAll(
+          'main h1, main h2, main p, main label, .media-asset-card, .volcano-footer-frame p, .volcano-footer-frame a'
+        )
+      );
+      const index = nodes.findIndex((node) => {
+        const r = node.getBoundingClientRect();
+        return (
+          r.width > 0 &&
+          r.height > 0 &&
+          r.bottom > top &&
+          r.top < bottom &&
+          r.right > Math.max(0, box?.left || 0) &&
+          r.left < Math.min(innerWidth, box?.right ?? innerWidth)
+        );
+      });
+      if (index < 0) throw new Error('No visible movement landmark');
+      return {
+        index,
+        gap: nodes[index].getBoundingClientRect().top - top,
+        offset: port ? port.scrollTop : scrollY,
+      };
+    });
     await page.getByTestId('base2-left-menu-toggle').click();
     await expect(page.getByTestId('volcano-movement-dock')).toHaveAttribute('inert');
     if (expectedMode === 'bottom') await expect(port).toHaveCSS('overflow', 'hidden');
     const transitionCheckpoint = async (action: string) => {
-      const geometry = await page.evaluate(() => {
-        const root = document.querySelector<HTMLElement>('.volcano-layout')!;
-        const port = root.querySelector<HTMLElement>('.volcano-content-scrollport')!;
-        const header = root.querySelector<HTMLElement>('.volcano-header-frame')!;
-        const headerBottom = header.getBoundingClientRect().bottom;
-        const candidates = [...root.querySelectorAll<HTMLElement>(
-          'main h1, main h2, main p, main label, .media-asset-card, .volcano-footer-frame p, .volcano-footer-frame a'
-        )];
-        const index = candidates.findIndex((node) => node.getBoundingClientRect().bottom > headerBottom);
-        const rect = index < 0 ? null : candidates[index].getBoundingClientRect();
-        const active = document.activeElement;
-        const id = active?.getAttribute('data-testid');
-        return {
-          mode: root.getAttribute('data-movement-layout'),
-          document: [scrollY, innerHeight, document.documentElement.scrollHeight],
-          port: [port.scrollTop, port.clientHeight, port.scrollHeight],
-          scale: port.getBoundingClientRect().height / port.offsetHeight,
-          headerBottom, anchorIndex: index,
-          anchorRect: rect ? [rect.x, rect.y, rect.width, rect.height] : null,
-          activeTag: active?.tagName || null,
-          activeControl: ['base2-left-menu-toggle', 'base2-right-utility-toggle', 'base2-scroll-ascend', 'base2-scroll-descend'].includes(id || '') ? id : null,
-        };
+      const geometry = await retainMovementTransition({
+        settle: async () => {
+          if (action !== 'before-disable')
+            await expect(shell).toHaveAttribute(
+              'data-movement-migration',
+              /^(preserved|clamped|fallback|failed|invalid|unsettled)$/
+            );
+        },
+        measure: () =>
+          page.evaluate((trackedIndex) => {
+            const root = document.querySelector<HTMLElement>('.volcano-layout')!;
+            const port = root.querySelector<HTMLElement>('.volcano-content-scrollport')!;
+            const header = root.querySelector<HTMLElement>('.volcano-header-frame')!;
+            const headerBottom = header.getBoundingClientRect().bottom;
+            const candidates = [
+              ...root.querySelectorAll<HTMLElement>(
+                'main h1, main h2, main p, main label, .media-asset-card, .volcano-footer-frame p, .volcano-footer-frame a'
+              ),
+            ];
+            const index = candidates.findIndex(
+              (node) => node.getBoundingClientRect().bottom > headerBottom
+            );
+            const rect = index < 0 ? null : candidates[index].getBoundingClientRect();
+            const tracked = candidates[trackedIndex]?.getBoundingClientRect();
+            const nested = root.getAttribute('data-movement-layout') === 'bottom';
+            const portBox = port.getBoundingClientRect();
+            const visibleTop = Math.max(0, nested ? portBox.top : 0, headerBottom);
+            const scale = nested ? portBox.height / port.offsetHeight : 1;
+            const offset = nested ? port.scrollTop : scrollY;
+            const max = nested
+              ? Math.max(0, port.scrollHeight - port.clientHeight)
+              : Math.max(0, document.documentElement.scrollHeight - innerHeight);
+            const active = document.activeElement;
+            const id = active?.getAttribute('data-testid');
+            return {
+              tracked: tracked
+                ? {
+                    index: trackedIndex,
+                    gap: tracked.top - visibleTop,
+                    offset,
+                    max,
+                    scale,
+                    rect: [tracked.x, tracked.y, tracked.width, tracked.height],
+                  }
+                : null,
+              migration: root.getAttribute('data-movement-migration'),
+              mode: root.getAttribute('data-movement-layout'),
+              document: [scrollY, innerHeight, document.documentElement.scrollHeight],
+              port: [port.scrollTop, port.clientHeight, port.scrollHeight],
+              scale: port.getBoundingClientRect().height / port.offsetHeight,
+              headerBottom,
+              anchorIndex: index,
+              anchorRect: rect ? [rect.x, rect.y, rect.width, rect.height] : null,
+              activeTag: active?.tagName || null,
+              activeControl: [
+                'base2-left-menu-toggle',
+                'base2-right-utility-toggle',
+                'base2-scroll-ascend',
+                'base2-scroll-descend',
+              ].includes(id || '')
+                ? id
+                : null,
+            };
+          }, trackedAnchor.index),
+        capture: () =>
+          page.screenshot({
+            path: info.outputPath(`movement-transition-${scenario.name}-${action}.png`),
+            fullPage: false,
+          }),
+        record: (sample, errors, captured) =>
+          console.log('movement-transition', {
+            schemaVersion: 3,
+            scenario: scenario.name,
+            action,
+            sample,
+            errors,
+            captured,
+          }),
       });
-      console.log('movement-transition', { schemaVersion: 1, scenario: scenario.name, action, ...geometry });
+      expect(geometry.tracked).not.toBeNull();
+      const tracked = geometry.tracked!;
+      expect(Number.isFinite(tracked.scale) && tracked.scale > 0).toBe(true);
+      if (action !== 'before-disable')
+        expect(['preserved', 'clamped']).toContain(geometry.migration);
+      const desired = tracked.offset + (tracked.gap - trackedAnchor.gap) / tracked.scale;
+      const bounded = Math.max(0, Math.min(tracked.max, desired));
+      expect(Math.abs(tracked.offset - bounded)).toBeLessThanOrEqual(1);
+      if (action === 'after-enable-before-close' || action === 'after-close') {
+        expect(Math.abs(tracked.gap - trackedAnchor.gap)).toBeLessThanOrEqual(1);
+        expect(Math.abs(tracked.offset - trackedAnchor.offset)).toBeLessThanOrEqual(1);
+      }
     };
     await transitionCheckpoint('before-disable');
     console.log(
@@ -587,6 +689,7 @@ for (const scenario of [
     await expect(page.getByTestId('volcano-movement-dock')).not.toHaveAttribute('inert');
     await expect(page.getByTestId('base2-left-menu-toggle')).toBeFocused();
     await transitionCheckpoint('after-close');
+    await expect(page.locator('.volcano-footer-frame')).toBeInViewport();
     await expect.poll(() => pageScrollTop(page)).toBeGreaterThan(0);
     // Re-enter a real movable position after focus-preserving toggle migration.
     // A residual 1..12px offset intentionally has no Ascend control.

@@ -83,3 +83,15 @@ test('workspace and nested capture awaits cannot introduce unguarded body contin
   }
   expect(failures).toEqual([]);
 });
+
+// The helper borrows the active lease; it must not recursively acquire a body.
+test('confirmation attempts preserve the owner through settlement and retained cleanup', () => {
+  const helper = source('workspace/confirmation-capture.ts');
+  expect(helper).not.toContain('ownedWorkspaceBody(');
+  expect(helper).toContain('const checkOwner = ownershipGuard()');
+  expect(helper).toContain('ownershipStep(() => measure(page))');
+  expect(helper).toContain('await ownershipCleanup(async () =>');
+  expect(helper.indexOf('const raw = await ownedScreenshot')).toBeLessThan(helper.indexOf('checkOwner();'));
+  expect(helper).toContain("fail('ownership-revoked', error)");
+  expect(helper).toContain('if (failed) throw failure');
+});
