@@ -564,3 +564,78 @@ test('original home rejects unmarked Volcano roots and unfiltered nested ports',
   expect(producer).toContain("volcanoRootCount: document.querySelectorAll('.volcano-layout').length");
   expect(producer).toContain("nestedScrollportCount: document.querySelectorAll('.volcano-content-scrollport').length");
 });
+
+// Runtime evidence is diagnostic; it must preserve, never normalize, the binding.
+import { sequenceEnvironmentEvidence } from '../../e2e/sequence-reference';
+const runtimeEvidenceFixture = () => ({
+  environment: {
+    lang: 'en-US',
+    dir: 'ltr',
+    fontSize: '16px',
+    forced: true,
+    light: false,
+    motion: false,
+    layout: 'sides',
+  },
+  runtime: {
+    browserVersion: '142.0.1',
+    platform: 'linux',
+    architecture: 'x64',
+    kernel: '6.11.0-1018-azure',
+    node: 'v24.20.0',
+    runnerImage: 'ubuntu24',
+    runnerVersion: '20261025.353.1',
+    fontsHash: 'a'.repeat(64),
+  },
+  browser: 'chromium',
+  locale: 'en-US',
+  timezone: 'UTC',
+  touch: false,
+  colorScheme: 'dark',
+  forcedColors: 'active',
+  deviceScaleFactor: 1,
+});
+test('runtime evidence preserves exact hash input and distinguishes Node versions', () => {
+  const spy = vi.spyOn(console, 'log').mockImplementation(() => {});
+  try {
+    const first = JSON.stringify(runtimeEvidenceFixture());
+    expect(sequenceEnvironmentEvidence(first)).toBe(digest(first));
+    const record = JSON.parse(spy.mock.calls.at(-1)![1]);
+    expect(record).toEqual({
+      schemaVersion: 1,
+      environmentHash: digest(first),
+      serializedPreimage: first,
+    });
+    sequenceEnvironmentEvidence(first);
+    expect(spy).toHaveBeenCalledTimes(1);
+    const changed = runtimeEvidenceFixture();
+    changed.runtime.node = 'v20.20.2';
+    expect(sequenceEnvironmentEvidence(JSON.stringify(changed))).not.toBe(digest(first));
+  } finally {
+    spy.mockRestore();
+  }
+});
+test('runtime evidence rejects unknown fields, paths, controls, duplicate keys and invalid scales before logging', () => {
+  const spy = vi.spyOn(console, 'log').mockImplementation(() => {});
+  try {
+    const base = runtimeEvidenceFixture();
+    for (const bad of [
+      { ...base, secret: 'not-allowed' },
+      { ...base, runtime: { ...base.runtime, kernel: '/private/path' } },
+      { ...base, runtime: { ...base.runtime, node: 'v24\nsecret' } },
+      { ...base, deviceScaleFactor: 0 },
+      { ...base, deviceScaleFactor: null },
+      { ...base, environment: { ...base.environment, layout: 'unknown' } },
+    ])
+      expect(() => sequenceEnvironmentEvidence(JSON.stringify(bad))).toThrow();
+    expect(() =>
+      sequenceEnvironmentEvidence(
+        JSON.stringify(base).replace('"touch":false', '"touch":true,"touch":false')
+      )
+    ).toThrow();
+    expect(() => sequenceEnvironmentEvidence(' '.repeat(4097))).toThrow();
+    expect(spy).not.toHaveBeenCalled();
+  } finally {
+    spy.mockRestore();
+  }
+});

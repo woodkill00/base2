@@ -161,7 +161,7 @@
   "delegatedCaptureSources": [
     {
       "path": "react-app/e2e/continuous-scroll.ts",
-      "sha256": "7be4b5fd4cc1d1e1b92abc9fcae334870f8af5b6c869cffbb1a6f70e2d5496de",
+      "sha256": "0edf8b9f0e3f4f83bed5c76c39459461cef379b98096bac9ea8bdd509ea1071d",
       "via": "react-app/e2e/workspace-capture-ownership.ts"
     },
     {

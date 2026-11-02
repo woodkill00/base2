@@ -571,3 +571,83 @@ export function sequenceRuntime(browserVersion: string) {
     fontsHash,
   };
 }
+
+const recordedEnvironments = new Set<string>();
+/** Log only a closed runtime preimage; preserve the exact existing JSON hash bytes. */
+export function sequenceEnvironmentEvidence(serialized: string): string {
+  const reject = () => {
+    throw new Error('invalid sequence environment evidence');
+  };
+  if (Buffer.byteLength(serialized) > 4096) reject();
+  const value = JSON.parse(serialized);
+  const keys = (object: Record<string, unknown>, required: string[], optional: string[] = []) => {
+    if (
+      !object ||
+      Array.isArray(object) ||
+      typeof object !== 'object' ||
+      required.some((key) => !Object.hasOwn(object, key)) ||
+      Object.keys(object).some((key) => ![...required, ...optional].includes(key))
+    )
+      reject();
+  };
+  keys(
+    value,
+    ['environment', 'runtime'],
+    ['browser', 'locale', 'timezone', 'touch', 'colorScheme', 'forcedColors', 'deviceScaleFactor']
+  );
+  keys(value.environment, ['lang', 'dir', 'fontSize', 'forced', 'light', 'motion', 'layout']);
+  keys(value.runtime, [
+    'browserVersion',
+    'platform',
+    'architecture',
+    'kernel',
+    'node',
+    'runnerImage',
+    'runnerVersion',
+    'fontsHash',
+  ]);
+  const token = (item: unknown, pattern: RegExp, max = 96) => {
+    if (typeof item !== 'string' || item.length > max || !pattern.test(item)) reject();
+  };
+  const member = (item: unknown, allowed: unknown[]) => {
+    if (!allowed.includes(item)) reject();
+  };
+  token(value.environment.lang, /^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$/, 35);
+  member(value.environment.dir, ['', 'ltr', 'rtl']);
+  token(value.environment.fontSize, /^[0-9]{1,4}(?:\.[0-9]{1,8})?px$/, 20);
+  for (const field of ['forced', 'light', 'motion'])
+    member(value.environment[field], [true, false]);
+  member(value.environment.layout, [null, 'off', 'sides', 'bottom']);
+  for (const field of ['browserVersion', 'kernel', 'node', 'runnerImage', 'runnerVersion'])
+    token(value.runtime[field], /^[A-Za-z0-9][A-Za-z0-9._+-]*$/);
+  member(value.runtime.platform, ['linux', 'darwin', 'win32']);
+  member(value.runtime.architecture, ['x64', 'arm64']);
+  token(value.runtime.fontsHash, /^[a-f0-9]{64}$/, 64);
+  if (value.browser !== undefined) member(value.browser, ['chromium', 'firefox', 'webkit']);
+  if (value.locale !== undefined) token(value.locale, /^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$/, 35);
+  if (value.timezone !== undefined) member(value.timezone, ['UTC']);
+  if (value.touch !== undefined) member(value.touch, [true, false]);
+  if (value.colorScheme !== undefined)
+    member(value.colorScheme, ['dark', 'light', 'no-preference', null]);
+  if (value.forcedColors !== undefined) member(value.forcedColors, ['active', 'none', null]);
+  if (
+    value.deviceScaleFactor !== undefined &&
+    (typeof value.deviceScaleFactor !== 'number' ||
+      !Number.isFinite(value.deviceScaleFactor) ||
+      value.deviceScaleFactor <= 0 ||
+      value.deviceScaleFactor > 8)
+  )
+    reject();
+  // Reject duplicate keys, noncanonical encodings and whitespace rather than obscuring hash input.
+  if (JSON.stringify(value) !== serialized) reject();
+  const environmentHash = digest(serialized);
+  if (!recordedEnvironments.has(environmentHash)) {
+    if (recordedEnvironments.size >= 256) throw new Error('sequence environment evidence budget');
+    console.log(
+      'sequence-environment-evidence',
+      JSON.stringify({ schemaVersion: 1, environmentHash, serializedPreimage: serialized })
+    );
+    recordedEnvironments.add(environmentHash);
+  }
+  return environmentHash;
+}

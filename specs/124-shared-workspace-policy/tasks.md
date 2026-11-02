@@ -1451,3 +1451,9 @@ captures prove their observed fallback states, not populated content readiness.
 
 - Parent review revision: HC media observations now require each declared viewport's exact already-validated PNG from the same producer. Missing indices 0/2/4 quarantine the library producer and remain fatal/incomplete while valid detail/picker originals survive. Five failure-first regressions (four missing-viewport cases and desktop-only HC leakage) are retained; a fixture-parent setup failure is separately recorded.
 - HC operations allowlist now excludes desktop-only legacy cancellation names and their nonexistent sequence state. The genuine HC `operations-cancel` and `operations-center-chromium-high-contrast` states remain registered. No schema, count, byte, threshold, timeout or original-artifact changes.
+
+### Held shared native runtime evidence correction (2084897)
+
+- Standard Node 20.20.2 and optional Node 24.20.0 differ in the existing environment hash. Pin standard capture tooling to the existing optional 24.20.0; no hash normalization or historical rewrite.
+- Retain a strict bounded, deduplicated console preimage diagnostic for each environment hash. It records only the existing closed render/runtime/project fields and is not image-bound pixel proof.
+- Review before publication. Fresh standard and optional captures must compare every binding component; matching Node alone is insufficient. No references promoted.

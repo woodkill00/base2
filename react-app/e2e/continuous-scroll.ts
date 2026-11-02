@@ -18,6 +18,7 @@ import {
   digest,
   sequenceDependencies,
   sequenceRuntime,
+  sequenceEnvironmentEvidence,
   type SequenceInput,
 } from './sequence-reference';
 import { coverageErrors, type Segment } from './continuous-coverage';
@@ -415,7 +416,7 @@ export async function captureContinuousScroll(
         captured!,
         () => ({
           routeStateHash: digest(initialRouteState),
-          environmentHash: digest(
+          environmentHash: sequenceEnvironmentEvidence(
             JSON.stringify({
               environment,
               runtime: sequenceRuntime(page.context().browser()?.version() || ''),

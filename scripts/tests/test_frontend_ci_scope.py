@@ -129,3 +129,10 @@ def test_cli_outputs_explicit_non_execution(policy, repo, tmp_path):
     assert json.loads(result.stdout)["browserTests"] == "not-run-by-policy"
     assert output.read_text() == "mode=narrative\n"
     assert "not-run-by-policy" in summary.read_text()
+
+
+def test_shared_native_capture_toolchains_use_same_exact_node():
+    for name in ('ci-frontend.yml', 'ci-visual-review.yml'):
+        source = (ROOT / '.github/workflows' / name).read_text()
+        assert "node-version: '24.20.0'" in source
+        assert "node-version: '20'" not in source
