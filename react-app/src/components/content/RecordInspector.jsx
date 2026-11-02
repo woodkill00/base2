@@ -1,4 +1,12 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useContext,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { Link } from 'react-router-dom';
 import GlassButton from '../glass/GlassButton';
 import { contentWorkspaceAPI } from '../../services/contentWorkspace';
@@ -12,6 +20,7 @@ import { siteManifest } from '../../config/siteRuntime';
 import PublicContentFields from './PublicContentFields';
 import RecordStructuredFields from './RecordStructuredFields';
 import { workspaceReviewCopy } from './workspaceReviewCopy';
+import { ScrollTargetContext } from '../../lib/scrollTarget';
 
 const LABELS = {
   approve_review: 'Approve review',
@@ -207,6 +216,9 @@ export default function RecordInspector({
   const [busy, setBusy] = useState(false);
   const [pendingAction, setPendingAction] = useState('');
   const [pendingRestore, setPendingRestore] = useState(null);
+  const scrollTarget = useContext(ScrollTargetContext);
+  const entryScrollTarget = useRef(scrollTarget);
+  entryScrollTarget.current = scrollTarget;
   const recordRoot = useRef(null);
   const recordHeading = useRef(null);
   const focusRecordKey = JSON.stringify([scopeKey, typeKey, record.id]);
@@ -247,18 +259,20 @@ export default function RecordInspector({
       focusInsideRecord(recordHeading.current, recordRoot.current);
   });
   useEffect(() => {
-    if (pendingAction)
-      focusInsideRecord(
-        actionPanel.current?.querySelector('[data-confirmation-cancel]'),
-        recordRoot.current
-      );
+    const panel = actionPanel.current;
+    if (
+      pendingAction &&
+      focusInsideRecord(panel?.querySelector('[data-confirmation-cancel]'), recordRoot.current)
+    )
+      entryScrollTarget.current?.align(panel);
   }, [pendingAction]);
   useEffect(() => {
-    if (pendingRestore)
-      focusInsideRecord(
-        restorePanel.current?.querySelector('[data-confirmation-cancel]'),
-        recordRoot.current
-      );
+    const panel = restorePanel.current;
+    if (
+      pendingRestore &&
+      focusInsideRecord(panel?.querySelector('[data-confirmation-cancel]'), recordRoot.current)
+    )
+      entryScrollTarget.current?.align(panel);
   }, [pendingRestore]);
   const dismissAction = () => {
     if (busy || blocked) return;
@@ -617,7 +631,7 @@ export default function RecordInspector({
             aria-labelledby="record-action-confirm"
             ref={attachActionPanel}
             onKeyDown={(event) => dismissOnEscape(event, dismissAction)}
-            className="mt-4 rounded-xl border border-amber-300/30 bg-amber-950/20 p-4"
+            className="workspace-record-confirmation mt-4 rounded-xl border border-amber-300/30 bg-amber-950/20 p-4"
           >
             <p id="record-action-confirm">
               Confirm {labels[pendingAction].toLowerCase()} for version {record.version}. This
@@ -699,7 +713,7 @@ export default function RecordInspector({
             aria-labelledby="record-restore-confirm"
             ref={attachRestorePanel}
             onKeyDown={(event) => dismissOnEscape(event, dismissRestore)}
-            className="mt-4 rounded-xl border border-amber-300/30 bg-amber-950/20 p-4"
+            className="workspace-record-confirmation mt-4 rounded-xl border border-amber-300/30 bg-amber-950/20 p-4"
           >
             <p id="record-restore-confirm">
               Restore version {pendingRestore.version} as a new version? Current history remains

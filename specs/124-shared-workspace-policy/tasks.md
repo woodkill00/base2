@@ -1417,3 +1417,11 @@ captures prove their observed fallback states, not populated content readiness.
       retained/removed triggers on version refresh, outside-focus intent and
       blocked mutation guards. Keep all cleared transport paths/obligations/caps
       byte-identical. Native confirmation evidence remains pending review/run.
+
+### T104 — Confirmation surface width and authored unobscured entry (held)
+
+- Original exact-head native run `41385754860` at `7841d440` retained two real confirmation failures: compact Submit for review's focused Keep unchanged label wraps (`94.081` available versus `101.802963` required); large-text Restore's top boundary sits behind the sticky header. Desktop completed all four; large-text completed Submit/Publish/Delete before Restore; compact's four obligations remain incomplete. Parent reviewed exact attempts `6d136efa5166389c046324a1f8e044a4abf21c45766cd44954639365d9e1d054` and `544f6e43a2adf8ceb5b5ab3929c1e41d03a4fbe2ab62842494512d060b5ab20d`.
+- Narrow confirmation surfaces now use half-rem inline padding inside the existing narrow detail-card query, preserving the border, vertical padding, button hierarchy, full-row actions, and wider layout. No label/fit tolerance changed.
+- After safe entry focus, both inline panels use the existing shell scroll-target adapter's measured header inset. The latest target is read only on entry; target replacement or editing does not refocus an open panel. Native confirmation checks no longer impose browser-centered scrolling over the authored placement; attempted screenshot, strict whole-box visibility, ratio-one viewport, label/line/containment, Escape/cancel restoration and zero-mutation assertions remain.
+- Original local reproduction: six failed,55 passed before product/test-placement correction. All original native failures and previous review artifacts remain immutable. Wrong-cwd test/format invocation errors were retained separately; they are not functional test results.
+- This patch is held for independent review and fresh native proof. No new reference acceptance, security/runtime changes, timeout/cap changes, or publication. Scenario counts, producer paths, four confirmation obligations and generic capture remain unchanged.

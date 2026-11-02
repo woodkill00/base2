@@ -878,11 +878,8 @@ test('workspace workflow confirmations cancel without mutation', async ({ page }
             await ownershipStep(() => trigger.focus());
             await ownershipStep(() => expect(trigger).toBeFocused());
             await ownershipStep(() => page.keyboard.press('Enter'));
-            await ownershipStep(() =>
-              dialog.evaluate((node) =>
-                node.scrollIntoView({ block: 'center', behavior: 'instant' })
-              )
-            );
+            // Entry focus and the authored shell adapter own panel placement.
+            // A browser-centered test scroll can put Restore behind sticky chrome.
             await ownershipStep(capture); // Retain the attempted viewport before hard focus/layout checks.
             await ownershipStep(() => expect(dialog).toHaveCount(1));
             await ownershipStep(() => expect(dialog).toBeInViewport({ ratio: 1 }));

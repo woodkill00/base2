@@ -6,6 +6,7 @@ import RecordInspector from '../components/content/RecordInspector';
 import { contentWorkspaceAPI } from '../services/contentWorkspace';
 import { readWorkspaceRecord } from '../services/workspaceRecord';
 import { siteManifest } from '../config/siteRuntime';
+import { ScrollTargetContext } from '../lib/scrollTarget';
 
 vi.mock('../components/content/RecordStructuredFields', () => ({ default: () => null }));
 vi.mock('../services/contentWorkspace', () => ({
@@ -47,7 +48,7 @@ const record = {
     },
   ],
 };
-const setup = (overrides = {}, extra = {}) => {
+const setup = (overrides = {}, extra = {}, renderOptions = {}) => {
   const props = {
     typeKey: 'article',
     schema: { fields: [{ fieldKey: 'summary', label: 'Private summary', fieldKind: 'long_text' }] },
@@ -58,7 +59,7 @@ const setup = (overrides = {}, extra = {}) => {
     onError: vi.fn(),
     ...extra,
   };
-  return { ...render(<RecordInspector {...props} />), props };
+  return { ...render(<RecordInspector {...props} />, renderOptions), props };
 };
 beforeEach(() => {
   vi.clearAllMocks();
@@ -603,3 +604,105 @@ test.each([
     expect(contentWorkspaceAPI[method]).toHaveBeenCalledTimes(1);
   }
 );
+
+test.each([
+  ['Submit for review', 'Keep unchanged'],
+  ['Publish', 'Keep unchanged'],
+  ['Delete record', 'Keep unchanged'],
+  ['Restore', 'Keep current'],
+])(
+  'confirmation %s reserves compact inset and aligns after safe entry focus',
+  async (label, dismiss) => {
+    const user = userEvent.setup();
+    const align = vi.fn((panel) => {
+      expect(panel).toBe(screen.getByRole('alertdialog'));
+      expect(screen.getByRole('button', { name: dismiss, exact: true })).toHaveFocus();
+    });
+    setup(
+      { allowedActions: ['submit_review', 'publish', 'delete'] },
+      {},
+      {
+        wrapper: ({ children }) => (
+          <ScrollTargetContext.Provider value={{ align }}>{children}</ScrollTargetContext.Provider>
+        ),
+      }
+    );
+    const trigger = screen.getByRole('button', { name: label, exact: true });
+    await user.click(trigger);
+    expect(screen.getByRole('alertdialog')).toHaveClass('workspace-record-confirmation');
+    expect(align).toHaveBeenCalledTimes(1);
+    await user.keyboard('{Escape}');
+    expect(trigger).toHaveFocus();
+    expect(align).toHaveBeenCalledTimes(1);
+    await user.click(trigger);
+    expect(align).toHaveBeenCalledTimes(2);
+    await user.click(screen.getByRole('button', { name: dismiss, exact: true }));
+    expect(trigger).toHaveFocus();
+    expect(contentWorkspaceAPI.transition).not.toHaveBeenCalled();
+    expect(contentWorkspaceAPI.restore).not.toHaveBeenCalled();
+  }
+);
+
+test('confirmation inset frees label width only inside the narrow detail-card query', () => {
+  const source = readFileSync('src/pages/ContentWorkspace.jsx', 'utf8');
+  const css = postcss.parse(source.match(/<style>\{`([\s\S]*?)`\}/)[1]);
+  const rules = [];
+  css.walkRules('.workspace-record-confirmation', (rule) => rules.push(rule));
+  expect(rules).toHaveLength(1);
+  expect(rules[0].parent.params).toBe('workspace-detail-card (max-width: 24rem)');
+  expect(Object.fromEntries(rules[0].nodes.map((node) => [node.prop, node.value]))).toEqual({
+    'padding-inline': '0.5rem',
+  });
+  // The native Keep unchanged failure needs 7.722px more. Two 1rem panel
+  // insets becoming 0.5rem provide 16px at a 16px root, without shrinking text.
+  expect(94.081 + 16).toBeGreaterThanOrEqual(101.80296325683594);
+});
+
+test('confirmation capture checks authored positioning without centering beneath sticky chrome', () => {
+  const source = readFileSync('e2e/workspace/workspace-release.spec.ts', 'utf8');
+  const body = source.slice(
+    source.indexOf("test('workspace workflow confirmations cancel without mutation'"),
+    source.indexOf('declare global')
+  );
+  expect(body).not.toContain('scrollIntoView');
+  expect(body.indexOf('await ownershipStep(capture)')).toBeLessThan(
+    body.indexOf('expect(metrics.visible).toBe(true)')
+  );
+  expect(body).toContain('toBeInViewport({ ratio: 1 })');
+  expect(body).toContain('metric.available >= metric.required');
+});
+
+test('scroll-target replacement does not steal dirty-panel focus and is used on the next open', async () => {
+  const user = userEvent.setup();
+  const first = { align: vi.fn() },
+    second = { align: vi.fn() };
+  let target = first;
+  const { props, rerender } = setup(
+    {},
+    {},
+    {
+      wrapper: ({ children }) => (
+        <ScrollTargetContext.Provider value={target}>{children}</ScrollTargetContext.Provider>
+      ),
+    }
+  );
+  await user.click(screen.getByRole('button', { name: 'Edit fields', exact: true }));
+  await user.click(screen.getByRole('button', { name: 'Publish', exact: true }));
+  expect(first.align).toHaveBeenCalledTimes(1);
+  const field = screen.getByLabelText('Private summary');
+  await user.type(field, ' changed');
+  target = second;
+  rerender(<RecordInspector {...props} />);
+  expect(field).toHaveFocus();
+  expect(second.align).not.toHaveBeenCalled();
+  expect(screen.getByRole('button', { name: 'Confirm action' })).toBeDisabled();
+  const dismiss = screen.getByRole('button', { name: 'Keep unchanged' });
+  dismiss.focus();
+  await user.keyboard('{Escape}');
+  expect(screen.getByRole('heading', { name: record.title, exact: true })).toHaveFocus();
+  await user.click(screen.getByRole('button', { name: 'Discard changes' }));
+  await user.click(screen.getByRole('button', { name: 'Publish', exact: true }));
+  expect(second.align).toHaveBeenCalledTimes(1);
+  expect(contentWorkspaceAPI.transition).not.toHaveBeenCalled();
+  expect(contentWorkspaceAPI.restore).not.toHaveBeenCalled();
+});
