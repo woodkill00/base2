@@ -38,8 +38,22 @@ export function measureSavedInspector(panel: HTMLElement) {
       context.measureText(text).width + Math.max(0, text.length - 1) * pixels(style.letterSpacing)
     );
   };
-  const contentWidth = (node: HTMLElement, style: CSSStyleDeclaration) =>
-    node.clientWidth - pixels(style.paddingLeft) - pixels(style.paddingRight);
+  const contentWidth = (_node: HTMLElement, style: CSSStyleDeclaration) => {
+    // clientWidth rounds to integer CSS pixels, which can reject an intact
+    // intrinsic label. Resolved width preserves fractional layout pixels;
+    // unlike a transformed DOMRect it stays in the canvas font's CSS units.
+    const width = Number.parseFloat(style.width);
+    if (!Number.isFinite(width)) return NaN;
+    if (style.boxSizing === 'content-box') return width;
+    if (style.boxSizing !== 'border-box') return NaN;
+    return (
+      width -
+      pixels(style.borderLeftWidth) -
+      pixels(style.borderRightWidth) -
+      pixels(style.paddingLeft) -
+      pixels(style.paddingRight)
+    );
+  };
   const labels: Array<LabelMeasurement & { label: string }> = [];
   const names = [
     'Secure file',
