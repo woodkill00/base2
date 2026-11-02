@@ -72,6 +72,18 @@ beforeEach(() => {
   contentWorkspaceAPI.record.mockResolvedValue(detail);
   contentWorkspaceAPI.createRecord.mockResolvedValue(detail);
 });
+// Child controls and the parent's presentation settle in separate renders:
+// RecordInspector reports editing through a passive onEditingChange effect.
+// Observe both before typing or checking layout; a click alone is not readiness.
+async function waitForCleanRecordEditing() {
+  await waitFor(() => {
+    expect(screen.getByLabelText('Public body')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Save changes' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Discard changes' })).toBeEnabled();
+    expect(screen.getByRole('region', { name: 'Record details' }).parentElement)
+      .toHaveAttribute('data-editing', 'true');
+  });
+}
 async function draft() {
   const user = userEvent.setup();
   await waitFor(() => expect(screen.getByRole('button', { name: 'New record' })).toBeEnabled());
@@ -319,6 +331,7 @@ test.each(['create', 'edit'])(
       const user = userEvent.setup();
       await user.click(await screen.findByRole('button', { name: 'Open New title' }));
       await user.click(await screen.findByRole('button', { name: 'Edit fields' }));
+      await waitForCleanRecordEditing();
     }
     // These assertions protect scoped responsive tokens, not browser geometry.
     // Native390px measurement and viewport captures establish actual usable width.
@@ -432,6 +445,7 @@ test('successful public edit retains selected-detail width without retaining edi
   const user = userEvent.setup();
   await user.click(await screen.findByRole('button', { name: 'Open New title' }));
   await user.click(await screen.findByRole('button', { name: 'Edit fields' }));
+  await waitForCleanRecordEditing();
   fireEvent.change(screen.getByLabelText('Public body'), {
     target: { value: 'Updated public copy' },
   });
