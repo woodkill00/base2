@@ -80,8 +80,10 @@ async function waitForCleanRecordEditing() {
     expect(screen.getByLabelText('Public body')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Save changes' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Discard changes' })).toBeEnabled();
-    expect(screen.getByRole('region', { name: 'Record details' }).parentElement)
-      .toHaveAttribute('data-editing', 'true');
+    expect(screen.getByRole('region', { name: 'Record details' }).parentElement).toHaveAttribute(
+      'data-editing',
+      'true'
+    );
   });
 }
 async function draft() {
@@ -383,8 +385,9 @@ test.each(['create', 'edit'])(
       await waitFor(() => {
         expect(screen.getByRole('button', { name: 'Save changes' })).toBeDisabled();
         expect(screen.getByRole('button', { name: 'Discard changes' })).toBeEnabled();
-        expect(screen.getByRole('region', { name: 'Record details' }).parentElement)
-          .toHaveAttribute('data-editing', 'true');
+        expect(
+          screen.getByRole('region', { name: 'Record details' }).parentElement
+        ).toHaveAttribute('data-editing', 'true');
         expect(root).toHaveClass('px-0', 'sm:px-4');
       });
       await user.click(screen.getByRole('button', { name: 'Discard changes' }));
@@ -397,8 +400,9 @@ test.each(['create', 'edit'])(
         expect(screen.getByRole('button', { name: 'Edit fields' })).toBeEnabled();
         expect(screen.queryByRole('button', { name: 'Save changes' })).not.toBeInTheDocument();
         expect(screen.getByRole('region', { name: 'Record details' })).toHaveClass('p-2', 'sm:p-5');
-        expect(screen.getByRole('region', { name: 'Record details' }).parentElement)
-          .toHaveAttribute('data-editing', 'false');
+        expect(
+          screen.getByRole('region', { name: 'Record details' }).parentElement
+        ).toHaveAttribute('data-editing', 'false');
       }
       if (mode === 'edit') {
         expect(root).toHaveClass('px-0', 'sm:px-4');
@@ -433,13 +437,11 @@ test.each(['schemas', 'imports', 'exports'])(
 
 test('successful public edit retains selected-detail width without retaining edit mode', async () => {
   contentWorkspaceAPI.records.mockResolvedValue({ items: [detail] });
-  contentWorkspaceAPI.record
-    .mockResolvedValueOnce(detail)
-    .mockResolvedValue({
-      ...detail,
-      version: 2,
-      publicContent: { ...detail.publicContent, body: 'Updated public copy' },
-    });
+  contentWorkspaceAPI.record.mockResolvedValueOnce(detail).mockResolvedValue({
+    ...detail,
+    version: 2,
+    publicContent: { ...detail.publicContent, body: 'Updated public copy' },
+  });
   contentWorkspaceAPI.updateRecord.mockResolvedValue({ ...detail, version: 2 });
   const view = mount();
   const user = userEvent.setup();
@@ -455,8 +457,31 @@ test('successful public edit retains selected-detail width without retaining edi
   expect(view.container.querySelector('.base2-workspace')).toHaveClass('px-0', 'sm:px-4');
   expect(document.getElementById('workspace-detail')).toHaveClass('p-0', 'sm:p-6');
   expect(screen.getByRole('region', { name: 'Record details' })).toHaveClass('p-2', 'sm:p-5');
-  await waitFor(() => expect(screen.getByRole('region', { name: 'Record details' }).parentElement)
-    .toHaveAttribute('data-editing', 'false'));
+  await waitFor(() =>
+    expect(screen.getByRole('region', { name: 'Record details' }).parentElement).toHaveAttribute(
+      'data-editing',
+      'false'
+    )
+  );
   expect(screen.queryByRole('button', { name: 'Save changes' })).not.toBeInTheDocument();
   expect(screen.getByText('Updated public copy')).toBeInTheDocument();
+});
+
+test('saved views keeps its full accessible label and executes the selected view when clean', async () => {
+  contentWorkspaceAPI.views.mockResolvedValue({ items: [{ id: 'saved', title: 'Saved view' }] });
+  contentWorkspaceAPI.executeView.mockResolvedValue({ items: [] });
+  const view = mount();
+  const selector = await screen.findByRole('combobox', { name: 'Saved views', exact: true });
+  expect(selector).toHaveDisplayValue('Choose a saved view');
+  expect(selector).toBeEnabled();
+  expect(selector.closest('label')).toHaveClass('block', 'min-w-0');
+  const group = selector.closest('.workspace-saved-views');
+  expect(group).toHaveClass('sm:flex-row', 'p-3');
+  // Scope is the detail card's available width, not a global mobile rule.
+  const css = view.container.querySelector('style').textContent;
+  expect(css).toMatch(
+    /@container workspace-detail-card \(max-width: 24rem\)[\s\S]*?\.workspace-saved-views \{ flex-direction: column; align-items: stretch; padding-inline: 0; \}/
+  );
+  await userEvent.setup().selectOptions(selector, 'saved');
+  await waitFor(() => expect(contentWorkspaceAPI.executeView).toHaveBeenCalledTimes(1));
 });

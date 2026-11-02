@@ -188,3 +188,37 @@ export function measureSavedInspector(panel: HTMLElement) {
   }
   return { breaches, counts, labels };
 }
+
+// Fixed synthetic placeholder only. No saved titles, IDs or arbitrary DOM text
+// enter diagnostics. Layout width and canvas advance share untransformed CSS units.
+export function measureSavedView(select: HTMLSelectElement) {
+  const style = getComputedStyle(select);
+  const pixels = (value: string) => Number.parseFloat(value) || 0;
+  const width = Number.parseFloat(style.width);
+  const padding = pixels(style.paddingLeft) + pixels(style.paddingRight);
+  const borders = pixels(style.borderLeftWidth) + pixels(style.borderRightWidth);
+  const content =
+    style.boxSizing === 'content-box'
+      ? width
+      : style.boxSizing === 'border-box'
+        ? width - padding - borders
+        : NaN;
+  const label = 'Choose a saved view';
+  const context = document.createElement('canvas').getContext('2d')!;
+  context.font = style.font;
+  const required =
+    context.measureText(label).width + (label.length - 1) * pixels(style.letterSpacing);
+  const box = select.getBoundingClientRect();
+  const parent = select.parentElement!.getBoundingClientRect();
+  return {
+    available: content - 24, // Preserve the native arrow reservation used by select guards.
+    required,
+    layoutWidth: width,
+    padding,
+    borders,
+    placeholder: select.value === '' && select.selectedOptions[0]?.textContent === label,
+    contained:
+      box.width > 0 && box.height > 0 && box.left >= parent.left && box.right <= parent.right,
+    overflow: select.scrollWidth > select.clientWidth,
+  };
+}

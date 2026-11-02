@@ -17,7 +17,7 @@ import { readFileSync } from 'node:fs';
 import { writeFile } from 'node:fs/promises';
 import profile from '../../src/config/generated/base2-obsidian.json';
 import { createRecordFixture } from './record-fixture';
-import { measureSavedInspector, savedLabelFits } from './saved-readability';
+import { measureSavedInspector, measureSavedView, savedLabelFits } from './saved-readability';
 
 const axeSource = readFileSync('node_modules/axe-core/axe.min.js', 'utf8');
 const typeId = '00000000-0000-0000-0000-000000010400';
@@ -530,6 +530,20 @@ async function runCorpus(
     await ownershipStep(() =>
       compareAndRetain('records', `workspace-records-${testInfo.project.name}.png`)
     );
+
+  // Named Records attempts are retained first. Imports/Exports still traverses
+  // this preparation; a guard failure retains its generic owned fallback.
+  const savedViews = page.getByRole('combobox', { name: 'Saved views', exact: true });
+  await ownershipStep(() => expect(savedViews).toHaveCount(1));
+  const savedViewFit = await ownershipStep(() => savedViews.evaluate(measureSavedView));
+  console.log('workspace-saved-view-readability', JSON.stringify(savedViewFit));
+  expect(savedViewFit.placeholder).toBe(true);
+  expect(savedViewFit.contained).toBe(true);
+  expect(savedViewFit.overflow).toBe(false);
+  expect(
+    savedLabelFits(savedViewFit),
+    'Saved views must expose the complete native placeholder'
+  ).toBe(true);
 
   await ownershipStep(() => page.getByRole('tab', { name: 'Schemas' }).click());
   await ownershipStep(() =>

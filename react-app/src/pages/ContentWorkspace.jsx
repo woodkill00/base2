@@ -472,6 +472,8 @@ function WorkspaceContent({ locale = 'en', scopeKey, canEdit }) {
           .volcano-layout[data-movement-layout='bottom'] .workspace-record-confirmation { scroll-margin-block-start: 0.5rem; }
           @container workspace-detail-card (max-width: 24rem) {
             .workspace-panel[data-tab="Imports"] { padding-inline: 0; }
+            .workspace-saved-views { flex-direction: column; align-items: stretch; padding-inline: 0; }
+            .workspace-saved-views > label { inline-size: 100%; }
             .workspace-secure-file-action { flex: 1 1 100%; min-inline-size: 0; }
             .workspace-record-confirmation { padding-inline: 0.5rem; }
             .workspace-record-action-row { flex-wrap: wrap; }
@@ -645,8 +647,8 @@ function WorkspaceContent({ locale = 'en', scopeKey, canEdit }) {
                           ) : null}
                         </div>
                       </form>
-                      <div className="mt-3 flex flex-col gap-3 rounded-xl border border-white/10 p-3 sm:flex-row sm:items-end">
-                        <label className="flex-1 space-y-1 text-sm font-medium">
+                      <div className="workspace-saved-views mt-3 flex flex-col gap-3 rounded-xl border border-white/10 p-3 sm:flex-row sm:items-end">
+                        <label className="block min-w-0 flex-1 space-y-1 text-sm font-medium">
                           <span>Saved views</span>
                           <select
                             disabled={protectDraft}

@@ -1,5 +1,9 @@
 import { expect, test, vi } from 'vitest';
-import { measureSavedInspector, savedLabelFits } from '../../e2e/workspace/saved-readability';
+import {
+  measureSavedInspector,
+  measureSavedView,
+  savedLabelFits,
+} from '../../e2e/workspace/saved-readability';
 
 test('a contained narrow button or selector cannot certify full label readability', () => {
   expect(savedLabelFits({ available: 24, required: 107 })).toBe(false);
@@ -216,5 +220,45 @@ test('all saved action labels retain strict width, line and containment guards',
     expect(savedLabelFits({ ...row, available: 108.33100000000002 })).toBe(false);
     expect(savedLabelFits({ ...row, renderedLineCount: 2 })).toBe(false);
     expect(savedLabelFits({ ...row, renderedContained: false })).toBe(false);
+  }
+});
+
+test.each([1, 0.5, 2])('Saved views uses fractional layout space at rendered scale %s', (scale) => {
+  const parent = document.createElement('label');
+  const select = document.createElement('select');
+  select.innerHTML = '<option value="">Choose a saved view</option>';
+  parent.append(select);
+  const box = { left: 0, right: 200 * scale, width: 200 * scale, height: 44 * scale } as DOMRect;
+  vi.spyOn(select, 'getBoundingClientRect').mockReturnValue(box);
+  vi.spyOn(parent, 'getBoundingClientRect').mockReturnValue(box);
+  vi.spyOn(window, 'getComputedStyle').mockReturnValue({
+    width: '200.25px',
+    boxSizing: 'border-box',
+    paddingLeft: '12px',
+    paddingRight: '12px',
+    borderLeftWidth: '1px',
+    borderRightWidth: '1px',
+    font: '14px sans-serif',
+    letterSpacing: 'normal',
+  } as CSSStyleDeclaration);
+  vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({
+    font: '',
+    measureText: () => ({ width: 150.25 }),
+  } as unknown as CanvasRenderingContext2D);
+  try {
+    const fit = measureSavedView(select);
+    expect(fit).toMatchObject({
+      available: 150.25,
+      required: 150.25,
+      contained: true,
+      placeholder: true,
+      overflow: false,
+    });
+    expect(savedLabelFits(fit)).toBe(true);
+    expect(savedLabelFits({ ...fit, available: 150.249 })).toBe(false);
+    select.selectedOptions[0].textContent = 'Choose a saved vi';
+    expect(measureSavedView(select).placeholder).toBe(false);
+  } finally {
+    vi.restoreAllMocks();
   }
 });
