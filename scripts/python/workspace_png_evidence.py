@@ -9,7 +9,7 @@ import subprocess
 from pathlib import Path
 
 VIEWS = ('records', 'schema', 'imports', 'exports')
-CASE = 'workspace-release-workspac-d0657-ponsive-and-visually-stable-chromium-high-contrast'
+CASES = {view: f'workspace-release-workspac-{"92e7c" if view in ("records", "schema") else "a27fb"}-ponsive-and-visually-stable-chromium-high-contrast' for view in VIEWS}
 MAX_PNG_BYTES = 30 * 1024 * 1024  # Leave >1 MiB for provenance and ZIP overhead.
 
 
@@ -23,7 +23,7 @@ def stage(source: Path, output: Path, provenance: dict) -> None:
         names.append(f'workspace-{view}-post-assert.png')
         members = []
         for name in names:
-            path = source / CASE / name
+            path = source / CASES[view] / name
             if any(parent.is_symlink() for parent in (path, *path.parents)):
                 raise ValueError('workspace PNG symlink rejected')
             if not path.exists():

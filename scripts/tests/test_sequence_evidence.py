@@ -155,7 +155,9 @@ def test_incomplete_receipt_does_not_claim_whole_sequence(comparison):
     [
         ("media", "media-release-unit-chromium", "media-library", True),
         ("media", "private-unit", "media-library", False),
-        ("workspace", "workspace-release-unit", "workspace-records", True),
+        ("workspace", "workspace-release-unit", "workspace-records", False),
+        ("workspace", "workspace-release-workspac-92e7c-ponsive-and-visually-stable-chromium-compact", "workspace-records", True),
+        ("workspace", "workspace-release-workspac-92e7c-ponsive-and-visually-stable-chromium-compact", "workspace-exports", False),
         ("journeys", "public-journeys-public-jou-unit", "journey-contact-received", True),
         ("journeys", "other-unit", "journey-contact-received", False),
         ("volcano", "volcano-preservation-unit", "named-route", True),

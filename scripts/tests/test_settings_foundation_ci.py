@@ -531,7 +531,7 @@ def test_workspace_png_staging_copies_only_exact_names_with_hashes_and_failure_p
     from scripts.python import workspace_png_evidence as evidence
 
     source, output = tmp_path / 'source', tmp_path / 'output'
-    case = source / evidence.CASE
+    case = source / evidence.CASES['records']
     case.mkdir(parents=True)
     names = [f'workspace-records-chromium-high-contrast-{kind}.png'
              for kind in ('actual', 'expected', 'diff')]
@@ -561,7 +561,7 @@ def test_workspace_png_staging_rejects_oversize_without_truncation(tmp_path):
     from scripts.python import workspace_png_evidence as evidence
 
     source, output = tmp_path / 'source', tmp_path / 'output'
-    case = source / evidence.CASE
+    case = source / evidence.CASES['exports']
     case.mkdir(parents=True)
     image = case / 'workspace-exports-chromium-high-contrast-actual.png'
     with image.open('wb') as stream:
@@ -580,7 +580,7 @@ def test_workspace_png_staging_rejects_symlinks(tmp_path, link_target):
     source.mkdir()
     outside = tmp_path / 'outside'
     outside.mkdir()
-    case = source / evidence.CASE
+    case = source / evidence.CASES['records']
     if link_target == 'case':
         case.symlink_to(outside, target_is_directory=True)
     else:
@@ -611,7 +611,7 @@ def test_workspace_png_budget_is_per_view_and_leaves_transfer_headroom(tmp_path,
     assert evidence.MAX_PNG_BYTES + 65536 + 8192 < 32 * 1024 * 1024
     monkeypatch.setattr(evidence, 'MAX_PNG_BYTES', 10)
     source, output = tmp_path / 'source', tmp_path / 'output'
-    case = source / evidence.CASE
+    case = source / evidence.CASES['records']
     case.mkdir(parents=True)
     for kind in ('actual', 'diff'):
         (case / f'workspace-records-chromium-high-contrast-{kind}.png').write_bytes(b'123456')
@@ -630,3 +630,34 @@ def test_workspace_png_rejects_dangling_output_link(tmp_path):
         evidence.stage(tmp_path / 'source', output, {})
     assert output.is_symlink()
     assert not missing.exists()
+
+
+def test_workspace_corpus_pairs_share_prerequisites_but_not_mutable_fixture_or_capture_obligations():
+    source = (ROOT / 'react-app/e2e/workspace/workspace-release.spec.ts').read_text()
+    first = 'workspace records and schema are accessible, responsive, and visually stable'
+    second = 'workspace imports and exports are accessible, responsive, and visually stable'
+    assert source.count("test('" + first) == source.count("test('" + second) == 1
+    assert "() => runCorpus(page, testInfo, 'records-schema')" in source
+    assert "() => runCorpus(page, testInfo, 'imports-exports')" in source
+    common = source.split('async function runCorpus(', 1)[1].split("test('" + first, 1)[0]
+    assert common.index('prepareStableFullPageCapture(page)') < common.index("compareAndRetain('records'")
+    assert common.index("name: 'Schemas'") < common.index("['Imports', 'Exports']")
+    assert "pair === 'records-schema'" in common
+    assert "pair === 'imports-exports' ? ['Imports', 'Exports'] : []" in common
+    assert 'createRecordFixture(records)' in source.split('test.beforeEach(', 1)[1].split('async function runCorpus', 1)[0]
+    assert 'assertWorkspaceCheckpointsComplete(testInfo)' in source
+
+
+def test_workspace_hc_staging_maps_each_view_to_exact_pair(tmp_path):
+    from scripts.python import workspace_png_evidence as evidence
+    source, output = tmp_path / 'source', tmp_path / 'output'
+    for view in evidence.VIEWS:
+        folder = source / evidence.CASES[view]
+        folder.mkdir(parents=True, exist_ok=True)
+        (folder / f'workspace-{view}-post-assert.png').write_bytes(view.encode())
+    evidence.stage(source, output, {})
+    for view in evidence.VIEWS:
+        assert (output / view / f'workspace-{view}-post-assert.png').read_bytes() == view.encode()
+    assert evidence.CASES['records'] == evidence.CASES['schema']
+    assert evidence.CASES['imports'] == evidence.CASES['exports']
+    assert evidence.CASES['records'] != evidence.CASES['imports']

@@ -81,6 +81,9 @@ function WorkspaceContent({ locale = 'en', scopeKey, canEdit }) {
   const [creating, setCreating] = useState(false);
   const [recordEditing, setRecordEditing] = useState(false);
   const compactAuthoring = tab === 'Records' && (creating || recordEditing);
+  // Structured controls remain present after save/discard and on a fresh detail open.
+  // Keep mobile presentation independent of draft/edit state; desktop grid is unchanged.
+  const compactDetails = compactAuthoring || (tab === 'Records' && activeRecord !== null);
   const [draft, setDraft] = useState(emptyDraft);
   const [saving, setSaving] = useState(false);
   const createOperation = useRef({ busy: false, createdId: null });
@@ -456,7 +459,7 @@ function WorkspaceContent({ locale = 'en', scopeKey, canEdit }) {
         onDiscard={discardDrafts}
       />
       <div
-        className={`base2-workspace mx-auto max-w-7xl space-y-6 py-8 ${compactAuthoring ? 'px-0 sm:px-4' : 'px-4'}`}
+        className={`base2-workspace mx-auto max-w-7xl space-y-6 py-8 ${compactDetails ? 'px-0 sm:px-4' : 'px-4'}`}
       >
         <Navigation />
         <style>{`
@@ -565,7 +568,7 @@ function WorkspaceContent({ locale = 'en', scopeKey, canEdit }) {
                   tabIndex={-1}
                   aria-labelledby="workspace-panel-title"
                   aria-busy={recordsLoading}
-                  className={`workspace-panel min-h-64 ${compactAuthoring ? 'min-w-0 p-0 sm:p-6' : 'p-6'}`}
+                  className={`workspace-panel min-h-64 ${compactDetails ? 'min-w-0 p-0 sm:p-6' : 'p-6'}`}
                 >
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
@@ -877,7 +880,7 @@ function WorkspaceContent({ locale = 'en', scopeKey, canEdit }) {
                           <div
                             role="region"
                             aria-label="Record details"
-                            className={`min-h-48 rounded-2xl border border-white/10 bg-black/10 ${compactAuthoring ? 'min-w-0 p-2 sm:p-5' : 'p-5'}`}
+                            className={`min-h-48 rounded-2xl border border-white/10 bg-black/10 ${compactDetails ? 'min-w-0 p-2 sm:p-5' : 'p-5'}`}
                           >
                             {activeRecord ? (
                               <RecordInspector

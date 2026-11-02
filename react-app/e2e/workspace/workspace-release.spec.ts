@@ -4,15 +4,17 @@ import {
   ownedWorkspaceBody,
   ownedWorkspaceHook,
 } from '../workspace-capture-ownership';
+import { assertWorkspaceCheckpointsComplete } from '../workspace-scroll-checkpoints';
 import { captureScrollportExtent } from '../scroll-target';
 import { scrollPageTo, pageScrollTop } from '../scroll-target';
 import { assertForcedColorState, assertForcedSystemControl } from '../forced-color-state';
 import { setSessionFixture, fulfillSessionFixture } from '../session-fixture';
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page, type TestInfo } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { writeFile } from 'node:fs/promises';
 import profile from '../../src/config/generated/base2-obsidian.json';
 import { createRecordFixture } from './record-fixture';
+import { measureSavedInspector, savedLabelFits } from './saved-readability';
 
 const axeSource = readFileSync('node_modules/axe-core/axe.min.js', 'utf8');
 const typeId = '00000000-0000-0000-0000-000000010400';
@@ -355,241 +357,254 @@ async function prepareStableFullPageCapture(page) {
   );
 }
 
-test('workspace release corpus is accessible, responsive, and visually stable', async ({
-  page,
-}, testInfo) => {
-  return ownedWorkspaceBody(page, testInfo, async () => {
-    const evidence = {
-      fixture: 'synthetic-api',
-      project: testInfo.project.name,
-      sourceCommit: process.env.GITHUB_SHA || null,
-    };
-    const captures: Array<{
-      view: string;
-      file: string;
-      reference: string;
-      comparison: string;
-      forcedColors: string;
-    }> = [];
-    // Only stale HC image references are batched; functional/state/axe assertions remain hard.
-    // Preserve each mismatch while independently ready views still execute.
-    const visualExpect = expect.configure({ soft: true });
-    const compareAndRetain = async (view: string, reference: string) => {
-      await ownershipStep(() => assertForcedColorState(page, testInfo));
-      if (testInfo.project.name === 'chromium-high-contrast') {
-        const selected = page.getByRole('tab', { selected: true });
-        await ownershipStep(() => expect(selected).toHaveCount(1));
-        const cue = await ownershipStep(() =>
-          selected.evaluate((element) => {
-            const style = getComputedStyle(element);
-            return {
-              line: style.textDecorationLine,
-              color: style.textDecorationColor,
-              text: style.color,
-            };
-          })
-        );
-        expect(cue.line).toContain('underline');
-        expect(cue.color).toBe(cue.text);
-      }
-      const errorsBefore = testInfo.errors.length;
-      await ownershipStep(() =>
-        visualExpect(page).toHaveScreenshot(reference, {
-          fullPage: true,
-          animations: 'disabled',
-          caret: 'hide',
-          maxDiffPixelRatio: 0.01,
-        })
-      );
-      await ownershipStep(() => assertForcedColorState(page, testInfo));
-      const file = `workspace-${view}-post-assert.png`;
-      await ownershipStep(() =>
-        ownedScreenshot(page, testInfo, {
-          path: testInfo.outputPath(file),
-          fullPage: true,
-          animations: 'disabled',
-          caret: 'hide',
-        })
-      );
-      await ownershipStep(() => captureScrollportExtent(page, testInfo, `workspace-${view}`, 0.01));
-      const forcedColors = await ownershipStep(() => assertForcedColorState(page, testInfo));
-      captures.push({
-        view,
-        file,
-        reference,
-        forcedColors,
-        comparison: testInfo.errors.length === errorsBefore ? 'passed' : 'failed',
-      });
-    };
-    await ownershipStep(() => page.goto('/workspace'));
-    await ownershipStep(() =>
-      expect(page.getByRole('heading', { name: /records · universal articles/i })).toBeVisible()
-    );
-    const newRecord = page.getByRole('button', { name: 'New record', exact: true });
-    await ownershipStep(() => expect(newRecord).toBeVisible());
-    await ownershipStep(() => expect(newRecord).toBeEnabled());
-    await ownershipStep(() => assertUsable(page));
+async function runCorpus(
+  page: Page,
+  testInfo: TestInfo,
+  pair: 'records-schema' | 'imports-exports'
+) {
+  const evidence = {
+    fixture: 'synthetic-api',
+    project: testInfo.project.name,
+    sourceCommit: process.env.GITHUB_SHA || null,
+  };
+  const captures: Array<{
+    view: string;
+    file: string;
+    reference: string;
+    comparison: string;
+    forcedColors: string;
+  }> = [];
+  // Only stale HC image references are batched; functional/state/axe assertions remain hard.
+  // Preserve each mismatch while independently ready views still execute.
+  const visualExpect = expect.configure({ soft: true });
+  const compareAndRetain = async (view: string, reference: string) => {
     await ownershipStep(() => assertForcedColorState(page, testInfo));
-    await ownershipStep(() => assertRecordDivider(page));
     if (testInfo.project.name === 'chromium-high-contrast') {
-      await ownershipStep(() => assertForcedSystemControl(newRecord));
+      const selected = page.getByRole('tab', { selected: true });
+      await ownershipStep(() => expect(selected).toHaveCount(1));
+      const cue = await ownershipStep(() =>
+        selected.evaluate((element) => {
+          const style = getComputedStyle(element);
+          return {
+            line: style.textDecorationLine,
+            color: style.textDecorationColor,
+            text: style.color,
+          };
+        })
+      );
+      expect(cue.line).toContain('underline');
+      expect(cue.color).toBe(cue.text);
     }
-    // Axe does not check non-text SVG contrast: the original edge-tab icon must
-    // inherit its contrasting foreground, rather than the unrelated header color.
-    expect(
-      await ownershipStep(() =>
-        page
-          .locator('.home-left-menu-toggle')
-          .first()
-          .evaluate(
-            (button) =>
-              getComputedStyle(button.querySelector('svg')).color === getComputedStyle(button).color
-          )
-      )
-    ).toBe(true);
-    await ownershipStep(() => page.addScriptTag({ content: axeSource }));
-    const violations = await ownershipStep(() =>
-      page.evaluate(async () =>
-        (await window.axe.run(document, { resultTypes: ['violations'] })).violations.map(
-          (item) => ({
-            id: item.id,
-            nodes: item.nodes.map((node) => ({
-              target: node.target,
-              summary: node.failureSummary,
-            })),
-          })
-        )
-      )
-    );
+    const errorsBefore = testInfo.errors.length;
     await ownershipStep(() =>
-      writeFile(
-        testInfo.outputPath('workspace-accessibility.json'),
-        JSON.stringify({ ...evidence, violations }, null, 2)
-      )
-    );
-    await ownershipStep(() => assertForcedColorState(page, testInfo));
-    expect(violations).toEqual([]);
-    await ownershipStep(() => page.keyboard.press('Tab'));
-    await ownershipStep(() => expect(page.locator(':focus')).toBeVisible());
-    await ownershipStep(() =>
-      expect(page.locator('.volcano-header-frame')).toHaveCSS('position', 'sticky')
-    );
-    await ownershipStep(() => prepareStableFullPageCapture(page));
-    const recordContainment = await ownershipStep(() =>
-      page.getByRole('region', { name: 'Record details', exact: true }).evaluate((node) => {
-        const inspector = node.getBoundingClientRect();
-        const enclosure = document.querySelector('#workspace-detail')!.getBoundingClientRect();
-        return (
-          inspector.left >= enclosure.left - 1 &&
-          inspector.right <= enclosure.right + 1 &&
-          node.scrollWidth <= node.clientWidth + 1
-        );
+      visualExpect(page).toHaveScreenshot(reference, {
+        fullPage: true,
+        animations: 'disabled',
+        caret: 'hide',
+        maxDiffPixelRatio: 0.01,
       })
     );
-    expect(recordContainment, 'Record details must remain enclosed').toBe(true);
+    await ownershipStep(() => assertForcedColorState(page, testInfo));
+    const file = `workspace-${view}-post-assert.png`;
+    await ownershipStep(() =>
+      ownedScreenshot(page, testInfo, {
+        path: testInfo.outputPath(file),
+        fullPage: true,
+        animations: 'disabled',
+        caret: 'hide',
+      })
+    );
+    await ownershipStep(() => captureScrollportExtent(page, testInfo, `workspace-${view}`, 0.01));
+    const forcedColors = await ownershipStep(() => assertForcedColorState(page, testInfo));
+    captures.push({
+      view,
+      file,
+      reference,
+      forcedColors,
+      comparison: testInfo.errors.length === errorsBefore ? 'passed' : 'failed',
+    });
+  };
+  await ownershipStep(() => page.goto('/workspace'));
+  await ownershipStep(() =>
+    expect(page.getByRole('heading', { name: /records · universal articles/i })).toBeVisible()
+  );
+  const newRecord = page.getByRole('button', { name: 'New record', exact: true });
+  await ownershipStep(() => expect(newRecord).toBeVisible());
+  await ownershipStep(() => expect(newRecord).toBeEnabled());
+  await ownershipStep(() => assertUsable(page));
+  await ownershipStep(() => assertForcedColorState(page, testInfo));
+  await ownershipStep(() => assertRecordDivider(page));
+  if (testInfo.project.name === 'chromium-high-contrast') {
+    await ownershipStep(() => assertForcedSystemControl(newRecord));
+  }
+  // Axe does not check non-text SVG contrast: the original edge-tab icon must
+  // inherit its contrasting foreground, rather than the unrelated header color.
+  expect(
+    await ownershipStep(() =>
+      page
+        .locator('.home-left-menu-toggle')
+        .first()
+        .evaluate(
+          (button) =>
+            getComputedStyle(button.querySelector('svg')).color === getComputedStyle(button).color
+        )
+    )
+  ).toBe(true);
+  await ownershipStep(() => page.addScriptTag({ content: axeSource }));
+  const violations = await ownershipStep(() =>
+    page.evaluate(async () =>
+      (await window.axe.run(document, { resultTypes: ['violations'] })).violations.map((item) => ({
+        id: item.id,
+        nodes: item.nodes.map((node) => ({
+          target: node.target,
+          summary: node.failureSummary,
+        })),
+      }))
+    )
+  );
+  await ownershipStep(() =>
+    writeFile(
+      testInfo.outputPath('workspace-accessibility.json'),
+      JSON.stringify({ ...evidence, violations }, null, 2)
+    )
+  );
+  await ownershipStep(() => assertForcedColorState(page, testInfo));
+  expect(violations).toEqual([]);
+  await ownershipStep(() => page.keyboard.press('Tab'));
+  await ownershipStep(() => expect(page.locator(':focus')).toBeVisible());
+  await ownershipStep(() =>
+    expect(page.locator('.volcano-header-frame')).toHaveCSS('position', 'sticky')
+  );
+  await ownershipStep(() => prepareStableFullPageCapture(page));
+  const recordContainment = await ownershipStep(() =>
+    page.getByRole('region', { name: 'Record details', exact: true }).evaluate((node) => {
+      const inspector = node.getBoundingClientRect();
+      const enclosure = document.querySelector('#workspace-detail')!.getBoundingClientRect();
+      return (
+        inspector.left >= enclosure.left - 1 &&
+        inspector.right <= enclosure.right + 1 &&
+        node.scrollWidth <= node.clientWidth + 1
+      );
+    })
+  );
+  expect(recordContainment, 'Record details must remain enclosed').toBe(true);
+  if (pair === 'records-schema')
     await ownershipStep(() =>
       compareAndRetain('records', `workspace-records-${testInfo.project.name}.png`)
     );
 
-    await ownershipStep(() => page.getByRole('tab', { name: 'Schemas' }).click());
-    await ownershipStep(() =>
-      expect(page.getByRole('heading', { name: /schema · universal articles/i })).toBeVisible()
-    );
-    await ownershipStep(() => scrollPageTo(page, 0));
-    await ownershipStep(() => assertUsable(page));
+  await ownershipStep(() => page.getByRole('tab', { name: 'Schemas' }).click());
+  await ownershipStep(() =>
+    expect(page.getByRole('heading', { name: /schema · universal articles/i })).toBeVisible()
+  );
+  await ownershipStep(() => scrollPageTo(page, 0));
+  await ownershipStep(() => assertUsable(page));
+  if (pair === 'records-schema')
     await ownershipStep(() =>
       compareAndRetain('schema', `workspace-schema-${testInfo.project.name}.png`)
     );
 
-    for (const tab of ['Imports', 'Exports']) {
-      await ownershipStep(() => page.getByRole('tab', { name: tab }).click());
-      await ownershipStep(() =>
-        expect(
-          page.getByRole('heading', { name: new RegExp(`${tab} · Universal articles`, 'i') })
-        ).toBeVisible()
-      );
-      await ownershipStep(() => scrollPageTo(page, 0));
-      await ownershipStep(() => assertUsable(page));
-      if (tab === 'Imports') {
-        const filename = 'synthetic-workspace-records-for-review.json';
-        const input = page.getByLabel('Import file', { exact: true });
-        await ownershipStep(() =>
-          input.setInputFiles({
-            name: filename,
-            mimeType: 'application/json',
-            buffer: Buffer.from('[]'),
-          })
-        );
-        await ownershipStep(() =>
-          expect(input).toHaveAccessibleDescription(`Selected file: ${filename}`)
-        );
-        const policy = page.getByRole('combobox', { name: 'Commit policy', exact: true });
-        await ownershipStep(() => expect(policy).toHaveValue('all_or_nothing'));
-        const fit = await ownershipStep(() =>
-          policy.evaluate((node: HTMLSelectElement) => {
-            const style = getComputedStyle(node);
-            const canvas = document.createElement('canvas');
-            const context = canvas.getContext('2d')!;
-            context.font = style.font;
-            const textWidth = context.measureText(node.selectedOptions[0].text).width;
-            // Reserve native arrow space in addition to authored padding.
-            return {
-              available:
-                node.clientWidth -
-                parseFloat(style.paddingLeft) -
-                parseFloat(style.paddingRight) -
-                24,
-              textWidth,
-            };
-          })
-        );
-        expect(
-          fit.available,
-          'Commit policy must expose its full selected meaning'
-        ).toBeGreaterThanOrEqual(fit.textWidth);
-        const status = page.getByText(`Selected file: ${filename}`, { exact: true });
-        const contained = await ownershipStep(() =>
-          status.evaluate((node) => {
-            const box = node.getBoundingClientRect();
-            const form = node.closest('form')!.getBoundingClientRect();
-            const range = document.createRange();
-            range.selectNodeContents(node);
-            return (
-              box.left >= form.left &&
-              box.right <= form.right &&
-              [...range.getClientRects()].every(
-                (rect) => rect.left >= box.left - 1 && rect.right <= box.right + 1
-              )
-            );
-          })
-        );
-        expect(contained, 'Selected filename must wrap within the import form').toBe(true);
-      }
-      await ownershipStep(() =>
-        compareAndRetain(
-          tab.toLowerCase(),
-          `workspace-${tab.toLowerCase()}-${testInfo.project.name}.png`
-        )
-      );
-    }
-    const failed = testInfo.errors.length > 0;
+  for (const tab of pair === 'imports-exports' ? ['Imports', 'Exports'] : []) {
+    await ownershipStep(() => page.getByRole('tab', { name: tab }).click());
     await ownershipStep(() =>
-      writeFile(
-        testInfo.outputPath('workspace-release-summary.json'),
-        JSON.stringify(
-          {
-            ...evidence,
-            status: failed ? 'failed' : 'passed',
-            phase: failed ? 'assertions-completed-with-failures' : 'assertions-completed',
-            captures,
-            comparisonThresholdUnchanged: 0.01,
-          },
-          null,
-          2
-        )
+      expect(
+        page.getByRole('heading', { name: new RegExp(`${tab} · Universal articles`, 'i') })
+      ).toBeVisible()
+    );
+    await ownershipStep(() => scrollPageTo(page, 0));
+    await ownershipStep(() => assertUsable(page));
+    if (tab === 'Imports') {
+      const filename = 'synthetic-workspace-records-for-review.json';
+      const input = page.getByLabel('Import file', { exact: true });
+      await ownershipStep(() =>
+        input.setInputFiles({
+          name: filename,
+          mimeType: 'application/json',
+          buffer: Buffer.from('[]'),
+        })
+      );
+      await ownershipStep(() =>
+        expect(input).toHaveAccessibleDescription(`Selected file: ${filename}`)
+      );
+      const policy = page.getByRole('combobox', { name: 'Commit policy', exact: true });
+      await ownershipStep(() => expect(policy).toHaveValue('all_or_nothing'));
+      const fit = await ownershipStep(() =>
+        policy.evaluate((node: HTMLSelectElement) => {
+          const style = getComputedStyle(node);
+          const canvas = document.createElement('canvas');
+          const context = canvas.getContext('2d')!;
+          context.font = style.font;
+          const textWidth = context.measureText(node.selectedOptions[0].text).width;
+          // Reserve native arrow space in addition to authored padding.
+          return {
+            available:
+              node.clientWidth -
+              parseFloat(style.paddingLeft) -
+              parseFloat(style.paddingRight) -
+              24,
+            textWidth,
+          };
+        })
+      );
+      expect(
+        fit.available,
+        'Commit policy must expose its full selected meaning'
+      ).toBeGreaterThanOrEqual(fit.textWidth);
+      const status = page.getByText(`Selected file: ${filename}`, { exact: true });
+      const contained = await ownershipStep(() =>
+        status.evaluate((node) => {
+          const box = node.getBoundingClientRect();
+          const form = node.closest('form')!.getBoundingClientRect();
+          const range = document.createRange();
+          range.selectNodeContents(node);
+          return (
+            box.left >= form.left &&
+            box.right <= form.right &&
+            [...range.getClientRects()].every(
+              (rect) => rect.left >= box.left - 1 && rect.right <= box.right + 1
+            )
+          );
+        })
+      );
+      expect(contained, 'Selected filename must wrap within the import form').toBe(true);
+    }
+    await ownershipStep(() =>
+      compareAndRetain(
+        tab.toLowerCase(),
+        `workspace-${tab.toLowerCase()}-${testInfo.project.name}.png`
       )
     );
-  });
+  }
+  const failed = testInfo.errors.length > 0;
+  await ownershipStep(() =>
+    writeFile(
+      testInfo.outputPath('workspace-release-summary.json'),
+      JSON.stringify(
+        {
+          ...evidence,
+          scenario: pair,
+          status: failed ? 'failed' : 'passed',
+          phase: failed ? 'assertions-completed-with-failures' : 'assertions-completed',
+          captures,
+          comparisonThresholdUnchanged: 0.01,
+        },
+        null,
+        2
+      )
+    )
+  );
+}
+
+test('workspace records and schema are accessible, responsive, and visually stable', async ({
+  page,
+}, testInfo) => {
+  return ownedWorkspaceBody(page, testInfo, () => runCorpus(page, testInfo, 'records-schema'));
+});
+
+test('workspace imports and exports are accessible, responsive, and visually stable', async ({
+  page,
+}, testInfo) => {
+  return ownedWorkspaceBody(page, testInfo, () => runCorpus(page, testInfo, 'imports-exports'));
 });
 
 test('selected record editing stays contained and saves or discards explicitly', async ({
@@ -757,6 +772,23 @@ test('selected record editing stays contained and saves or discards explicitly',
     await ownershipStep(() =>
       captureScrollportExtent(page, testInfo, 'workspace-records-selected-saved')
     );
+    // Retain the exact saved/reloaded pixels before any readability failure.
+    const savedLayout = await ownershipStep(() => inspector.evaluate(measureSavedInspector));
+    expect(savedLayout.breaches, 'Saved controls must remain enclosed').toEqual([]);
+    expect(savedLayout.counts).toEqual({
+      'Secure file': 2,
+      'Add relationship': 1,
+      'Submit for review': 1,
+      Publish: 1,
+      'Delete record': 1,
+      relationship: 1,
+      files: 2,
+    });
+    for (const label of savedLayout.labels)
+      expect(
+        savedLabelFits(label),
+        `Saved ${label.label} must expose its full label: ${JSON.stringify(label)}`
+      ).toBe(true);
     selectedEvidenceComplete.add(page);
   });
 });
@@ -785,6 +817,7 @@ test.afterEach(async ({ page }, testInfo) => {
     testInfo,
     async () => {
       await captureScrollportExtent(page, testInfo);
+      assertWorkspaceCheckpointsComplete(testInfo);
     },
     selectedEvidenceComplete.has(page)
   );

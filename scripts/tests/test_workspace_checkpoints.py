@@ -128,3 +128,15 @@ def test_duplicate_keys_reject_original_raw_payload(key, value):
     assert 'PRIVATE' not in json.dumps(json.loads(raw))
     with pytest.raises(ValueError):
         module.validate(raw)
+
+
+def test_pair_checkpoint_state_binding_retains_historical_schema():
+    from scripts.python import workspace_ownership
+    data = receipt()
+    case = workspace_ownership.CASES['imports-exports'] + '-webkit-mobile'
+    assert module.registered('workspace', Path(case) / module.NAME)
+    assert module.validate(json.dumps(data).encode(), case) == data
+    wrong = workspace_ownership.CASES['records-schema'] + '-webkit-mobile'
+    with pytest.raises(ValueError):
+        module.validate(json.dumps(data).encode(), wrong)
+    assert module.validate(json.dumps(data).encode()) == data

@@ -108,7 +108,7 @@
     },
     {
       "path": "react-app/e2e/workspace-capture-ownership.ts",
-      "sha256": "2aa0ebd40919b3791c81a9a4f8ebd3c83233dea93bd7cec1961d4badac5b5cbf",
+      "sha256": "9443191d57ca0772e10d96fd1d7d791f57a6303e9cd168513b7b32453a4123cd",
       "collection": "bounded-owned-screenshots-and-partial-frame-receipts-pending-native-workspace-validation"
     },
     {
@@ -161,7 +161,7 @@
   "delegatedCaptureSources": [
     {
       "path": "react-app/e2e/continuous-scroll.ts",
-      "sha256": "96c387caa81f53a135312e54bfb7f568fc99fe9a84997e449b832775f36fb009",
+      "sha256": "7be4b5fd4cc1d1e1b92abc9fcae334870f8af5b6c869cffbb1a6f70e2d5496de",
       "via": "react-app/e2e/workspace-capture-ownership.ts"
     },
     {

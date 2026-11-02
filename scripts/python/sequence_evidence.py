@@ -9,7 +9,7 @@ import struct
 import subprocess
 from pathlib import Path
 
-from scripts.python import continuous_evidence
+from scripts.python import continuous_evidence, workspace_ownership
 
 NAME = re.compile(r"sequence-([a-z0-9-]{1,90})\.json")
 IMAGE = re.compile(r"sequence-([a-z0-9-]{1,90})-(overview|[0-9]{3})-(actual|expected|diff)\.png")
@@ -205,6 +205,11 @@ def _validate(
     matched_name = NAME.fullmatch(path.name)
     assert matched_name is not None
     state = matched_name[1]
+    if state.startswith('workspace-'):
+        scenario = workspace_ownership.scenario_for_case(path.parent.name)
+        need(scenario is not None and workspace_ownership.state_registered(path.parent.name, state))
+        need(binding['test'] == workspace_ownership.TITLES[scenario])
+        need(binding['project'] == workspace_ownership.project_for_case(path.parent.name))
     if state.startswith("named-route-"):
         need(state == "named-route-" + hashlib.sha256((binding["route"] + "\0" + binding["test"]).encode()).hexdigest()[:20])
     need(
@@ -349,14 +354,7 @@ def registered(suite: str, case: str, state: str) -> bool:
             )
         )
     if suite == "workspace":
-        return case.startswith("workspace-release-") and state in {
-            "workspace-records",
-            "workspace-records-selected-edit",
-            "workspace-records-selected-saved",
-            "workspace-schema",
-            "workspace-imports",
-            "workspace-exports",
-        }
+        return workspace_ownership.state_registered(case, state) and state != 'current'
     if suite == "volcano":
         return case.startswith("volcano-preservation-") and (state in {"named-route", "volcano-home"} or bool(re.fullmatch(r"named-route-[a-f0-9]{20}", state)))
     if suite == "journeys":

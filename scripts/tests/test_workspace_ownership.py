@@ -101,3 +101,17 @@ def test_wrong_producer_or_project_is_not_exported():
     for case in [CASE+'-private', 'workspace-release-customer-webkit-mobile', CASE.replace('webkit-mobile','untrusted')]:
         assert not module.registered('workspace',Path(case)/module.NAME)
     assert not module.registered('journeys',Path(CASE)/module.NAME)
+
+@pytest.mark.parametrize('scenario,other', [('records-schema', 'workspace-exports'), ('imports-exports', 'workspace-records')])
+def test_pair_receipts_bind_exact_case_states_and_reject_other_pair(tmp_path, scenario, other):
+    path, data, provenance = fixture(tmp_path)
+    target = tmp_path / (module.CASES[scenario] + '-webkit-mobile')
+    path.parent.rename(target)
+    path = target / module.NAME
+    data.update(scenario=scenario, coverage={k: 'incomplete' for k in module.STATES[scenario]}, frames=[])
+    assert module.validate(json.dumps(data).encode(), path, provenance) == data
+    assert module.state_registered(target.name, 'current')
+    assert not module.state_registered(target.name, other)
+    data['coverage'][other] = 'complete'
+    with pytest.raises(ValueError):
+        module.validate(json.dumps(data).encode(), path, provenance)

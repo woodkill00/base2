@@ -6,13 +6,39 @@ import re
 NAME = 'workspace-capture-ownership.json'
 BUDGET = 131072
 PROJECTS = r'(?:chromium-(?:compact|phone-dpr3|landscape-touch|tablet|desktop|ultrawide|large-text|400-zoom|light|high-contrast)|firefox-desktop|webkit-mobile)'
-CASES = {'corpus': 'workspace-release-workspac-d0657-ponsive-and-visually-stable',
+CASES = {'records-schema': 'workspace-release-workspac-92e7c-ponsive-and-visually-stable',
+         'imports-exports': 'workspace-release-workspac-a27fb-ponsive-and-visually-stable',
+         'corpus': 'workspace-release-workspac-d0657-ponsive-and-visually-stable',
          'selected': 'workspace-release-selected-9c572-aves-or-discards-explicitly',
          'vocabulary': 'workspace-release-synthet-'}
-STATES = {'corpus': {'workspace-records', 'workspace-schema', 'workspace-imports', 'workspace-exports', 'current'},
+STATES = {'records-schema': {'workspace-records', 'workspace-schema', 'current'},
+          'imports-exports': {'workspace-imports', 'workspace-exports', 'current'},
+          'corpus': {'workspace-records', 'workspace-schema', 'workspace-imports', 'workspace-exports', 'current'},
           'selected': {'workspace-records-selected-edit', 'workspace-records-selected-saved', 'current'},
           'vocabulary': set()}
 FRAME = re.compile(r'(?:current-continuous-(?:current|workspace-(?:records|schema|imports|exports|records-selected-edit|records-selected-saved))-(?:[0-9]{3}|focus)|current-scrollport-(?:(?:workspace-(?:records|schema|imports|exports|records-selected-edit|records-selected-saved))-)?(?:top|middle|footer)|workspace-(?:records|schema|imports|exports|records-selected-edit|records-selected-saved)-post-assert)\.png')
+
+
+TITLES = {
+    'corpus': 'workspace release corpus is accessible, responsive, and visually stable',
+    'records-schema': 'workspace records and schema are accessible, responsive, and visually stable',
+    'imports-exports': 'workspace imports and exports are accessible, responsive, and visually stable',
+    'selected': 'selected record editing stays contained and saves or discards explicitly',
+}
+
+
+def project_for_case(case):
+    scenario = scenario_for_case(case)
+    return case[len(CASES[scenario]) + 1:] if scenario else None
+
+
+def scenario_for_case(case):
+    return next((kind for kind, prefix in CASES.items()
+                 if kind != 'vocabulary' and re.fullmatch(re.escape(prefix) + '-' + PROJECTS, case)), None)
+
+
+def state_registered(case, state):
+    return state in STATES.get(scenario_for_case(case), set())
 
 
 def registered(suite, relative):
@@ -40,7 +66,7 @@ def validate(raw, path, provenance):
     require(type(data) is dict and set(data) == {'schemaVersion', 'scope', 'scenario', 'sourceCommit', 'sourceTree', 'runId', 'attempt', 'revoked', 'bodySettled', 'hookStarted', 'incomplete', 'coverage', 'errors', 'frames'})
     require(type(data['schemaVersion']) is int and data['schemaVersion'] == 1)
     require(data['scope'] == 'synthetic-workspace-ownership')
-    require(type(data['scenario']) is str and data['scenario'] in {'corpus', 'selected'})
+    require(type(data['scenario']) is str and data['scenario'] in {'corpus', 'records-schema', 'imports-exports', 'selected'})
     require(re.fullmatch(re.escape(CASES[data['scenario']]) + '-' + PROJECTS, path.parent.name) is not None)
     for key in ('sourceCommit', 'sourceTree', 'runId', 'attempt'):
         require(type(data[key]) is str and data[key] == str(provenance[key]))

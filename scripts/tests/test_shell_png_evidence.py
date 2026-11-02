@@ -19,9 +19,9 @@ def test_selected_workspace_edit_states_are_narrowly_registered_and_preserve_exa
              'workspace-records-selected-saved-post-assert.png',
              'current-scrollport-workspace-records-selected-edit-footer.png']
     for name in names:
-        put(sources['workspace'], 'workspace-release-selected-unit-chromium-compact/' + name)
+        put(sources['workspace'], 'workspace-release-selected-9c572-aves-or-discards-explicitly-chromium-compact/' + name)
     for name in ['workspace-records-selected-private.png', 'private-record.json']:
-        put(sources['workspace'], 'workspace-release-selected-unit-chromium-compact/' + name)
+        put(sources['workspace'], 'workspace-release-selected-9c572-aves-or-discards-explicitly-chromium-compact/' + name)
     collector.stage(sources, output, provenance)
     data = json.loads((output / '00/provenance.json').read_text())
     assert data['captureCount'] == 3
@@ -176,7 +176,7 @@ def test_known_producers_allowed():
     examples = {'layout': ('representative-case-chromium', 'viewport.png'),
                 'volcano': ('volcano-preservation-case-chromium', 'movement-compact-0.5.png'),
                 'settings': ('settings-release-case-webkit-mobile', 'settings-release-before-axe.png'),
-                'workspace': ('workspace-release-case-chromium-high-contrast', 'workspace-records-chromium-high-contrast-diff.png')}
+                'workspace': ('workspace-release-workspac-92e7c-ponsive-and-visually-stable-chromium-high-contrast', 'workspace-records-chromium-high-contrast-diff.png')}
     for suite, parts in examples.items():
         assert collector.allowed(suite, Path(*parts))
 
@@ -445,3 +445,50 @@ def test_null_registered_journey_receipt_keeps_valid_producer(tmp_path, monkeypa
     receipt=json.loads((output/'00/provenance.json').read_text())
     assert not receipt['packagingComplete'] and len(receipt['captures']) == 1
     assert not list(output.rglob('sequence-*.json'))
+
+
+def test_workspace_pairs_reject_unknown_project_text_and_cross_pair_images():
+    from scripts.python import workspace_ownership
+    first = workspace_ownership.CASES['records-schema'] + '-chromium-compact'
+    second = workspace_ownership.CASES['imports-exports'] + '-chromium-compact'
+    assert collector.allowed('workspace', Path(first, 'workspace-records-chromium-compact-actual.png'))
+    assert collector.allowed('workspace', Path(second, 'workspace-imports-post-assert.png'))
+    for name in ['workspace-records-private-client-name-actual.png',
+                 'workspace-records-firefox-desktop-actual.png',
+                 'workspace-imports-chromium-compact-actual.png',
+                 'current-continuous-workspace-exports-000.png']:
+        assert not collector.allowed('workspace', Path(first, name))
+
+
+def test_workspace_continuous_rejects_wrong_project_with_same_title_and_state(tmp_path):
+    import hashlib
+
+    from scripts.python import workspace_ownership
+
+    sources, output, provenance = setup(tmp_path)
+    case = workspace_ownership.CASES['imports-exports'] + '-webkit-mobile'
+    folder = sources['workspace'] / case
+    folder.mkdir()
+    image = 'current-continuous-current-000.png'
+    raw = b'\x89PNG\r\n\x1a\nsynthetic fixture'
+    (folder / image).write_bytes(raw)
+    data = dict(schemaVersion=1, fixtureScope='synthetic-project-tests',
+                scope='Diagnostic continuous viewports; not visual acceptance.',
+                sourceCommit=provenance['sourceCommit'], sourceTree=provenance['sourceTree'],
+                runId=str(provenance['runId']), attempt=str(provenance['attempt']),
+                project='chromium-compact', test=workspace_ownership.TITLES['imports-exports'],
+                route='/workspace', state='current', target='content-scrollport', extent=400,
+                segmentLimit=64, reachedEnd=True, complete=True, errors=[],
+                segments=[dict(index=0, route='/workspace', start=0, end=400, extent=400,
+                               offset=0, max=0, height=400, inset=0, scale=1,
+                               viewport=[390,844,3], rect=[0,0,390,400], file=image,
+                               sha256=hashlib.sha256(raw).hexdigest(), bytes=len(raw))])
+    (folder / 'continuous-current.json').write_text(json.dumps(data))
+    with pytest.raises(collector.PackagingIncomplete):
+        collector.stage(sources, output, provenance)
+    assert not list(output.rglob('continuous-current.json'))
+    # Correct binding is retained without rewriting the original failure output.
+    data['project'] = 'webkit-mobile'
+    (folder / 'continuous-current.json').write_text(json.dumps(data))
+    collector.stage(sources, tmp_path / 'corrected-output', provenance)
+    assert len(list((tmp_path / 'corrected-output').rglob('continuous-current.json'))) == 1

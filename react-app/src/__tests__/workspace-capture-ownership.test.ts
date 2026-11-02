@@ -245,3 +245,23 @@ it('declared skipped scenarios retain not-required obligations without a fake bo
   expect(Object.values(owner.coverage)).toEqual(['not-required', 'not-required', 'not-required']);
   expect(owner.snapshot().incomplete).toBe(false);
 });
+
+it('binds paired corpus obligations and rejects unknown titles/states', async () => {
+  const { workspaceScenario, workspaceStateAllowed } =
+    await import('../../e2e/workspace-capture-ownership');
+  const first = 'workspace records and schema are accessible, responsive, and visually stable';
+  const second = 'workspace imports and exports are accessible, responsive, and visually stable';
+  expect(Object.keys(new CaptureOwner(workspaceScenario(first)).coverage)).toEqual([
+    'workspace-records',
+    'workspace-schema',
+    'current',
+  ]);
+  expect(Object.keys(new CaptureOwner(workspaceScenario(second)).coverage)).toEqual([
+    'workspace-imports',
+    'workspace-exports',
+    'current',
+  ]);
+  expect(workspaceStateAllowed(first, 'workspace-exports')).toBe(false);
+  expect(workspaceStateAllowed(second, 'workspace-records')).toBe(false);
+  expect(() => workspaceScenario('unregistered corpus')).toThrow('unregistered');
+});

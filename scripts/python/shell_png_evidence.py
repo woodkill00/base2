@@ -96,6 +96,18 @@ def allowed(suite: str, relative: Path) -> bool:
     if len(relative.parts) != 2 or not re.fullmatch(r'[a-zA-Z0-9_-]+', relative.parts[0]):
         return False
     case = relative.parts[0]
+    if suite == 'workspace':
+        if workspace_ownership.scenario_for_case(case) is None:
+            return False
+        continuous = re.fullmatch(r'current-continuous-([a-z0-9-]{1,90})-(?:[0-9]{3}|focus)\.png', relative.name)
+        if continuous:
+            return workspace_ownership.state_registered(case, continuous[1])
+        project = re.escape(workspace_ownership.project_for_case(case))
+        named = re.fullmatch(rf'workspace-(records-selected-edit|records-selected-saved|records|schema|imports|exports)-(?:post-assert|{project}-(?:actual|expected|diff))\.png', relative.name)
+        if named:
+            return workspace_ownership.state_registered(case, 'workspace-' + named[1])
+        if relative.name.startswith('workspace-'):
+            return False
     sample = re.fullmatch(r'current-scrollport-([a-z0-9-]{1,90})-(?:top|middle|footer)\.png', relative.name)
     if sample:
         return sequence_evidence.registered(suite, case, sample[1])
@@ -193,7 +205,7 @@ def stage(sources: dict[str, Path], output: Path, provenance: dict) -> None:
                     if not path.is_file() or path.stat().st_size > workspace_checkpoints.BUDGET:
                         raise ValueError('oversized workspace checkpoint')
                     raw = path.read_bytes()
-                    workspace_checkpoints.validate(raw)
+                    workspace_checkpoints.validate(raw, relative.parts[0])
                     members.append((path, f'{suite}/{relative.as_posix()}', len(raw), hashlib.sha256(raw).hexdigest()))
                     continue
                 comparison_receipt = sequence_evidence.NAME.fullmatch(path.name)
@@ -212,15 +224,20 @@ def stage(sources: dict[str, Path], output: Path, provenance: dict) -> None:
                         bound_comparisons.add(target)
                     members.append((path,f'{suite}/{rel.as_posix()}',len(raw),hashlib.sha256(raw).hexdigest()))
                     continue
-                if continuous_evidence.NAME.fullmatch(path.name):
+                continuous_match = continuous_evidence.NAME.fullmatch(path.name)
+                if continuous_match:
                     # Reuse the exact producer directory allowlist, not arbitrary JSON.
                     probe = path.relative_to(source).with_name('current-scrollport-top.png')
                     if not allowed(suite, probe):
                         continue
                     if not path.is_file() or path.stat().st_size > continuous_evidence.BUDGET:
                         raise ValueError('oversized continuous receipt')
+                    if suite == 'workspace' and not workspace_ownership.state_registered(relative.parts[0], continuous_match[1]):
+                        raise ValueError('workspace continuous state mismatch')
                     raw = path.read_bytes()
-                    data = continuous_evidence.validate(raw, path, provenance['sourceCommit'], provenance['sourceTree'], run=str(provenance['runId']), attempt=str(provenance['attempt']))
+                    data = continuous_evidence.validate(raw, path, provenance['sourceCommit'], provenance['sourceTree'], project=workspace_ownership.project_for_case(relative.parts[0]) if suite == 'workspace' else None, run=str(provenance['runId']), attempt=str(provenance['attempt']))
+                    if suite == 'workspace' and data['test'] != workspace_ownership.TITLES[workspace_ownership.scenario_for_case(relative.parts[0])]:
+                        raise ValueError('workspace continuous title mismatch')
                     for row in continuous_evidence.capture_rows(data):
                         frame = path.parent / row['file']
                         if frame in bound_frames:

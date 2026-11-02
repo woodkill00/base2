@@ -1347,3 +1347,24 @@ captures prove their observed fallback states, not populated content readiness.
       native heading/containment and ownership quiescence remain unproven because
       the original standard browser suites were setup-blocked. No reference,
       timeout, acceptance or security changes; publication held for review.
+
+- [ ] T99 Retain selected-details mobile width after save/discard independently
+      of editing mode. Native 656507 selected cases prove save/reload and all
+      scoped assertions, but compact saved controls visibly clip and wrap within
+      words. Add full authored-label width checks for Secure file, relationship,
+      review/publish/delete actions and the native Choose File button. That native
+      width check is necessary, not sufficient pixel proof; inspect fresh frames.
+
+- [ ] T100 Split corpus into Records/Schema/current and Imports/Exports/current.
+      Both fresh cases retain original Records preparation, static-header fixture,
+      keyboard/theme/axe checks and Records→Schemas transitions; the second then
+      traverses Imports→Exports. This replaces the uninterrupted four-view capture
+      journey with paired scenarios and increases aggregate permitted setup,
+      execution and output work; it is not a proven timeout-performance repair.
+      48 configured cases = 24 corpus + 12 vocabulary + 3 supported selected +
+      9 selected skips. Named comparisons remain 48; generic corpus opportunities
+      increase from 12 to 24. Keep 60s/test, 10s assertions, 64 segments/state,
+      512 ownership frames, 192 checkpoint events/128KiB, all image/transport caps.
+      Preflight estimates do not guarantee completion: actual geometry/bytes and
+      runtime budgets remain fatal/incomplete when exceeded. Exact new producer,
+      title/state bindings invalidate prior sequence candidates; no PNG approval.

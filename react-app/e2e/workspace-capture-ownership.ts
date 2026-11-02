@@ -37,6 +37,38 @@ type Obligation = (typeof obligations)[number];
 const filePattern =
   /^(?:current-continuous-(?:current|workspace-(?:records|schema|imports|exports|records-selected-edit|records-selected-saved))-(?:\d{3}|focus)|current-scrollport-(?:(?:workspace-(?:records|schema|imports|exports|records-selected-edit|records-selected-saved))-)?(?:top|middle|footer)|workspace-(?:records|schema|imports|exports|records-selected-edit|records-selected-saved)-post-assert)\.png$/;
 
+export const workspaceScenarios = {
+  'workspace release corpus is accessible, responsive, and visually stable': 'corpus',
+  'workspace records and schema are accessible, responsive, and visually stable': 'records-schema',
+  'workspace imports and exports are accessible, responsive, and visually stable':
+    'imports-exports',
+  'selected record editing stays contained and saves or discards explicitly': 'selected',
+  'synthetic workspace fixture vocabulary is complete and explicit': 'vocabulary',
+} as const;
+export function workspaceScenario(title: string) {
+  if (!Object.hasOwn(workspaceScenarios, title)) throw new Error('unregistered workspace scenario');
+  return workspaceScenarios[title as keyof typeof workspaceScenarios];
+}
+export function workspaceStateAllowed(title: string, state: string) {
+  const scenario = workspaceScenario(title);
+  const states =
+    scenario === 'corpus'
+      ? [
+          'workspace-records',
+          'workspace-schema',
+          'workspace-imports',
+          'workspace-exports',
+          'current',
+        ]
+      : scenario === 'records-schema'
+        ? ['workspace-records', 'workspace-schema', 'current']
+        : scenario === 'imports-exports'
+          ? ['workspace-imports', 'workspace-exports', 'current']
+          : scenario === 'selected'
+            ? ['workspace-records-selected-edit', 'workspace-records-selected-saved', 'current']
+            : [];
+  return states.includes(state);
+}
 export class CaptureOwner {
   revoked = false;
   private active: Promise<void> | undefined;
@@ -47,7 +79,7 @@ export class CaptureOwner {
   readonly errors: string[] = [];
   readonly frames: { file: string; sha256: string; bytes: number }[] = [];
   constructor(
-    readonly scenario: 'corpus' | 'selected' | 'vocabulary',
+    readonly scenario: 'corpus' | 'records-schema' | 'imports-exports' | 'selected' | 'vocabulary',
     private save: () => void = () => {}
   ) {
     this.coverage = Object.fromEntries(
@@ -59,9 +91,13 @@ export class CaptureOwner {
             'workspace-exports',
             'current',
           ]
-        : scenario === 'selected'
-          ? ['workspace-records-selected-edit', 'workspace-records-selected-saved', 'current']
-          : []
+        : scenario === 'records-schema'
+          ? ['workspace-records', 'workspace-schema', 'current']
+          : scenario === 'imports-exports'
+            ? ['workspace-imports', 'workspace-exports', 'current']
+            : scenario === 'selected'
+              ? ['workspace-records-selected-edit', 'workspace-records-selected-saved', 'current']
+              : []
       ).map((state) => [state, 'pending'])
     );
   }
@@ -277,12 +313,7 @@ export async function ownedScreenshot(
 function ownerFor(page: Page, info: TestInfo) {
   let owner = owners.get(page);
   if (!owner) {
-    const scenario =
-      info.title === 'workspace release corpus is accessible, responsive, and visually stable'
-        ? 'corpus'
-        : info.title === 'selected record editing stays contained and saves or discards explicitly'
-          ? 'selected'
-          : 'vocabulary';
+    const scenario = workspaceScenario(info.title);
     const sourceCommit = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
     const sourceTree = execFileSync('git', ['rev-parse', 'HEAD^{tree}'], {
       encoding: 'utf8',

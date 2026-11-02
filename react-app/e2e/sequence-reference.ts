@@ -1,3 +1,4 @@
+import { workspaceStateAllowed } from './workspace-capture-ownership';
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync, lstatSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
@@ -110,6 +111,8 @@ export type SequenceContext = {
   dependencyHash: string;
 };
 export function sequenceBinding(input: SequenceInput, context: SequenceContext, ratio: number) {
+  if (input.state.startsWith('workspace-') && !workspaceStateAllowed(input.test, input.state))
+    throw new Error('unregistered workspace sequence state');
   if (
     !/^[a-z0-9-]{1,90}$/.test(input.state) ||
     !/^[0-9a-f]{64}$/.test(context.routeStateHash) ||
@@ -232,8 +235,12 @@ export function namedRouteSequenceState(route: string, test: string): string {
 }
 
 function referencePresent(path: string): boolean {
-  try { lstatSync(path); return true; }
-  catch (error) { return (error as { code?: string }).code !== 'ENOENT'; }
+  try {
+    lstatSync(path);
+    return true;
+  } catch (error) {
+    return (error as { code?: string }).code !== 'ENOENT';
+  }
 }
 
 export function approvedSequenceTarget(info: TestInfo, state: string): string | null {
@@ -283,7 +290,9 @@ export async function compareSequence(
     validateReference(manifest, binding, names);
     verifyReview(manifest, manifestPath);
   } catch {
-    manifestError = referencePresent(manifestPath) ? 'invalid-reference-set' : 'missing-reference-set';
+    manifestError = referencePresent(manifestPath)
+      ? 'invalid-reference-set'
+      : 'missing-reference-set';
   }
   const results: any[] = [];
   let bytes = input.segments.reduce((total, frame) => total + frame.bytes, 0);
@@ -437,7 +446,10 @@ const SYSTEM_FONT_ROOTS = ['/usr/share/fonts', '/usr/local/share/fonts'];
 // This adds filename punctuation only; canonical root, suffix and byte limits remain mandatory.
 const SYSTEM_FONT_NAME = /^(?:[A-Za-z0-9_ .+/-]|\[|\]|,){1,240}$/;
 export class FontIdentityError extends Error {
-  constructor(readonly category: string, readonly font: string | null = null) {
+  constructor(
+    readonly category: string,
+    readonly font: string | null = null
+  ) {
     super(`sequence font identity unavailable: ${category}`);
   }
 }
@@ -460,20 +472,30 @@ export function systemFontIdentity(path: string, roots = SYSTEM_FONT_ROOTS) {
   }
   if (!canonicalPath.startsWith(root + '/')) throw new FontIdentityError('font-root-escape', font);
   const canonicalName = relative(root, canonicalPath);
-  if (!SYSTEM_FONT_NAME.test(canonicalName)
-      || !/\.(?:ttf|otf|ttc|otc|pfa|pfb|pcf(?:\.gz)?|otb)$/i.test(canonicalName))
+  if (
+    !SYSTEM_FONT_NAME.test(canonicalName) ||
+    !/\.(?:ttf|otf|ttc|otc|pfa|pfb|pcf(?:\.gz)?|otb)$/i.test(canonicalName)
+  )
     throw new FontIdentityError('unsupported-font-name', font);
   try {
     const raw = safeRead(canonicalPath, 32 * 1024 * 1024);
     if (realpathSync(requested) !== canonicalPath) throw new Error('font alias changed');
-    return { alias: font, canonical: `${rootIndex}/${canonicalName}`, sha256: digest(raw), bytes: raw.length };
+    return {
+      alias: font,
+      canonical: `${rootIndex}/${canonicalName}`,
+      sha256: digest(raw),
+      bytes: raw.length,
+    };
   } catch {
     throw new FontIdentityError('invalid-font-bytes', font);
   }
 }
 
 export async function compareSequenceWithContext(
-  info: TestInfo, input: SequenceInput, context: () => SequenceContext, ratio: number
+  info: TestInfo,
+  input: SequenceInput,
+  context: () => SequenceContext,
+  ratio: number
 ) {
   if (!input.complete || !input.segments.length || input.segments.length > SEQUENCE_LIMITS.segments)
     throw new Error('cannot compare incomplete sequence');
@@ -485,12 +507,19 @@ export async function compareSequenceWithContext(
     // No invented environment binding, comparison receipt, expected image or pass.
     // Original continuous captures/receipts already exist. Keep this visual
     // infrastructure error fatal while independently ready later states execute.
-    console.log('sequence-candidate-unavailable', JSON.stringify({
-      schemaVersion: 1, state: input.state, candidateAvailable: false,
-      category: error instanceof FontIdentityError ? error.category : 'runtime-identity',
-      font: error instanceof FontIdentityError ? error.font : null,
-    }));
-    await expect.soft(false, `Sequence ${input.state}: runtime identity unavailable; no candidate`).toBe(true);
+    console.log(
+      'sequence-candidate-unavailable',
+      JSON.stringify({
+        schemaVersion: 1,
+        state: input.state,
+        candidateAvailable: false,
+        category: error instanceof FontIdentityError ? error.category : 'runtime-identity',
+        font: error instanceof FontIdentityError ? error.font : null,
+      })
+    );
+    await expect
+      .soft(false, `Sequence ${input.state}: runtime identity unavailable; no candidate`)
+      .toBe(true);
     return;
   }
   await compareSequence(info, input, resolved, ratio);

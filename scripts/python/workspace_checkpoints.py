@@ -1,7 +1,8 @@
 """Strict numeric-only diagnostics for one synthetic WebKit workspace producer."""
 import json
 import math
-import re
+
+from scripts.python import workspace_ownership
 
 NAME = 'workspace-scroll-checkpoints.json'
 BUDGET = 131072
@@ -13,10 +14,11 @@ STATES = {'current', 'workspace-records', 'workspace-schema', 'workspace-imports
 
 def registered(suite, relative):
     return (suite == 'workspace' and len(relative.parts) == 2 and relative.name == NAME
-            and re.fullmatch(r'workspace-release-workspac-d0657-ponsive-and-visually-stable-webkit-mobile', relative.parts[0]) is not None)
+            and relative.parts[0].endswith('-webkit-mobile')
+            and workspace_ownership.scenario_for_case(relative.parts[0]) in {'corpus', 'records-schema', 'imports-exports'})
 
 
-def validate(raw):
+def validate(raw, case=None):
     def require(ok):
         if not ok:
             raise ValueError('invalid workspace checkpoint')
@@ -57,6 +59,8 @@ def validate(raw):
         require(type(event) is dict and set(event) == {'phase', 'state', 'index', 'focus', 'elapsedMs', 'phaseElapsedMs', 'errorCounts', 'route', 'activeState', 'target', 'targetCount', 'dialogCount', 'offset', 'max', 'viewport', 'visualViewport', 'targetRect', 'footerRect', 'headerRect'})
         require(type(event['phase']) is str and event['phase'] in PHASES)
         require(type(event['state']) is str and event['state'] in STATES)
+        if case is not None:
+            require(workspace_ownership.state_registered(case, event['state']))
         require(type(event['index']) is int and -1 <= event['index'] < 64)
         require(event['focus'] in ('neutral', 'tab', 'other'))
         require(event['route'] in ('workspace', 'other'))

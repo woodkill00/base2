@@ -343,7 +343,7 @@ test.each(['create', 'edit'])(
 );
 
 test.each(['create', 'edit'])(
-  'leaving %s authoring restores the established default mobile workspace spacing',
+  'leaving %s authoring preserves selected-detail width and empty-selection defaults',
   async (mode) => {
     if (mode === 'edit') contentWorkspaceAPI.records.mockResolvedValue({ items: [detail] });
     const view = mount();
@@ -360,8 +360,8 @@ test.each(['create', 'edit'])(
     } else {
       await user.click(screen.getByRole('button', { name: 'Open New title' }));
       const edit = await screen.findByRole('button', { name: 'Edit fields' });
-      expect(root).toHaveClass('px-4');
-      expect(screen.getByRole('region', { name: 'Record details' })).toHaveClass('p-5');
+      expect(root).toHaveClass('px-0', 'sm:px-4');
+      expect(screen.getByRole('region', { name: 'Record details' })).toHaveClass('p-2', 'sm:p-5');
       await user.click(edit);
       // Edit changes inspector state first; its onEditingChange passive effect
       // then reconciles the parent's presentation. user.click is not a promise
@@ -383,14 +383,19 @@ test.each(['create', 'edit'])(
       if (mode === 'edit') {
         expect(screen.getByRole('button', { name: 'Edit fields' })).toBeEnabled();
         expect(screen.queryByRole('button', { name: 'Save changes' })).not.toBeInTheDocument();
-        expect(screen.getByRole('region', { name: 'Record details' })).toHaveClass('p-5');
+        expect(screen.getByRole('region', { name: 'Record details' })).toHaveClass('p-2', 'sm:p-5');
         expect(screen.getByRole('region', { name: 'Record details' }).parentElement)
           .toHaveAttribute('data-editing', 'false');
       }
-      expect(root).toHaveClass('px-4');
-      expect(root).not.toHaveClass('px-0');
-      expect(document.getElementById('workspace-detail')).toHaveClass('p-6');
-      expect(document.getElementById('workspace-detail')).not.toHaveClass('p-0');
+      if (mode === 'edit') {
+        expect(root).toHaveClass('px-0', 'sm:px-4');
+        expect(document.getElementById('workspace-detail')).toHaveClass('p-0', 'sm:p-6');
+      } else {
+        expect(root).toHaveClass('px-4');
+        expect(root).not.toHaveClass('px-0');
+        expect(document.getElementById('workspace-detail')).toHaveClass('p-6');
+        expect(document.getElementById('workspace-detail')).not.toHaveClass('p-0');
+      }
     });
   }
 );
@@ -413,7 +418,7 @@ test.each(['schemas', 'imports', 'exports'])(
   }
 );
 
-test('successful public edit restores default read-only spacing after authoritative reconciliation', async () => {
+test('successful public edit retains selected-detail width without retaining edit mode', async () => {
   contentWorkspaceAPI.records.mockResolvedValue({ items: [detail] });
   contentWorkspaceAPI.record
     .mockResolvedValueOnce(detail)
@@ -433,9 +438,11 @@ test('successful public edit restores default read-only spacing after authoritat
   expect(view.container.querySelector('.base2-workspace')).toHaveClass('px-0', 'sm:px-4');
   await user.click(screen.getByRole('button', { name: 'Save changes' }));
   await screen.findByRole('button', { name: 'Edit fields' });
-  expect(view.container.querySelector('.base2-workspace')).toHaveClass('px-4');
-  expect(view.container.querySelector('.base2-workspace')).not.toHaveClass('px-0');
-  expect(document.getElementById('workspace-detail')).toHaveClass('p-6');
-  expect(screen.getByRole('region', { name: 'Record details' })).toHaveClass('p-5');
+  expect(view.container.querySelector('.base2-workspace')).toHaveClass('px-0', 'sm:px-4');
+  expect(document.getElementById('workspace-detail')).toHaveClass('p-0', 'sm:p-6');
+  expect(screen.getByRole('region', { name: 'Record details' })).toHaveClass('p-2', 'sm:p-5');
+  await waitFor(() => expect(screen.getByRole('region', { name: 'Record details' }).parentElement)
+    .toHaveAttribute('data-editing', 'false'));
+  expect(screen.queryByRole('button', { name: 'Save changes' })).not.toBeInTheDocument();
   expect(screen.getByText('Updated public copy')).toBeInTheDocument();
 });

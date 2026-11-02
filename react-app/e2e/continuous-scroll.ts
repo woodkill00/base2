@@ -1,6 +1,7 @@
 import { ownershipStep, ownershipCleanup, ownedScreenshot } from './workspace-capture-ownership';
 import {
   workspaceScrollCheckpoint,
+  preflightWorkspaceCheckpoints,
   checkpointGeometryStable,
   workspaceCheckpointEnabled,
   continuousMeasurementStable,
@@ -219,7 +220,10 @@ export async function captureContinuousScroll(
         )
       );
       const m = await ownershipStep(() => measure());
-      if (!index) extent = m.extent;
+      if (!index) {
+        extent = m.extent;
+        preflightWorkspaceCheckpoints(info, state, m.max, m.end - m.start);
+      }
       const file = `current-continuous-${state}-${String(index).padStart(3, '0')}.png`;
       const checkpointBefore = await ownershipStep(() =>
         workspaceScrollCheckpoint(page, info, state, 'capture-before', index)
