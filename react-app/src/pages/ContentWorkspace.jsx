@@ -472,6 +472,7 @@ function WorkspaceContent({ locale = 'en', scopeKey, canEdit }) {
           .volcano-layout[data-movement-layout='bottom'] .workspace-record-confirmation { scroll-margin-block-start: 0.5rem; }
           @container workspace-detail-card (max-width: 24rem) {
             .workspace-panel[data-tab="Imports"] { padding-inline: 0; }
+            .workspace-panel[data-tab="Records"][data-compact-details="false"] { padding-inline: 0.5rem; }
             .workspace-saved-views { flex-direction: column; align-items: stretch; padding-inline: 0; }
             .workspace-saved-views > label { inline-size: 100%; }
             .workspace-secure-file-action { flex: 1 1 100%; min-inline-size: 0; }
@@ -572,6 +573,7 @@ function WorkspaceContent({ locale = 'en', scopeKey, canEdit }) {
                 <section
                   id="workspace-detail"
                   data-tab={tab}
+                  data-compact-details={compactDetails}
                   tabIndex={-1}
                   aria-labelledby="workspace-panel-title"
                   aria-busy={recordsLoading}

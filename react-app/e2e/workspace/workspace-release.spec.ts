@@ -537,6 +537,24 @@ async function runCorpus(
   await ownershipStep(() => expect(savedViews).toHaveCount(1));
   const savedViewFit = await ownershipStep(() => savedViews.evaluate(measureSavedView));
   console.log('workspace-saved-view-readability', JSON.stringify(savedViewFit));
+  if (['chromium-compact', 'chromium-400-zoom'].includes(testInfo.project.name)) {
+    const browseSpacing = await ownershipStep(() =>
+      savedViews.evaluate((select) => {
+        const panel = select.closest<HTMLElement>('#workspace-detail')!;
+        const style = getComputedStyle(panel);
+        return {
+          compactDetails: panel.dataset.compactDetails === 'true',
+          inlineStart: Number.parseFloat(style.paddingInlineStart),
+          inlineEnd: Number.parseFloat(style.paddingInlineEnd),
+          compactInset: Number.parseFloat(getComputedStyle(document.documentElement).fontSize) / 2,
+        };
+      })
+    );
+    console.log('workspace-saved-view-browse-spacing', JSON.stringify(browseSpacing));
+    expect(browseSpacing.compactDetails).toBe(false);
+    expect(browseSpacing.inlineStart).toBe(browseSpacing.compactInset);
+    expect(browseSpacing.inlineEnd).toBe(browseSpacing.compactInset);
+  }
   expect(savedViewFit.placeholder).toBe(true);
   expect(savedViewFit.contained).toBe(true);
   expect(savedViewFit.overflow).toBe(false);

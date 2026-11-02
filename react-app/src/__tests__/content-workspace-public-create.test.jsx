@@ -78,6 +78,10 @@ beforeEach(() => {
 async function waitForCleanRecordEditing() {
   await waitFor(() => {
     expect(screen.getByLabelText('Public body')).toBeInTheDocument();
+    expect(screen.getByLabelText('Public body').closest('#workspace-detail')).toHaveAttribute(
+      'data-compact-details',
+      'true'
+    );
     expect(screen.getByRole('button', { name: 'Save changes' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Discard changes' })).toBeEnabled();
     expect(screen.getByRole('region', { name: 'Record details' }).parentElement).toHaveAttribute(
@@ -481,6 +485,10 @@ test('saved views keeps its full accessible label and executes the selected view
   const css = view.container.querySelector('style').textContent;
   expect(css).toMatch(
     /@container workspace-detail-card \(max-width: 24rem\)[\s\S]*?\.workspace-saved-views \{ flex-direction: column; align-items: stretch; padding-inline: 0; \}/
+  );
+  expect(selector.closest('#workspace-detail')).toHaveAttribute('data-compact-details', 'false');
+  expect(css).toMatch(
+    /@container workspace-detail-card \(max-width: 24rem\)[\s\S]*?\.workspace-panel\[data-tab="Records"\]\[data-compact-details="false"\] \{ padding-inline: 0\.5rem; \}/
   );
   await userEvent.setup().selectOptions(selector, 'saved');
   await waitFor(() => expect(contentWorkspaceAPI.executeView).toHaveBeenCalledTimes(1));
