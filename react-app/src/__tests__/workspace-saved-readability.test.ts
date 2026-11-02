@@ -168,7 +168,7 @@ test('failure geometry is fixed-schema numeric data with bounded fragments and n
   expect(diagnostic.fragments).toHaveLength(8);
   expect(diagnostic.fragmentCount).toBe(30);
   expect(diagnostic.fragmentsTruncated).toBe(true);
-  expect(result.labels.filter((row) => row.diagnostic)).toHaveLength(2);
+  expect(result.labels.filter((row) => row.diagnostic)).toHaveLength(6);
   expect(JSON.stringify(result.labels)).not.toContain('PRIVATE');
   expect(new TextEncoder().encode(JSON.stringify(result.labels)).length).toBeLessThan(8192);
   expect(
@@ -198,4 +198,23 @@ test('label fit fails closed for missing or invalid measurements', () => {
     { available: 200, required: 0 },
   ])
     expect(savedLabelFits(row)).toBe(false);
+});
+
+test('all saved action labels retain strict width, line and containment guards', () => {
+  const labels = measure('240px', 108.34159851074219).labels.slice(0, 6);
+  expect(labels.map((row) => row.label)).toEqual([
+    'Secure file',
+    'Secure file',
+    'Add relationship',
+    'Submit for review',
+    'Publish',
+    'Delete record',
+  ]);
+  for (const row of labels) {
+    expect(savedLabelFits(row)).toBe(true);
+    expect(row.diagnostic).toBeDefined();
+    expect(savedLabelFits({ ...row, available: 108.33100000000002 })).toBe(false);
+    expect(savedLabelFits({ ...row, renderedLineCount: 2 })).toBe(false);
+    expect(savedLabelFits({ ...row, renderedContained: false })).toBe(false);
+  }
 });

@@ -501,7 +501,7 @@ export default function RecordInspector({
         ) : (
           <p className="mt-2 text-sm">{copy.unavailable}</p>
         )}
-        <div className="mt-3 flex flex-wrap gap-2">
+        <div className="workspace-record-action-row mt-3 flex flex-wrap gap-2">
           {actions.map((action) => (
             <GlassButton
               key={action}
@@ -526,7 +526,7 @@ export default function RecordInspector({
               {pendingAction === 'adopt_review_subject' && copy.adoption}
               {pendingAction === 'approve_review' && copy.approval}
             </p>
-            <div className="mt-3 flex gap-2">
+            <div className="workspace-record-action-row mt-3 flex gap-2">
               <GlassButton
                 type="button"
                 variant="primary"
@@ -600,7 +600,7 @@ export default function RecordInspector({
                 ? 'This legacy version has no public text snapshot. Current public text will be preserved.'
                 : 'Public text will be restored from this snapshot.'}
             </p>
-            <div className="mt-3 flex gap-2">
+            <div className="workspace-record-action-row mt-3 flex gap-2">
               <GlassButton
                 type="button"
                 variant="primary"

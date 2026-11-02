@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import postcss from 'postcss';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import RecordInspector from '../components/content/RecordInspector';
@@ -67,12 +69,17 @@ beforeEach(() => {
 test('Tab reaches a populated Arabic multiline field by its exact accessible name', async () => {
   const user = userEvent.setup();
   const label = 'وصف طويل للاختبار المرئي';
-  setup({ values: { title: 'draft record', summary: 'Private synthetic editorial note.' } }, {
-    schema: { fields: [
-      { fieldKey: 'title', label: 'short text field', fieldKind: 'short_text' },
-      { fieldKey: 'summary', label, fieldKind: 'long_text' },
-    ] },
-  });
+  setup(
+    { values: { title: 'draft record', summary: 'Private synthetic editorial note.' } },
+    {
+      schema: {
+        fields: [
+          { fieldKey: 'title', label: 'short text field', fieldKind: 'short_text' },
+          { fieldKey: 'summary', label, fieldKind: 'long_text' },
+        ],
+      },
+    }
+  );
   await user.click(screen.getByRole('button', { name: 'Edit fields', exact: true }));
   const title = screen.getByRole('textbox', { name: 'short text field', exact: true });
   const note = screen.getByRole('textbox', { name: label, exact: true });
@@ -374,3 +381,60 @@ test.each(['save', 'restore'])(
     ).toBeInTheDocument();
   }
 );
+
+test('saved workflow and confirmation rows reserve full rows only in narrow inspectors', () => {
+  setup({ allowedActions: ['submit_review', 'publish', 'delete'] });
+  const buttons = ['Submit for review', 'Publish', 'Delete record'].map((name) => {
+    expect(screen.getAllByRole('button', { name, exact: true })).toHaveLength(1);
+    return screen.getByRole('button', { name, exact: true });
+  });
+  expect(buttons[0]).toHaveClass('base2-button--primary');
+  expect(buttons[1]).toHaveClass('base2-button--primary');
+  expect(buttons[2]).toHaveClass('base2-button--ghost');
+  for (const button of buttons)
+    expect(button.parentElement).toHaveClass('workspace-record-action-row');
+  const source = readFileSync('src/pages/ContentWorkspace.jsx', 'utf8');
+  const css = postcss.parse(source.match(/<style>\{`([\s\S]*?)`\}/)[1]);
+  for (const [selector, declarations] of [
+    ['.workspace-record-action-row', { 'flex-wrap': 'wrap' }],
+    ['.workspace-record-action-row > .base2-button', { flex: '1 1 100%', 'min-inline-size': '0' }],
+  ]) {
+    const rules = [];
+    css.walkRules(selector, (rule) => rules.push(rule));
+    expect(rules).toHaveLength(1);
+    expect(rules[0].parent.name).toBe('container');
+    expect(rules[0].parent.params).toBe('workspace-detail-card (max-width: 24rem)');
+    expect(Object.fromEntries(rules[0].nodes.map((node) => [node.prop, node.value]))).toEqual(
+      declarations
+    );
+  }
+});
+
+test.each([
+  ['submit_review', 'Submit for review'],
+  ['publish', 'Publish'],
+  ['delete', 'Delete record'],
+])('saved %s retains cancel, confirm and exact versioned transition', async (action, label) => {
+  const user = userEvent.setup();
+  contentWorkspaceAPI.transition.mockResolvedValue({ ...record, version: 3 });
+  setup({ allowedActions: ['submit_review', 'publish', 'delete'] });
+  await user.click(screen.getByRole('button', { name: label, exact: true }));
+  expect(screen.getByRole('alertdialog')).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Confirm action' }).parentElement).toHaveClass(
+    'workspace-record-action-row'
+  );
+  await user.click(screen.getByRole('button', { name: 'Keep unchanged' }));
+  expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+  expect(contentWorkspaceAPI.transition).not.toHaveBeenCalled();
+  await user.click(screen.getByRole('button', { name: label, exact: true }));
+  await user.click(screen.getByRole('button', { name: 'Confirm action' }));
+  await waitFor(() =>
+    expect(contentWorkspaceAPI.transition).toHaveBeenCalledExactlyOnceWith(
+      'article',
+      record.id,
+      action,
+      record.version
+    )
+  );
+  await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument());
+});

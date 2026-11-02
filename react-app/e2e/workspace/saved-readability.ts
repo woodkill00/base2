@@ -104,49 +104,43 @@ export function measureSavedInspector(panel: HTMLElement) {
       }
       const borderRect = node.getBoundingClientRect();
       const textRect = range.getBoundingClientRect();
-      const diagnostic =
-        name === 'Secure file'
-          ? {
-              schemaVersion: 1,
-              layoutWidth: number(Number.parseFloat(style.width)),
-              boxSizing:
-                style.boxSizing === 'border-box'
-                  ? 'border-box'
-                  : style.boxSizing === 'content-box'
-                    ? 'content-box'
-                    : 'invalid',
-              padding: [
-                style.paddingTop,
-                style.paddingRight,
-                style.paddingBottom,
-                style.paddingLeft,
-              ].map((value) => number(pixels(value))),
-              borders: [
-                style.borderTopWidth,
-                style.borderRightWidth,
-                style.borderBottomWidth,
-                style.borderLeftWidth,
-              ].map((value) => number(pixels(value))),
-              fontSize: number(Number.parseFloat(style.fontSize)),
-              fontWeight: number(
-                style.fontWeight === 'normal'
-                  ? 400
-                  : style.fontWeight === 'bold'
-                    ? 700
-                    : Number.parseFloat(style.fontWeight)
-              ),
-              lineHeight: number(Number.parseFloat(style.lineHeight)),
-              letterSpacing: number(pixels(style.letterSpacing)),
-              canvasAdvance: number(textWidth(name, style)),
-              clientWidth: number(node.clientWidth),
-              scrollWidth: number(node.scrollWidth),
-              borderRect: rectangle(borderRect),
-              textRect: rectangle(textRect),
-              fragmentCount: number(fragments.length),
-              fragments: fragments.slice(0, 8).map(rectangle),
-              fragmentsTruncated: fragments.length > 8,
-            }
-          : undefined;
+      const diagnostic = {
+        schemaVersion: 1,
+        layoutWidth: number(Number.parseFloat(style.width)),
+        boxSizing:
+          style.boxSizing === 'border-box'
+            ? 'border-box'
+            : style.boxSizing === 'content-box'
+              ? 'content-box'
+              : 'invalid',
+        padding: [style.paddingTop, style.paddingRight, style.paddingBottom, style.paddingLeft].map(
+          (value) => number(pixels(value))
+        ),
+        borders: [
+          style.borderTopWidth,
+          style.borderRightWidth,
+          style.borderBottomWidth,
+          style.borderLeftWidth,
+        ].map((value) => number(pixels(value))),
+        fontSize: number(Number.parseFloat(style.fontSize)),
+        fontWeight: number(
+          style.fontWeight === 'normal'
+            ? 400
+            : style.fontWeight === 'bold'
+              ? 700
+              : Number.parseFloat(style.fontWeight)
+        ),
+        lineHeight: number(Number.parseFloat(style.lineHeight)),
+        letterSpacing: number(pixels(style.letterSpacing)),
+        canvasAdvance: number(textWidth(name, style)),
+        clientWidth: number(node.clientWidth),
+        scrollWidth: number(node.scrollWidth),
+        borderRect: rectangle(borderRect),
+        textRect: rectangle(textRect),
+        fragmentCount: number(fragments.length),
+        fragments: fragments.slice(0, 8).map(rectangle),
+        fragmentsTruncated: fragments.length > 8,
+      };
       labels.push({
         label: name,
         available: contentWidth(node, style),

@@ -1368,3 +1368,15 @@ captures prove their observed fallback states, not populated content readiness.
       Preflight estimates do not guarantee completion: actual geometry/bytes and
       runtime budgets remain fatal/incomplete when exceeded. Exact new producer,
       title/state bindings invalidate prior sequence candidates; no PNG approval.
+
+- [ ] T101 Reserve whole compact inspector rows for saved workflow and confirmation
+      actions, preserving primary/ghost hierarchy, order, versioned transitions and
+      desktop layout. Native 16f2a3c proves Secure file recovered but Submit for
+      review still fails strict width (108.331 available vs 108.34159851074219
+      required), despite one rendered line and containment. Later compact Publish,
+      Delete, relationship and file-caption guards were not reached; do not infer
+      their success. Retain strict width, line, containment and count assertions;
+      emit the same bounded numeric diagnostics for all fixed saved action labels.
+      Validate all three workflow cancel/confirm transitions and narrow container
+      scoping. Fresh native compact/desktop/large-text pixels and complete saved
+      guards remain required; no tolerance, reference or acceptance changes.
