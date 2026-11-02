@@ -1,8 +1,23 @@
-export type LabelMeasurement = { available: number; required: number };
+export type LabelMeasurement = {
+  available: number;
+  required: number;
+  renderedLineCount?: number;
+  renderedContained?: boolean;
+};
 
-export function savedLabelFits({ available, required }: LabelMeasurement) {
+export function savedLabelFits({
+  available,
+  required,
+  renderedLineCount,
+  renderedContained,
+}: LabelMeasurement) {
   return (
-    Number.isFinite(available) && Number.isFinite(required) && required > 0 && available >= required
+    Number.isFinite(available) &&
+    Number.isFinite(required) &&
+    required > 0 &&
+    available >= required &&
+    (renderedLineCount === undefined || renderedLineCount === 1) &&
+    renderedContained !== false
   );
 }
 
@@ -54,7 +69,12 @@ export function measureSavedInspector(panel: HTMLElement) {
       pixels(style.paddingRight)
     );
   };
-  const labels: Array<LabelMeasurement & { label: string }> = [];
+  // Only fixed synthetic control names and bounded numeric geometry are emitted.
+  // Never emit field values, file names, arbitrary text, selectors or CSS strings.
+  const number = (value: number) =>
+    Number.isFinite(value) && Math.abs(value) <= 1_000_000 ? value : null;
+  const rectangle = (value: DOMRect) => [value.x, value.y, value.width, value.height].map(number);
+  const labels: Array<LabelMeasurement & { label: string; diagnostic?: unknown }> = [];
   const names = [
     'Secure file',
     'Add relationship',
@@ -68,12 +88,76 @@ export function measureSavedInspector(panel: HTMLElement) {
       (node) => node.textContent?.trim() === name
     );
     counts[name] = buttons.length;
-    for (const node of buttons) {
+    for (const node of buttons.slice(0, 2)) {
       const style = getComputedStyle(node);
+      const range = document.createRange();
+      range.selectNodeContents(node);
+      const fragments = Array.from(range.getClientRects());
+      // Inline descendants can contribute several rectangles on one line.
+      const lines: Array<{ top: number; bottom: number }> = [];
+      for (const rect of [...fragments].sort((a, b) => a.top - b.top)) {
+        const last = lines[lines.length - 1];
+        if (last && rect.top < last.bottom && rect.bottom > last.top) {
+          last.top = Math.min(last.top, rect.top);
+          last.bottom = Math.max(last.bottom, rect.bottom);
+        } else lines.push({ top: rect.top, bottom: rect.bottom });
+      }
+      const borderRect = node.getBoundingClientRect();
+      const textRect = range.getBoundingClientRect();
+      const diagnostic =
+        name === 'Secure file'
+          ? {
+              schemaVersion: 1,
+              layoutWidth: number(Number.parseFloat(style.width)),
+              boxSizing:
+                style.boxSizing === 'border-box'
+                  ? 'border-box'
+                  : style.boxSizing === 'content-box'
+                    ? 'content-box'
+                    : 'invalid',
+              padding: [
+                style.paddingTop,
+                style.paddingRight,
+                style.paddingBottom,
+                style.paddingLeft,
+              ].map((value) => number(pixels(value))),
+              borders: [
+                style.borderTopWidth,
+                style.borderRightWidth,
+                style.borderBottomWidth,
+                style.borderLeftWidth,
+              ].map((value) => number(pixels(value))),
+              fontSize: number(Number.parseFloat(style.fontSize)),
+              fontWeight: number(
+                style.fontWeight === 'normal'
+                  ? 400
+                  : style.fontWeight === 'bold'
+                    ? 700
+                    : Number.parseFloat(style.fontWeight)
+              ),
+              lineHeight: number(Number.parseFloat(style.lineHeight)),
+              letterSpacing: number(pixels(style.letterSpacing)),
+              canvasAdvance: number(textWidth(name, style)),
+              clientWidth: number(node.clientWidth),
+              scrollWidth: number(node.scrollWidth),
+              borderRect: rectangle(borderRect),
+              textRect: rectangle(textRect),
+              fragmentCount: number(fragments.length),
+              fragments: fragments.slice(0, 8).map(rectangle),
+              fragmentsTruncated: fragments.length > 8,
+            }
+          : undefined;
       labels.push({
         label: name,
         available: contentWidth(node, style),
         required: textWidth(name, style),
+        renderedLineCount: lines.length,
+        renderedContained:
+          textRect.left >= borderRect.left &&
+          textRect.right <= borderRect.right &&
+          textRect.top >= borderRect.top &&
+          textRect.bottom <= borderRect.bottom,
+        ...(diagnostic ? { diagnostic } : {}),
       });
     }
   }
@@ -91,7 +175,7 @@ export function measureSavedInspector(panel: HTMLElement) {
   }
   const files = Array.from(panel.querySelectorAll<HTMLInputElement>('input[type="file"]'));
   counts.files = files.length;
-  for (const node of files) {
+  for (const node of files.slice(0, 2)) {
     const style = getComputedStyle(node);
     const button = getComputedStyle(node, '::file-selector-button');
     // These three registered projects are Chromium/en-US. This necessary width

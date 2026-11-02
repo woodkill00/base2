@@ -136,7 +136,12 @@ function MediaControl({ typeKey, record, field, onChanged, onError }) {
       ) : null}
       <div className="mt-3 flex flex-wrap gap-2">
         {!asset ? (
-          <GlassButton type="button" onClick={admit} disabled={busy || !file}>
+          <GlassButton
+            className="workspace-secure-file-action"
+            type="button"
+            onClick={admit}
+            disabled={busy || !file}
+          >
             {busy ? 'Securing file…' : 'Secure file'}
           </GlassButton>
         ) : null}

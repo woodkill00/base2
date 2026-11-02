@@ -3,6 +3,8 @@ import userEvent from '@testing-library/user-event';
 import { axe, toHaveNoViolations } from 'jest-axe';
 import RecordStructuredFields from '../components/content/RecordStructuredFields';
 import { contentWorkspaceAPI } from '../services/contentWorkspace';
+import { readFileSync } from 'node:fs';
+import postcss from 'postcss';
 
 expect.extend(toHaveNoViolations);
 
@@ -63,6 +65,29 @@ describe('structured record controls', () => {
       gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 14rem), 1fr))',
     });
     expect(screen.getByLabelText('Target record ID')).toBeRequired();
+  });
+
+  test('only the narrow workspace Secure file action fills its available row', async () => {
+    setup();
+    await screen.findByText('No relationships are attached.');
+    const secure = screen.getByRole('button', { name: 'Secure file', exact: true });
+    expect(secure).toBeDisabled();
+    expect(secure).toHaveClass('workspace-secure-file-action');
+    expect(secure.parentElement).toHaveClass('flex', 'flex-wrap');
+    expect(screen.getByRole('button', { name: 'Add relationship' })).not.toHaveClass(
+      'workspace-secure-file-action'
+    );
+    const source = readFileSync('src/pages/ContentWorkspace.jsx', 'utf8');
+    const css = postcss.parse(source.match(/<style>\{`([\s\S]*?)`\}/)[1]);
+    const rules = [];
+    css.walkRules('.workspace-secure-file-action', (rule) => rules.push(rule));
+    expect(rules).toHaveLength(1);
+    expect(rules[0].parent.name).toBe('container');
+    expect(rules[0].parent.params).toBe('workspace-detail-card (max-width: 24rem)');
+    expect(Object.fromEntries(rules[0].nodes.map((node) => [node.prop, node.value]))).toEqual({
+      flex: '1 1 100%',
+      'min-inline-size': '0',
+    });
   });
 
   test('hashes and uploads in memory but refuses attachment while quarantined', async () => {

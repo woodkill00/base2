@@ -471,6 +471,7 @@ function WorkspaceContent({ locale = 'en', scopeKey, canEdit }) {
           .workspace-detail-card { container: workspace-detail-card / inline-size; }
           @container workspace-detail-card (max-width: 24rem) {
             .workspace-panel[data-tab="Imports"] { padding-inline: 0; }
+            .workspace-secure-file-action { flex: 1 1 100%; min-inline-size: 0; }
           }
           .workspace-records-grid {
             display: grid;
