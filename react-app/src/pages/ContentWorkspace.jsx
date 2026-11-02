@@ -469,6 +469,7 @@ function WorkspaceContent({ locale = 'en', scopeKey, canEdit }) {
             .workspace-panels { grid-template-columns: minmax(21rem, 0.32fr) minmax(0, 1fr); }
           }
           .workspace-detail-card { container: workspace-detail-card / inline-size; }
+          .volcano-layout[data-movement-layout='bottom'] .workspace-record-confirmation { scroll-margin-block-start: 0.5rem; }
           @container workspace-detail-card (max-width: 24rem) {
             .workspace-panel[data-tab="Imports"] { padding-inline: 0; }
             .workspace-secure-file-action { flex: 1 1 100%; min-inline-size: 0; }

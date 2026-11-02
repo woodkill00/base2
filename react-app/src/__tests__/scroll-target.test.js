@@ -104,5 +104,50 @@ it('keeps explicitly instant alignment instant under reduced motion while defaul
     expect(scroll.mock.calls.at(-1)[0].behavior).toBe('instant');
     target.align(node);
     expect(scroll.mock.calls.at(-1)[0].behavior).toBe('auto');
-  } finally { scroll.mockRestore(); window.matchMedia = prior; }
+  } finally {
+    scroll.mockRestore();
+    window.matchMedia = prior;
+  }
 });
+
+it.each([471.8125 / 472, 1, 2])(
+  'confirmation entry clears the rendered fractional header at scale %s',
+  (scale) => {
+    const element = port();
+    element.getBoundingClientRect = () => ({ top: 0, height: 400 * scale });
+    element.scrollTo = vi.fn(({ top }) => {
+      element.scrollTop = Math.round(top);
+    });
+    const node = document.createElement('div');
+    node.style.scrollMarginBlockStart = '8px';
+    Object.defineProperty(node, 'offsetHeight', { value: 100 });
+    node.getBoundingClientRect = () => ({
+      top: (1000 - element.scrollTop) * scale,
+      height: 100 * scale,
+    });
+    const header = document.createElement('header');
+    const boundary = 51.390625 * scale;
+    header.getBoundingClientRect = () => ({ bottom: boundary });
+    element.append(header, node);
+    createScrollTarget(element, () => 51).align(node, 'instant', { header, scrollMargin: true });
+    const actual = node.getBoundingClientRect();
+    expect(actual.top).toBeGreaterThanOrEqual(boundary);
+    expect(actual.top - boundary).toBeGreaterThan(6 * scale);
+    expect(actual.top + actual.height).toBeLessThanOrEqual(400 * scale);
+    expect(element.scrollTo).toHaveBeenCalledTimes(1);
+    expect(element.scrollTo.mock.calls[0][0].behavior).toBe('instant');
+  }
+);
+
+it.each([0, NaN, Infinity])(
+  'does not scroll confirmation geometry with invalid scale %s',
+  (scale) => {
+    const element = port();
+    element.getBoundingClientRect = () => ({ top: 0, height: scale * 400 });
+    const node = document.createElement('div');
+    Object.defineProperty(node, 'offsetHeight', { value: 100 });
+    node.getBoundingClientRect = () => ({ top: 100, height: 100 });
+    createScrollTarget(element).align(node, 'instant', { scrollMargin: true });
+    expect(element.scrollTo).not.toHaveBeenCalled();
+  }
+);

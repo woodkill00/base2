@@ -605,14 +605,19 @@ test.each([
   }
 );
 
-test.each([
-  ['Submit for review', 'Keep unchanged'],
-  ['Publish', 'Keep unchanged'],
-  ['Delete record', 'Keep unchanged'],
-  ['Restore', 'Keep current'],
-])(
-  'confirmation %s reserves compact inset and aligns after safe entry focus',
-  async (label, dismiss) => {
+test.each(
+  [
+    ['Submit for review', 'Keep unchanged'],
+    ['Publish', 'Keep unchanged'],
+    ['Delete record', 'Keep unchanged'],
+    ['Restore', 'Keep current'],
+  ].flatMap(([label, dismiss]) => [
+    [label, dismiss, false],
+    [label, dismiss, true],
+  ])
+)(
+  'confirmation %s (%s) reserves compact inset and aligns after safe entry focus (nested=%s)',
+  async (label, dismiss, nested) => {
     const user = userEvent.setup();
     const align = vi.fn((panel) => {
       expect(panel).toBe(screen.getByRole('alertdialog'));
@@ -623,7 +628,14 @@ test.each([
       {},
       {
         wrapper: ({ children }) => (
-          <ScrollTargetContext.Provider value={{ align }}>{children}</ScrollTargetContext.Provider>
+          <div className="volcano-layout">
+            <div className="volcano-header-frame" data-testid="confirmation-entry-header" />
+            <ScrollTargetContext.Provider
+              value={{ align, element: nested ? document.createElement('div') : null }}
+            >
+              {children}
+            </ScrollTargetContext.Provider>
+          </div>
         ),
       }
     );
@@ -631,7 +643,15 @@ test.each([
     await user.click(trigger);
     expect(screen.getByRole('alertdialog')).toHaveClass('workspace-record-confirmation');
     expect(align).toHaveBeenCalledTimes(1);
-    expect(align.mock.calls[0][1]).toBe('instant');
+    expect(align.mock.calls[0]).toEqual(
+      nested
+        ? [
+            screen.getByRole('alertdialog'),
+            'instant',
+            { header: screen.getByTestId('confirmation-entry-header'), scrollMargin: true },
+          ]
+        : [screen.getByRole('alertdialog'), 'instant']
+    );
     await user.keyboard('{Escape}');
     expect(trigger).toHaveFocus();
     expect(align).toHaveBeenCalledTimes(1);
@@ -706,4 +726,18 @@ test('scroll-target replacement does not steal dirty-panel focus and is used on 
   expect(second.align).toHaveBeenCalledTimes(1);
   expect(contentWorkspaceAPI.transition).not.toHaveBeenCalled();
   expect(contentWorkspaceAPI.restore).not.toHaveBeenCalled();
+});
+
+test('confirmation entry spacing is authored only for the bounded shell', () => {
+  const source = readFileSync('src/pages/ContentWorkspace.jsx', 'utf8');
+  const css = postcss.parse(source.match(/<style>\{`([\s\S]*?)`\}/)[1]);
+  const rules = [];
+  css.walkRules(
+    ".volcano-layout[data-movement-layout='bottom'] .workspace-record-confirmation",
+    (r) => rules.push(r)
+  );
+  expect(rules).toHaveLength(1);
+  expect(Object.fromEntries(rules[0].nodes.map((n) => [n.prop, n.value]))).toEqual({
+    'scroll-margin-block-start': '0.5rem',
+  });
 });

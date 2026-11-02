@@ -11,7 +11,7 @@ vi.mock('../components/home/HomeFooter', () => ({
     </footer>
   ),
 }));
-let documentTop, originalHistory;
+let documentTop, originalHistory, nativeZoom;
 const descriptors = [];
 function property(object, name, get) {
   descriptors.push([object, name, Object.getOwnPropertyDescriptor(object, name)]);
@@ -41,14 +41,30 @@ function rectangle(x, y, width, height) {
 beforeEach(() => {
   originalHistory = { state: history.state, url: location.href };
   history.replaceState({ key: 'drawer-integration', idx: 0 }, '', '/about#main-content');
+  nativeZoom = false;
   documentTop = 0;
   document.body.style.overflow = 'auto';
-  property(window, 'innerWidth', () => 320);
-  property(window, 'innerHeight', () => 600);
+  property(window, 'innerWidth', () => (nativeZoom ? 900 : 320));
+  property(window, 'innerHeight', () => (nativeZoom ? 900 : 600));
   property(window, 'scrollY', () => documentTop);
-  property(document.documentElement, 'scrollHeight', () => (bottom() ? 600 : 1200));
+  property(document.documentElement, 'scrollHeight', () =>
+    nativeZoom ? (bottom() ? 900 : 3279) : bottom() ? 600 : 1200
+  );
   for (const name of ['offsetHeight', 'clientHeight', 'scrollHeight', 'offsetWidth', 'clientWidth'])
     property(HTMLElement.prototype, name, function () {
+      if (nativeZoom) {
+        if (this.classList.contains('volcano-content-scrollport'))
+          return name.includes('Width')
+            ? 450
+            : name === 'scrollHeight'
+              ? 1640
+              : bottom()
+                ? 334
+                : 1640;
+        if (this.classList.contains('volcano-header-frame'))
+          return name.includes('Width') ? 450 : 64;
+        if (this.classList.contains('volcano-layout')) return 450;
+      }
       if (this.classList.contains('volcano-content-scrollport'))
         return name.includes('Width')
           ? 320
@@ -62,6 +78,28 @@ beforeEach(() => {
       return name.includes('Width') ? 100 : 40;
     });
   vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function () {
+    if (nativeZoom) {
+      const port = document.querySelector('.volcano-content-scrollport');
+      if (this.classList.contains('volcano-layout')) return rectangle(0, 0, 900, 900);
+      if (this.classList.contains('volcano-content-scrollport'))
+        return rectangle(0, bottom() ? 0 : -documentTop, 900, bottom() ? 668 : 3279.125);
+      // Before passive lock cleanup, the old overflow:hidden port still owns sticky positioning.
+      if (this.classList.contains('volcano-header-frame'))
+        return rectangle(
+          0,
+          !bottom() && port?.style.overflow === 'hidden' ? -documentTop : 0,
+          900,
+          128
+        );
+      if (this.id === 'migration-landmark')
+        return rectangle(
+          135.1875,
+          2719.578125 - (bottom() ? (port?.scrollTop || 0) * 2 : documentTop),
+          1009.625,
+          133.625
+        );
+      if (this.tagName === 'H1') return rectangle(0, -10000, 100, 40);
+    }
     if (this.classList.contains('volcano-layout')) return rectangle(0, 0, 320, 600);
     if (this.classList.contains('volcano-content-scrollport'))
       return rectangle(0, bottom() ? 0 : -documentTop, 320, bottom() ? 300 : 1200);
@@ -100,7 +138,8 @@ beforeEach(() => {
     }
   );
   vi.spyOn(window, 'scrollTo').mockImplementation(({ top, behavior }) => {
-    if (behavior === 'instant') documentTop = Math.max(0, Math.min(bottom() ? 0 : 600, top));
+    if (behavior === 'instant')
+      documentTop = Math.max(0, Math.min(bottom() ? 0 : nativeZoom ? 2379 : 600, top));
   });
   const scroll = function ({ top, behavior }) {
     if (behavior === 'instant')
@@ -133,7 +172,7 @@ function open() {
     </BrowserRouter>
   );
   const port = document.querySelector('.volcano-content-scrollport');
-  port.scrollTop = 900;
+  port.scrollTop = nativeZoom ? 1305.5 : 900;
   const opener = screen.getByTestId('base2-left-menu-toggle');
   opener.focus();
   fireEvent.click(opener);
@@ -218,3 +257,54 @@ test('pending native POP plus retained hash cannot let the outgoing token restor
     'preserved'
   );
 });
+
+test('native zoom geometry preserves the original landmark after passive sticky lock handoff', async () => {
+  nativeZoom = true;
+  const { port, toggle, opener } = open();
+  const landmark = document.getElementById('migration-landmark');
+  const original = landmark.getBoundingClientRect().top - 128;
+  expect(original).toBe(-19.421875);
+  fireEvent.click(toggle);
+  expect(documentTop).toBe(2379);
+  expect(port.style.overflow).toBe('');
+  expect(landmark.getBoundingClientRect().top - 128).toBe(212.578125);
+  await act(async () => {
+    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+  });
+  expect(root()).toHaveAttribute('data-movement-migration', 'clamped');
+  fireEvent.click(toggle);
+  expect(port.scrollTop).toBe(1305.5);
+  expect(landmark.getBoundingClientRect().top - 128).toBe(original);
+  expect(toggle).toHaveFocus();
+  expect(port.style.overflow).toBe('hidden');
+  fireEvent.keyDown(window, { key: 'Escape' });
+  expect(opener).toHaveFocus();
+  expect(port.style.overflow).toBe('');
+});
+
+test.each(['user-scroll', 'viewport'])(
+  'native zoom inverse bookmark remains invalid after intervening %s',
+  (change) => {
+    nativeZoom = true;
+    const { port, toggle } = open();
+    fireEvent.click(toggle);
+    expect(documentTop).toBe(2379);
+    if (change === 'user-scroll') {
+      fireEvent.wheel(window);
+      documentTop = 2300;
+      fireEvent.scroll(window);
+      documentTop = 2379;
+      fireEvent.scroll(window);
+    } else {
+      property(window, 'innerWidth', () => 901);
+      fireEvent.resize(window);
+      property(window, 'innerWidth', () => 900);
+      fireEvent.resize(window);
+    }
+    fireEvent.click(toggle);
+    expect(port.scrollTop).toBe(1189.5);
+    expect(toggle).toHaveFocus();
+    expect(port.style.overflow).toBe('hidden');
+    expect(document.body.style.overflow).toBe('hidden');
+  }
+);

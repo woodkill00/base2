@@ -12,7 +12,11 @@ export interface ScrollTarget {
   scrollTo(_top: number, _behavior?: 'auto' | 'smooth' | 'instant'): void;
   move(_direction: number): void;
   edge(_start: boolean): void;
-  align(_node: Element, _behavior?: 'auto' | 'smooth' | 'instant'): void;
+  align(
+    _node: Element,
+    _behavior?: 'auto' | 'smooth' | 'instant',
+    _options?: { header?: Element | null; scrollMargin?: boolean }
+  ): void;
   subscribe(_callback: () => void): () => void;
   lock(): () => void;
 }

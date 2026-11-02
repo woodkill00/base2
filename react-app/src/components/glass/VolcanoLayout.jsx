@@ -112,10 +112,21 @@ export default function VolcanoLayout({ children, headerTitle, contextSlot, foot
       return;
     }
     migrated.current = { ...token, applied };
-    bookmark.current = createMovementBookmark(token, applied, header.current, scrollTarget);
     root.current.dataset.movementMigration = 'settling';
   }, [scrollTarget]);
   useEffect(() => {
+    const token = migrated.current;
+    if (
+      !token ||
+      token.serial !== migrationSerial.current ||
+      token.entry !== migrationEntry.current ||
+      token.historyKey !== (window.history.state?.key || 'default')
+    )
+      return;
+    // Child passive cleanup releases the previous nested overflow lock first.
+    // Sampling in the layout effect instead records a temporary sticky containing
+    // block, then mistakes our own lock handoff for an unrelated geometry change.
+    bookmark.current = createMovementBookmark(token, token.applied, header.current, scrollTarget);
     if (!bookmark.current) return;
     return watchMovementBookmark(
       root.current,

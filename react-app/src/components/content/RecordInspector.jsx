@@ -22,6 +22,18 @@ import RecordStructuredFields from './RecordStructuredFields';
 import { workspaceReviewCopy } from './workspaceReviewCopy';
 import { ScrollTargetContext } from '../../lib/scrollTarget';
 
+function alignConfirmationEntry(target, panel) {
+  if (!target) return;
+  if (!target.element) {
+    target.align(panel, 'instant');
+    return;
+  }
+  target.align(panel, 'instant', {
+    header: panel.closest('.volcano-layout')?.querySelector('.volcano-header-frame') || null,
+    scrollMargin: true,
+  });
+}
+
 const LABELS = {
   approve_review: 'Approve review',
   adopt_review_subject: 'Adopt current snapshot',
@@ -264,7 +276,7 @@ export default function RecordInspector({
       pendingAction &&
       focusInsideRecord(panel?.querySelector('[data-confirmation-cancel]'), recordRoot.current)
     )
-      entryScrollTarget.current?.align(panel, 'instant');
+      alignConfirmationEntry(entryScrollTarget.current, panel);
   }, [pendingAction]);
   useEffect(() => {
     const panel = restorePanel.current;
@@ -272,7 +284,7 @@ export default function RecordInspector({
       pendingRestore &&
       focusInsideRecord(panel?.querySelector('[data-confirmation-cancel]'), recordRoot.current)
     )
-      entryScrollTarget.current?.align(panel, 'instant');
+      alignConfirmationEntry(entryScrollTarget.current, panel);
   }, [pendingRestore]);
   const dismissAction = () => {
     if (busy || blocked) return;

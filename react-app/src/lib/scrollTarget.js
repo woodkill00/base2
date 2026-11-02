@@ -49,19 +49,40 @@ export function createScrollTarget(element = null, headerInset = () => 0) {
     scrollTo,
     move: (direction) => scrollTo(metrics().top + direction * metrics().height * 0.8, 'smooth'),
     edge: (start) => scrollTo(start ? 0 : metrics().max),
-    align: (node, behavior = 'auto') => {
-      const origin = element?.getBoundingClientRect().top || 0;
-      const scale = element
-        ? element.getBoundingClientRect().height / element.offsetHeight || 1
-        : 1;
-      const padding = Math.max(
+    align: (node, behavior = 'auto', options) => {
+      const box = element?.getBoundingClientRect();
+      const origin = box?.top || 0;
+      const measuredScale = element ? box.height / element.offsetHeight : 1;
+      const scale = measuredScale || 1;
+      const nodeBox = node.getBoundingClientRect();
+      let padding = Math.max(
         parseFloat(getComputedStyle(root()).scrollPaddingTop) || 0,
         headerInset()
       );
-      scrollTo(
-        metrics().top + (node.getBoundingClientRect().top - origin) / scale - padding,
-        behavior
-      );
+      let margin = 0;
+      if (options?.scrollMargin) {
+        // Confirmation entry opts into rendered chrome plus authored scroll margin.
+        // Other callers retain their existing layout-inset alignment contract.
+        const nodeScale = nodeBox.height / node.offsetHeight;
+        const boundary = Math.max(
+          origin,
+          window.visualViewport?.offsetTop || 0,
+          options.header?.getBoundingClientRect().bottom ?? origin
+        );
+        const authoredMargin = parseFloat(getComputedStyle(node).scrollMarginBlockStart) || 0;
+        if (
+          ![measuredScale, nodeScale, origin, nodeBox.top, boundary, padding, authoredMargin].every(
+            Number.isFinite
+          ) ||
+          measuredScale <= 0 ||
+          nodeScale <= 0 ||
+          authoredMargin < 0
+        )
+          return;
+        padding = Math.max(padding, (boundary - origin) / scale);
+        margin = (authoredMargin * nodeScale) / scale;
+      }
+      scrollTo(metrics().top + (nodeBox.top - origin) / scale - padding - margin, behavior);
     },
     subscribe: (callback) => {
       const target = element || window;
